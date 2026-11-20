@@ -4,6 +4,7 @@
 [![Backend](https://img.shields.io/badge/Backend-FastAPI-informational.svg)](apps/nai-core)
 [![Status](https://img.shields.io/badge/status-beta-green.svg)](#)
 [![Release](https://img.shields.io/badge/nAI-v0.2.0-blue)](https://github.com/Nithronverse/nAI/releases)
+[![Built by Nithron](https://img.shields.io/badge/built_by-Nithron-0b8fe0.svg)](https://nithron.com/projects/)
 
 **nAI** is a local-first AI document Q&A system for NithronOS & Niro:
 
