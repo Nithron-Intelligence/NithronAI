@@ -291,6 +291,26 @@ class UserGroupsUpdate(BaseModel):
         return cleaned
 
 
+class ApiKeyCreate(BaseModel):
+    """Create an API key."""
+
+    name: str = Field(..., min_length=1, max_length=80, description="What the key is for, e.g. 'Open WebUI'")
+
+
+class ApiKeyInfo(BaseModel):
+    """An API key (the secret itself is only shown once, at creation)."""
+
+    id: str
+    name: str
+    prefix: str = Field(..., description="First characters of the key, to recognise it")
+    created_at: str
+    last_used_at: str | None = None
+
+
+class ApiKeyCreated(ApiKeyInfo):
+    key: str = Field(..., description="The API key. Store it now: it cannot be shown again.")
+
+
 class Token(BaseModel):
     """JWT token response."""
 
@@ -382,6 +402,9 @@ __all__ = [
     "UserLogin",
     "User",
     "UserGroupsUpdate",
+    "ApiKeyCreate",
+    "ApiKeyInfo",
+    "ApiKeyCreated",
     "Token",
     "TokenData",
     "SourceCreate",

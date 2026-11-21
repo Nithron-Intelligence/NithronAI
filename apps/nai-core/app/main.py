@@ -31,6 +31,8 @@ from .routes import (
     documents_router,
     health_router,
     ingest_router,
+    mcp_router,
+    openai_router,
     sources_router,
     system_router,
 )
@@ -122,6 +124,8 @@ def create_app() -> FastAPI:
     app.include_router(auth_router)
     app.include_router(sources_router)
     app.include_router(system_router)
+    app.include_router(openai_router)
+    app.include_router(mcp_router)
 
     # Web UI on the same origin (mounted last so API routes take precedence)
     web_path = settings.web_path

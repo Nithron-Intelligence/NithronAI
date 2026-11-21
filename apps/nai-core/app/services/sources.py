@@ -154,9 +154,30 @@ class SourceService:
                     ).fetchone()
                     if clash:
                         raise SourceError("A source with this name already exists")
+                    old = conn.execute("SELECT name FROM sources WHERE id = ?", (source_id,)).fetchone()
+                    if old is not None and old["name"] != fields["name"]:
+                        self._rename_context(conn, source_id, old["name"], fields["name"])
                 conn.execute(f"UPDATE sources SET {assignments} WHERE id = ?", (*fields.values(), source_id))
                 Database.bump_index_revision(conn)
+            if "name" in fields:
+                self.indexer.notify_changed()  # re-embed the chunks whose context header changed
         return self.get(source_id)
+
+    @staticmethod
+    def _rename_context(conn: Any, source_id: int, old_name: str, new_name: str) -> None:
+        """Chunk context headers start with 'Document: <source>/<path>': keep them in step with the name."""
+        old_prefix = f"Document: {old_name}/"
+        new_prefix = f"Document: {new_name}/"
+        doc_filter = "doc_id IN (SELECT doc_id FROM documents WHERE source_id = ?)"
+        conn.execute(
+            "DELETE FROM chunk_embeddings WHERE chunk_rowid IN "
+            f"(SELECT id FROM chunks WHERE {doc_filter} AND substr(context, 1, ?) = ?)",
+            (source_id, len(old_prefix), old_prefix),
+        )
+        conn.execute(
+            f"UPDATE chunks SET context = ? || substr(context, ?) WHERE {doc_filter} AND substr(context, 1, ?) = ?",
+            (new_prefix, len(old_prefix) + 1, source_id, len(old_prefix), old_prefix),
+        )
 
     def delete(self, source_id: int) -> bool:
         """Remove a source and its index entries. Files on disk are never touched."""

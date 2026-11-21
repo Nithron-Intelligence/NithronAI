@@ -7,7 +7,7 @@ NithronOS repo (`usr/share/nithronos/apps/templates/<id>/`).
 |------|--------------------------|
 | `nai/compose.yaml`, `nai/schema.json` | `usr/share/nithronos/apps/templates/nai/` |
 | `catalog-entry.yaml` | an entry under `entries:` in `usr/share/nithronos/apps/catalog.yaml` |
-| `icon.svg` | `usr/share/nithronos/apps/icons/nai.svg` |
+| `icon.svg` | `usr/share/nithronos/apps/templates/nai/icon.svg` |
 
 ## What the app does
 
@@ -25,14 +25,17 @@ NithronOS repo (`usr/share/nithronos/apps/templates/<id>/`).
 ## Permissions
 
 The container runs as `PUID:PGID` (default 1000:1000). That user needs read access to the shares
-you add as sources; files it cannot read are skipped and logged. The app's `./data` folder must be
-writable by it.
+you add as sources; files it cannot read are skipped and logged. `/srv/apps/nai/data` must be writable by it
+(NithronOS currently chowns app folders to `nos:nos`; see `NAI_INTEGRATION.md` in the NithronOS repo).
+
+Added to the NithronOS repo on 2026-11-21 (uncommitted there; see its `NAI_INTEGRATION.md`).
+Keep this folder and the NithronOS copy in sync.
 
 ## Before publishing
 
 1. Tag a release (`v0.4.0`) so `release.yml` publishes `ghcr.io/nithron/nithronai/nai-core:0.4.0`
    (multi-arch: amd64 + arm64).
-2. Copy the files above into the NithronOS repo.
+2. ~~Copy the files above into the NithronOS repo.~~ Done 2026-11-21; commit it there.
 
 ## Later (Phase 2)
 

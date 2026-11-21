@@ -3,7 +3,7 @@
 [![License: NCL v1.0](https://img.shields.io/badge/License-NithronOS_Community_License-blue.svg)](./LICENSE)
 [![Backend](https://img.shields.io/badge/Backend-FastAPI-informational.svg)](apps/nai-core)
 [![Status](https://img.shields.io/badge/status-beta-green.svg)](#)
-[![Release](https://img.shields.io/badge/nAI-v0.4.0-blue)](https://github.com/Nithron/NithronAI/releases)
+[![Release](https://img.shields.io/badge/nAI-v0.5.0-blue)](https://github.com/Nithron/NithronAI/releases)
 [![Built by Nithron](https://img.shields.io/badge/built_by-Nithron-0b8fe0.svg)](https://nithron.com/projects/)
 
 **nAI** lets you search and ask questions about the files on your NAS, privately, on your own
@@ -17,6 +17,8 @@ name says nothing and the contract is in German.
 - 📄 **Reads** PDF, Word, Markdown, HTML, text, data and code files; **OCR** for scans and photos of documents
 - 💬 **Answers with citations** (file, page, section) that open the original file; streamed as they're written
 - 🤖 **Bring your own model**: Ollama on the NAS or on a PC with a GPU, any OpenAI-compatible server, or a cloud API. Without one, nAI answers with exact quotes
+- 🔌 **Works with other AI apps**: OpenAI-compatible API (Open WebUI, LibreChat, scripts) and an MCP server
+  (Claude Code and other MCP clients), with per-user API keys
 - 🔐 **Per-group access** to folders, JWT auth, rate limiting
 - 🪶 **Runs on a CPU-only NAS**: no PyTorch, no vector database; one container, one SQLite file
 
@@ -130,6 +132,10 @@ admin, which is fine on a trusted machine but not on a shared network.
 | `/sources/{id}` | PATCH / DELETE | Change / remove a source (admin; files are never touched) |
 | `/sources/{id}/scan` | POST | Rescan now (admin) |
 | `/system` | GET | Hardware, active features, recommendations (admin) |
+| `/auth/keys` | GET / POST | Your API keys / create one (shown once) |
+| `/auth/keys/{id}` | DELETE | Revoke an API key |
+| `/v1/models`, `/v1/chat/completions` | GET / POST | OpenAI-compatible API (streaming supported) |
+| `/mcp` | POST | MCP server (Streamable HTTP): `search_files`, `read_document`, `list_sources` |
 | `/auth/status`, `/auth/register`, `/auth/login`, `/auth/me` | | Authentication |
 | `/auth/users`, `/auth/users/{id}/groups` | GET / PUT | User management (admin) |
 
@@ -154,6 +160,32 @@ curl -X POST http://localhost:8000/ask \
   "model": "ollama/qwen3:8b"
 }
 ```
+
+---
+
+## 🔌 Use nAI from other apps
+
+Create an API key in the web UI (**Settings → Connect other apps**) or with `POST /auth/keys`. A key acts
+as its user: it sees exactly the folders that user can see.
+
+**OpenAI-compatible clients** (Open WebUI, LibreChat, the `openai` SDK, ...): base URL
+`http://<nas>:8000/v1`, the API key as the key. Model `nai` searches everything you can access;
+`nai/<source>` (e.g. `nai/finance`) searches one folder.
+
+```python
+from openai import OpenAI
+client = OpenAI(base_url="http://nas.local:8000/v1", api_key="nai_...")
+reply = client.chat.completions.create(model="nai", messages=[{"role": "user", "content": "When is the car insurance due?"}])
+```
+
+**MCP clients** (Streamable HTTP with a bearer header), e.g. Claude Code:
+
+```bash
+claude mcp add --transport http nai http://nas.local:8000/mcp --header "Authorization: Bearer nai_..."
+```
+
+The assistant gets three read-only tools: `search_files` (hybrid, multilingual search with file, page
+and `doc_id`), `read_document` (full text or one page) and `list_sources`.
 
 ---
 
@@ -276,8 +308,9 @@ The goal: nAI as **the AI that knows your NAS**, shipped as a NithronOS app.
       contextual chunk headers; streaming answers; hardware-aware model choice; NithronOS catalog template
   - Still open: publish the v0.4.0 image and add the template to the NithronOS catalog; map NithronOS
     share permissions to nAI groups automatically; Docling for complex layouts (tables in PDFs)
-- [ ] **Phase 2 — Assistant**: MCP server for NithronOS (read-only first, then confirmed actions),
-      tool use, OpenAI-compatible API
+- [ ] **Phase 2 — Assistant**: done so far (v0.5): API keys, OpenAI-compatible API, MCP server for nAI's
+      own documents. Next: MCP server for the NithronOS API (read-only first, then confirmed actions),
+      tool use, NithronOS sign-in, share permissions → nAI groups
 - [ ] **Phase 3 — Everywhere**: NithronOS desktop/mobile clients, photo search, eval suite from real questions
 
 ---

@@ -21,7 +21,7 @@ from .utils.timeutil import utc_now_iso
 
 logger = get_logger(__name__)
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS meta (
@@ -124,6 +124,19 @@ MIGRATIONS: dict[int, str] = {
     );
 
     INSERT OR IGNORE INTO meta(key, value) VALUES ('embedding_revision', '0');
+    """,
+    3: """
+    -- Long-lived API keys for programs (OpenAI-compatible API, MCP clients, scripts)
+    CREATE TABLE IF NOT EXISTS api_keys (
+        id           TEXT PRIMARY KEY,
+        user_id      TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        name         TEXT NOT NULL,
+        prefix       TEXT NOT NULL,
+        key_hash     TEXT NOT NULL UNIQUE,
+        created_at   TEXT NOT NULL,
+        last_used_at TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_api_keys_user ON api_keys(user_id);
     """,
 }
 

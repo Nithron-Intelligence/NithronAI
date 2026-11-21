@@ -95,6 +95,13 @@ const elements = {
   cancelSettingsBtn: document.getElementById('cancelSettingsBtn'),
   saveSettingsBtn: document.getElementById('saveSettingsBtn'),
   apiBaseInput: document.getElementById('apiBaseInput'),
+  openaiUrl: document.getElementById('openaiUrl'),
+  mcpUrl: document.getElementById('mcpUrl'),
+  apiKeysArea: document.getElementById('apiKeysArea'),
+  apiKeysList: document.getElementById('apiKeysList'),
+  apiKeyName: document.getElementById('apiKeyName'),
+  apiKeyCreateBtn: document.getElementById('apiKeyCreateBtn'),
+  apiKeyNew: document.getElementById('apiKeyNew'),
   themeSelect: document.getElementById('themeSelect'),
   
   // Chat (new conversation)
@@ -913,6 +920,64 @@ function openSettings() {
   elements.apiBaseInput.value = storageGet('nai_api_base') || '';
   elements.themeSelect.value = CONFIG.theme;
   elements.settingsModal.classList.remove('hidden');
+  loadApiKeys();
+}
+
+// API keys + connection info for other apps (OpenAI-compatible API, MCP)
+async function loadApiKeys() {
+  elements.openaiUrl.textContent = `${CONFIG.apiBase}/v1`;
+  elements.mcpUrl.textContent = `${CONFIG.apiBase}/mcp`;
+  elements.apiKeyNew.classList.add('hidden');
+  const signedIn = AUTH.enabled && AUTH.user;
+  elements.apiKeysArea.classList.toggle('hidden', !signedIn);
+  if (!signedIn) return;
+  try {
+    const keys = await apiCall('/auth/keys');
+    elements.apiKeysList.innerHTML = keys.length ? keys.map(k => `
+      <div class="document-item">
+        <div class="document-info">
+          <div class="document-name">${escapeHtml(k.name)}</div>
+          <div class="document-meta">
+            <span><code>${escapeHtml(k.prefix)}…</code></span>
+            <span>created ${formatDate(k.created_at)}</span>
+            <span>${k.last_used_at ? `used ${formatDate(k.last_used_at)}` : 'never used'}</span>
+          </div>
+        </div>
+        <div class="document-actions">
+          <button class="btn btn-ghost btn-sm" type="button" data-revoke-key="${escapeHtml(k.id)}">Revoke</button>
+        </div>
+      </div>`).join('') : '<p class="form-hint">No API keys yet.</p>';
+  } catch (e) {
+    elements.apiKeysList.textContent = `Could not load API keys: ${e.message}`;
+  }
+}
+
+async function createApiKey() {
+  const name = elements.apiKeyName.value.trim();
+  if (!name) {
+    showToast('Give the key a name first', 'warning');
+    return;
+  }
+  try {
+    const created = await apiCall('/auth/keys', { method: 'POST', body: JSON.stringify({ name }) });
+    elements.apiKeyName.value = '';
+    await loadApiKeys();
+    elements.apiKeyNew.innerHTML = `New key (copy it now, it won't be shown again):<br><code class="key-secret"></code>`;
+    elements.apiKeyNew.querySelector('code').textContent = created.key;
+    elements.apiKeyNew.classList.remove('hidden');
+  } catch (e) {
+    showToast(e.message, 'error');
+  }
+}
+
+async function revokeApiKey(id) {
+  if (!confirm('Revoke this API key? Apps using it will stop working.')) return;
+  try {
+    await apiCall(`/auth/keys/${encodeURIComponent(id)}`, { method: 'DELETE' });
+    loadApiKeys();
+  } catch (e) {
+    showToast(e.message, 'error');
+  }
 }
 
 function closeSettings() {
@@ -1024,6 +1089,11 @@ elements.settingsBtn.addEventListener('click', openSettings);
 elements.closeSettingsBtn.addEventListener('click', closeSettings);
 elements.cancelSettingsBtn.addEventListener('click', closeSettings);
 elements.saveSettingsBtn.addEventListener('click', saveSettings);
+elements.apiKeyCreateBtn.addEventListener('click', createApiKey);
+elements.apiKeysList.addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-revoke-key]');
+  if (btn) revokeApiKey(btn.dataset.revokeKey);
+});
 elements.settingsModal.querySelector('.modal-backdrop').addEventListener('click', closeSettings);
 
 // =============================================================================

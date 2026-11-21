@@ -14,7 +14,11 @@
       "type": "string",
       "title": "nAI Version",
       "default": "0.4.0",
-      "enum": ["0.4.0", "0.4", "latest"]
+      "enum": [
+        "0.4.0",
+        "0.4",
+        "latest"
+      ]
     },
     "SHARES_PATH": {
       "type": "string",
@@ -27,14 +31,21 @@
       "title": "Generated Answers",
       "description": "Use a language model to write answers. When off, nAI answers with quotes from your files.",
       "default": "false",
-      "enum": ["false", "true"]
+      "enum": [
+        "false",
+        "true"
+      ]
     },
     "LLM_PROVIDER": {
       "type": "string",
       "title": "Model Provider",
       "description": "ollama (local or on another PC), openai (any OpenAI-compatible server: vLLM, llama.cpp, LM Studio, or the OpenAI API), anthropic",
       "default": "ollama",
-      "enum": ["ollama", "openai", "anthropic"]
+      "enum": [
+        "ollama",
+        "openai",
+        "anthropic"
+      ]
     },
     "LLM_BASE_URL": {
       "type": "string",
@@ -60,14 +71,21 @@
       "title": "Reranking",
       "description": "Sharper result ordering at some CPU cost. 'auto' enables it on capable hardware.",
       "default": "auto",
-      "enum": ["auto", "true", "false"]
+      "enum": [
+        "auto",
+        "true",
+        "false"
+      ]
     },
     "OCR_ENABLED": {
       "type": "string",
       "title": "Read Scans (OCR)",
       "description": "Extract text from scanned PDFs and photos of documents",
       "default": "true",
-      "enum": ["true", "false"]
+      "enum": [
+        "true",
+        "false"
+      ]
     },
     "OCR_LANGUAGES": {
       "type": "string",
@@ -92,14 +110,32 @@
     "TRUSTED_PROXIES": {
       "type": "string",
       "title": "Trusted Proxies",
-      "description": "JSON list of reverse-proxy IPs/CIDRs whose X-Forwarded-For header is trusted for rate limiting, e.g. [\"172.16.0.0/12\"]",
-      "default": "[]"
+      "description": "JSON list of reverse-proxy IPs/CIDRs whose X-Forwarded-For header is trusted for rate limiting. The default covers Docker networks (where Caddy's traffic comes from).",
+      "default": "[\"172.16.0.0/12\"]"
     },
     "TZ": {
       "type": "string",
       "title": "Timezone",
       "default": "UTC",
-      "examples": ["Europe/Berlin", "America/Sao_Paulo", "America/New_York"]
+      "examples": [
+        "Europe/Berlin",
+        "America/Sao_Paulo",
+        "America/New_York"
+      ]
+    },
+    "MEMORY_LIMIT": {
+      "type": "string",
+      "title": "Memory Limit",
+      "description": "Container memory limit. nAI peaks around 1.4 GB with reranking on; give it more for very large shares.",
+      "default": "3g",
+      "pattern": "^[0-9]+[mMgG]$"
+    },
+    "CPU_LIMIT": {
+      "type": "string",
+      "title": "CPU Limit",
+      "description": "CPU cores nAI may use (indexing and OCR are CPU-heavy)",
+      "default": "2.0",
+      "pattern": "^[0-9]+(\\.[0-9]+)?$"
     }
   },
   "required": []

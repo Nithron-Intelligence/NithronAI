@@ -148,6 +148,17 @@ jobs:
             -d '{"question": "What is this document about?"}' -f | tee stream.txt
           grep -q "event: done" stream.txt
 
+      - name: Test OpenAI-compatible API and MCP endpoint
+        run: |
+          curl -sf http://localhost:8000/v1/models | grep -q '"id":"nai"'
+          curl -sf -X POST http://localhost:8000/v1/chat/completions \
+            -H "Content-Type: application/json" \
+            -d '{"model": "nai", "messages": [{"role": "user", "content": "What is this document about?"}]}' \
+            | grep -q '"object":"chat.completion"'
+          curl -sf -X POST http://localhost:8000/mcp \
+            -H "Content-Type: application/json" \
+            -d '{"jsonrpc": "2.0", "id": 1, "method": "tools/list"}' | grep -q search_files
+
   # ====================
   # Docker Build
   # ====================

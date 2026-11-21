@@ -6,7 +6,16 @@ Authentication and user management endpoints
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from ..config import Settings, get_config
-from ..models.schemas import Token, User, UserCreate, UserGroupsUpdate, UserLogin
+from ..models.schemas import (
+    ApiKeyCreate,
+    ApiKeyCreated,
+    ApiKeyInfo,
+    Token,
+    User,
+    UserCreate,
+    UserGroupsUpdate,
+    UserLogin,
+)
 from ..security import get_current_user, require_admin, require_auth
 from ..services.auth import AuthService, get_auth_service
 from ..utils.logging import get_logger
@@ -137,3 +146,45 @@ def set_groups(
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
     return user
+
+
+# ---------------------------------------------------------------------------
+# API keys (for programs: OpenAI-compatible API, MCP clients, scripts)
+# ---------------------------------------------------------------------------
+
+
+@router.get("/keys", response_model=list[ApiKeyInfo])
+def list_api_keys(
+    user: User = Depends(require_auth),
+    settings: Settings = Depends(get_config),
+) -> list[ApiKeyInfo]:
+    """Your API keys (without the secrets)."""
+    _auth_must_be_enabled(settings)
+    return get_auth_service().list_api_keys(user.id)
+
+
+@router.post("/keys", response_model=ApiKeyCreated, status_code=201)
+def create_api_key(
+    data: ApiKeyCreate,
+    user: User = Depends(require_auth),
+    settings: Settings = Depends(get_config),
+) -> ApiKeyCreated:
+    """
+    Create an API key. It acts as you (same access to sources) and doesn't expire;
+    use it as ``Authorization: Bearer <key>``. The key is shown only in this response.
+    """
+    _auth_must_be_enabled(settings)
+    return get_auth_service().create_api_key(user.id, data.name)
+
+
+@router.delete("/keys/{key_id}")
+def delete_api_key(
+    key_id: str,
+    user: User = Depends(require_auth),
+    settings: Settings = Depends(get_config),
+) -> dict:
+    """Revoke one of your API keys."""
+    _auth_must_be_enabled(settings)
+    if not get_auth_service().delete_api_key(user.id, key_id):
+        raise HTTPException(status_code=404, detail="API key not found")
+    return {"success": True}

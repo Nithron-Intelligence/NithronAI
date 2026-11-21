@@ -84,6 +84,11 @@ class AnswererService:
         return "\n---\n".join(parts)
 
     @staticmethod
+    def sources_footer(citations: list[Citation]) -> str:
+        """Markdown list of the cited files (appended to LLM answers)."""
+        return AnswererService._sources_footer(citations)
+
+    @staticmethod
     def _sources_footer(citations: list[Citation]) -> str:
         if not citations:
             return ""

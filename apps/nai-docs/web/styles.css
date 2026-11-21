@@ -1353,3 +1353,31 @@ body {
     white-space: nowrap;
   }
 }
+
+/* Settings: connect other apps */
+.connect-row {
+  display: flex;
+  gap: var(--space-md);
+  align-items: baseline;
+  font-size: 0.8125rem;
+  margin: var(--space-xs) 0;
+}
+
+.connect-row code, .key-secret {
+  font-family: var(--font-mono);
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+
+.key-create {
+  display: flex;
+  gap: var(--space-sm);
+  margin-top: var(--space-sm);
+}
+
+.key-create .form-input { flex: 1; min-width: 0; }
+
+.modal-body {
+  max-height: 70vh;
+  overflow-y: auto;
+}

@@ -17,7 +17,7 @@ class Settings(BaseSettings):
 
     # Application
     app_name: str = "nAI Core"
-    app_version: str = "0.4.0"
+    app_version: str = "0.5.0"
     debug: bool = Field(default=False, description="Enable debug mode")
     log_level: str = Field(default="INFO", description="Logging level")
 

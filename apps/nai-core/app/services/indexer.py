@@ -75,6 +75,10 @@ class IndexerService:
         if callback not in self._listeners:
             self._listeners.append(callback)
 
+    def notify_changed(self) -> None:
+        """Tell listeners (e.g. the embedding worker) that chunks changed outside the indexer."""
+        self._notify()
+
     def _notify(self) -> None:
         for callback in self._listeners:
             try:

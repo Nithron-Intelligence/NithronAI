@@ -3,10 +3,11 @@ nAI Core Authentication Service
 JWT-based authentication with SQLite-backed user management.
 """
 
+import hashlib
 import os
 import secrets
 import sqlite3
-from datetime import timedelta
+from datetime import datetime, timedelta
 from functools import lru_cache
 from typing import Any
 
@@ -15,11 +16,14 @@ import jwt
 
 from ..config import Settings, get_settings
 from ..db import Database, get_db
-from ..models.schemas import Token, TokenData, User, UserCreate
+from ..models.schemas import ApiKeyCreated, ApiKeyInfo, Token, TokenData, User, UserCreate
 from ..utils.logging import get_logger
 from ..utils.timeutil import utc_now, utc_now_iso
 
 logger = get_logger(__name__)
+
+API_KEY_PREFIX = "nai_"
+LAST_USED_RESOLUTION = timedelta(minutes=5)  # don't write to the DB on every request
 
 # Used to keep login timing similar whether or not the username exists.
 _DUMMY_HASH = bcrypt.hashpw(b"nai-dummy-password", bcrypt.gensalt()).decode()
@@ -48,7 +52,71 @@ def _row_to_user(row: Any, groups: list[str] | None = None) -> User:
     )
 
 
-class AuthService:
+def _hash_api_key(key: str) -> str:
+    return hashlib.sha256(key.encode("utf-8")).hexdigest()
+
+
+def _row_to_key(row: Any) -> ApiKeyInfo:
+    return ApiKeyInfo(
+        id=row["id"],
+        name=row["name"],
+        prefix=row["prefix"],
+        created_at=row["created_at"],
+        last_used_at=row["last_used_at"],
+    )
+
+
+class ApiKeyMixin:
+    """API keys: random ``nai_...`` tokens, stored as SHA-256 hashes, acting as their user."""
+
+    db: Database
+
+    def create_api_key(self, user_id: str, name: str) -> ApiKeyCreated:
+        key = API_KEY_PREFIX + secrets.token_urlsafe(32)
+        key_id = secrets.token_hex(8)
+        now = utc_now_iso()
+        with self.db.connect() as conn:
+            conn.execute(
+                "INSERT INTO api_keys(id, user_id, name, prefix, key_hash, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+                (key_id, user_id, name.strip(), key[:12], _hash_api_key(key), now),
+            )
+        logger.info(f"Created API key '{name}' for user {user_id}")
+        return ApiKeyCreated(id=key_id, name=name.strip(), prefix=key[:12], created_at=now, key=key)
+
+    def list_api_keys(self, user_id: str) -> list[ApiKeyInfo]:
+        with self.db.connect() as conn:
+            rows = conn.execute(
+                "SELECT * FROM api_keys WHERE user_id = ? ORDER BY created_at", (user_id,)
+            ).fetchall()
+        return [_row_to_key(r) for r in rows]
+
+    def delete_api_key(self, user_id: str, key_id: str) -> bool:
+        with self.db.connect() as conn:
+            cur = conn.execute("DELETE FROM api_keys WHERE id = ? AND user_id = ?", (key_id, user_id))
+        return cur.rowcount > 0
+
+    def user_id_for_api_key(self, key: str) -> str | None:
+        """The owner of an API key (None if unknown). Records when the key was last used."""
+        if not key.startswith(API_KEY_PREFIX):
+            return None
+        with self.db.connect() as conn:
+            row = conn.execute(
+                "SELECT id, user_id, last_used_at FROM api_keys WHERE key_hash = ?", (_hash_api_key(key),)
+            ).fetchone()
+            if row is None:
+                return None
+            now = utc_now()
+            last = (
+                datetime.fromisoformat(row["last_used_at"].replace("Z", "+00:00"))
+                if row["last_used_at"]
+                else None
+            )
+            if last is None or now - last > LAST_USED_RESOLUTION:
+                conn.execute("UPDATE api_keys SET last_used_at = ? WHERE id = ?", (utc_now_iso(), row["id"]))
+        return row["user_id"]
+
+
+class AuthService(ApiKeyMixin):
     """Authentication and user management."""
 
     def __init__(self, settings: Settings, db: Database):
@@ -231,11 +299,15 @@ class AuthService:
         return TokenData(user_id=payload["sub"], username=payload.get("username"), exp=payload.get("exp"))
 
     def get_current_user(self, token: str) -> User | None:
-        """User for a token; None if the token is invalid or the user is gone/inactive."""
-        token_data = self.verify_token(token)
-        if token_data is None or token_data.user_id is None:
+        """User for a JWT or API key; None if invalid or the user is gone/inactive."""
+        if token.startswith(API_KEY_PREFIX):
+            user_id = self.user_id_for_api_key(token)
+        else:
+            token_data = self.verify_token(token)
+            user_id = token_data.user_id if token_data else None
+        if user_id is None:
             return None
-        user = self.get_user_by_id(token_data.user_id)
+        user = self.get_user_by_id(user_id)
         if user is None or not user.is_active:
             return None
         return user

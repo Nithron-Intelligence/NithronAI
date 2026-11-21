@@ -1,5 +1,5 @@
 # Entry to add under `entries:` in NithronOS usr/share/nithronos/apps/catalog.yaml.
-# Copy nai/ to usr/share/nithronos/apps/templates/nai/ and icon.svg to icons/nai.svg.
+# Copy nai/ (with icon.svg) to usr/share/nithronos/apps/templates/nai/.
   - id: nai
     name: nAI
     version: "0.4.0"
@@ -7,7 +7,7 @@
     categories:
       - productivity
       - ai
-    icon: icons/nai.svg
+    icon: templates/nai/icon.svg
     compose: templates/nai/compose.yaml
     schema: templates/nai/schema.json
     defaults:
@@ -16,8 +16,9 @@
         PGID: "1000"
         TZ: "UTC"
         SHARES_PATH: "/srv/shares"
+        DATA_PATH: "/srv/apps/nai/data"
       volumes:
-        - host: ./data
+        - host: /srv/apps/nai/data
           container: /app/data
           read_only: false
         - host: /srv/shares
@@ -32,10 +33,10 @@
         memory_limit: "3072m"
     health:
       type: http
-      url: "http://nos-app-nai-nai-1:8000/health"
+      url: "http://nos-app-nai-app-1:8000/health"
       interval_s: 30
       timeout_s: 5
       healthy_after: 3
       unhealthy_after: 3
     needs_privileged: false
-    notes: "The first account created in the web UI becomes the admin. Add shares under Sources. The search model (~0.5 GB) downloads on first start; until then search is keyword-only."
+    notes: "The first account created in nAI becomes its admin; add shares under Sources. The search model (~0.5 GB) downloads on first start. Needs about 1.5 GB of RAM."
