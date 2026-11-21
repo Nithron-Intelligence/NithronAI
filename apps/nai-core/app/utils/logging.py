@@ -3,54 +3,52 @@ nAI Core Logging Utilities
 Structured logging with request tracking
 """
 
-import sys
 import logging
+import sys
 import time
-from datetime import datetime
-from typing import Optional, Any, Dict
-from functools import wraps
 from contextvars import ContextVar
+from functools import wraps
+from typing import Any
+
+from .timeutil import utc_now_iso
 
 # Context variable for request ID
-request_id_var: ContextVar[Optional[str]] = ContextVar("request_id", default=None)
+request_id_var: ContextVar[str | None] = ContextVar("request_id", default=None)
 
 
 class StructuredFormatter(logging.Formatter):
     """Custom formatter for structured logging."""
-    
+
     def format(self, record: logging.LogRecord) -> str:
         # Add timestamp
-        record.timestamp = datetime.utcnow().isoformat() + "Z"
-        
+        record.timestamp = utc_now_iso()
+
         # Add request ID if available
         record.request_id = request_id_var.get() or "-"
-        
+
         # Format message
-        if hasattr(record, 'extra_data') and record.extra_data:
+        if hasattr(record, "extra_data") and record.extra_data:
             extra = " | " + " ".join(f"{k}={v}" for k, v in record.extra_data.items())
         else:
             extra = ""
-        
+
         return f"[{record.timestamp}] [{record.levelname}] [{record.request_id}] {record.name}: {record.getMessage()}{extra}"
 
 
 class RequestLogger(logging.LoggerAdapter):
     """Logger adapter that includes request context."""
-    
-    def process(self, msg: str, kwargs: Dict[str, Any]) -> tuple:
-        extra = kwargs.get('extra', {})
-        extra['request_id'] = request_id_var.get() or "-"
-        kwargs['extra'] = extra
+
+    def process(self, msg: str, kwargs: dict[str, Any]) -> tuple:
+        extra = kwargs.get("extra", {})
+        extra["request_id"] = request_id_var.get() or "-"
+        kwargs["extra"] = extra
         return msg, kwargs
 
 
-def setup_logging(
-    level: str = "INFO",
-    json_format: bool = False
-) -> None:
+def setup_logging(level: str = "INFO", json_format: bool = False) -> None:
     """
     Configure application logging.
-    
+
     Args:
         level: Logging level (DEBUG, INFO, WARNING, ERROR)
         json_format: Use JSON format for logs (for production)
@@ -58,22 +56,22 @@ def setup_logging(
     # Get root logger
     root_logger = logging.getLogger()
     root_logger.setLevel(getattr(logging, level.upper(), logging.INFO))
-    
+
     # Remove existing handlers
     root_logger.handlers.clear()
-    
+
     # Create console handler
     handler = logging.StreamHandler(sys.stdout)
     handler.setLevel(logging.DEBUG)
-    
+
     if json_format:
         # JSON format for production
         import json
-        
+
         class JSONFormatter(logging.Formatter):
             def format(self, record: logging.LogRecord) -> str:
                 log_data = {
-                    "timestamp": datetime.utcnow().isoformat() + "Z",
+                    "timestamp": utc_now_iso(),
                     "level": record.levelname,
                     "logger": record.name,
                     "message": record.getMessage(),
@@ -81,16 +79,16 @@ def setup_logging(
                 }
                 if record.exc_info:
                     log_data["exception"] = self.formatException(record.exc_info)
-                if hasattr(record, 'extra_data'):
+                if hasattr(record, "extra_data"):
                     log_data.update(record.extra_data)
                 return json.dumps(log_data)
-        
+
         handler.setFormatter(JSONFormatter())
     else:
         handler.setFormatter(StructuredFormatter())
-    
+
     root_logger.addHandler(handler)
-    
+
     # Reduce noise from third-party libraries
     logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
     logging.getLogger("httpx").setLevel(logging.WARNING)
@@ -100,10 +98,10 @@ def setup_logging(
 def get_logger(name: str) -> logging.Logger:
     """
     Get a logger instance for a module.
-    
+
     Args:
         name: Logger name (usually __name__)
-    
+
     Returns:
         Configured logger instance
     """
@@ -115,12 +113,12 @@ def log_request(
     path: str,
     status_code: int,
     duration_ms: float,
-    request_id: Optional[str] = None,
-    extra: Optional[Dict[str, Any]] = None
+    request_id: str | None = None,
+    extra: dict[str, Any] | None = None,
 ) -> None:
     """
     Log an HTTP request with structured data.
-    
+
     Args:
         method: HTTP method
         path: Request path
@@ -130,17 +128,17 @@ def log_request(
         extra: Additional data to log
     """
     logger = get_logger("nai.request")
-    
+
     log_data = {
         "method": method,
         "path": path,
         "status": status_code,
         "duration_ms": round(duration_ms, 2),
     }
-    
+
     if extra:
         log_data.update(extra)
-    
+
     # Choose log level based on status
     if status_code >= 500:
         level = logging.ERROR
@@ -148,11 +146,9 @@ def log_request(
         level = logging.WARNING
     else:
         level = logging.INFO
-    
+
     logger.log(
-        level,
-        f"{method} {path} -> {status_code} ({duration_ms:.1f}ms)",
-        extra={"extra_data": log_data}
+        level, f"{method} {path} -> {status_code} ({duration_ms:.1f}ms)", extra={"extra_data": log_data}
     )
 
 
@@ -160,6 +156,7 @@ def log_duration(logger_name: str = "nai"):
     """
     Decorator to log function execution duration.
     """
+
     def decorator(func):
         @wraps(func)
         async def async_wrapper(*args, **kwargs):
@@ -174,7 +171,7 @@ def log_duration(logger_name: str = "nai"):
                 duration = (time.perf_counter() - start) * 1000
                 logger.error(f"{func.__name__} failed after {duration:.2f}ms: {e}")
                 raise
-        
+
         @wraps(func)
         def sync_wrapper(*args, **kwargs):
             logger = get_logger(logger_name)
@@ -188,11 +185,11 @@ def log_duration(logger_name: str = "nai"):
                 duration = (time.perf_counter() - start) * 1000
                 logger.error(f"{func.__name__} failed after {duration:.2f}ms: {e}")
                 raise
-        
+
         import asyncio
+
         if asyncio.iscoroutinefunction(func):
             return async_wrapper
         return sync_wrapper
-    
-    return decorator
 
+    return decorator

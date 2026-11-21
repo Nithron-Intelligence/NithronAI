@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+dist/
+build/
+
+# Local configuration / secrets
+.env
+.env.*
+!.env.example
+
+# nAI runtime data (database, uploads, generated secret). Keep the sample doc.
+apps/nai-core/data/*
+!apps/nai-core/data/docs/
+apps/nai-core/data/docs/*
+!apps/nai-core/data/docs/sample.txt
+
+# Evaluation output
+eval_results.json
+results.json
+
+# Editors / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

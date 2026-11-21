@@ -9,7 +9,6 @@ pydantic-settings>=2.6.0
 
 # Request handling
 python-multipart>=0.0.12
-aiofiles>=24.1.0
 aiohttp>=3.11.0
 
 # Document Processing
@@ -20,11 +19,11 @@ nltk>=3.9.0
 rank-bm25>=0.2.2
 
 # Authentication
-python-jose[cryptography]>=3.3.0
-passlib[bcrypt]>=1.7.4
+PyJWT>=2.9.0
+bcrypt>=4.2.0
 
-# Logging
-# (using stdlib logging, no extra deps)
+# Storage: stdlib sqlite3 (no extra deps)
+# Logging: stdlib logging (no extra deps)
 
 # ======================
 # Optional: Install separately if needed

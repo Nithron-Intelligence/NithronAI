@@ -7,9 +7,27 @@
 // Configuration & State
 // =============================================================================
 
+function storageGet(key) {
+  try { return localStorage.getItem(key); } catch { return null; }
+}
+
+function storageSet(key, value) {
+  try {
+    if (value === null) localStorage.removeItem(key);
+    else localStorage.setItem(key, value);
+  } catch { /* storage unavailable (private mode) */ }
+}
+
 const CONFIG = {
-  apiBase: localStorage.getItem('nai_api_base') || 'http://localhost:8000',
-  theme: localStorage.getItem('nai_theme') || 'dark',
+  apiBase: storageGet('nai_api_base') || 'http://localhost:8000',
+  theme: storageGet('nai_theme') || 'dark',
+};
+
+const AUTH = {
+  enabled: false,
+  token: storageGet('nai_token'),
+  user: null,
+  setupMode: false,
 };
 
 const STATE = {
@@ -70,6 +88,24 @@ const elements = {
   apiBaseInput: document.getElementById('apiBaseInput'),
   themeSelect: document.getElementById('themeSelect'),
   
+  // Chat (new conversation)
+  chatNewBtn: document.getElementById('chatNewBtn'),
+
+  // Auth
+  userChip: document.getElementById('userChip'),
+  userName: document.getElementById('userName'),
+  logoutBtn: document.getElementById('logoutBtn'),
+  loginModal: document.getElementById('loginModal'),
+  loginForm: document.getElementById('loginForm'),
+  loginTitle: document.getElementById('loginTitle'),
+  loginHint: document.getElementById('loginHint'),
+  loginUsername: document.getElementById('loginUsername'),
+  loginEmail: document.getElementById('loginEmail'),
+  loginEmailGroup: document.getElementById('loginEmailGroup'),
+  loginPassword: document.getElementById('loginPassword'),
+  loginError: document.getElementById('loginError'),
+  loginSubmitBtn: document.getElementById('loginSubmitBtn'),
+
   // Toast
   toastContainer: document.getElementById('toastContainer'),
 };
@@ -82,13 +118,16 @@ function showToast(message, type = 'info') {
   const toast = document.createElement('div');
   toast.className = `toast ${type}`;
   toast.innerHTML = `
-    <span>${message}</span>
-    <button onclick="this.parentElement.remove()">
+    <span></span>
+    <button>
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
       </svg>
     </button>
   `;
+  // textContent: messages can contain server-provided text (e.g. filenames)
+  toast.querySelector('span').textContent = message;
+  toast.querySelector('button').addEventListener('click', () => toast.remove());
   elements.toastContainer.appendChild(toast);
   setTimeout(() => toast.remove(), 5000);
 }
@@ -112,19 +151,38 @@ function formatDate(isoString) {
   });
 }
 
+function authHeaders() {
+  return AUTH.token ? { Authorization: `Bearer ${AUTH.token}` } : {};
+}
+
+function errorDetail(body, status) {
+  const detail = body && body.detail;
+  if (typeof detail === 'string') return detail;
+  if (Array.isArray(detail) && detail.length) return detail.map(d => d.msg).join('; ');
+  return `HTTP ${status}`;
+}
+
 async function apiCall(endpoint, options = {}) {
   const url = `${CONFIG.apiBase}${endpoint}`;
+  const isForm = options.body instanceof FormData;
   const response = await fetch(url, {
     ...options,
     headers: {
-      'Content-Type': 'application/json',
+      ...(isForm ? {} : { 'Content-Type': 'application/json' }),
+      ...authHeaders(),
       ...options.headers,
     },
   });
   
+  if (response.status === 401 && AUTH.enabled && !endpoint.startsWith('/auth/login')) {
+    setToken(null);
+    openLogin();
+    throw new Error('Please sign in');
+  }
+  
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
-    throw new Error(error.detail || `HTTP ${response.status}`);
+    const error = await response.json().catch(() => ({}));
+    throw new Error(errorDetail(error, response.status));
   }
   
   return response.json();
@@ -292,16 +350,10 @@ async function ingestFiles() {
   STATE.files.forEach(file => formData.append('files', file));
   
   try {
-    const response = await fetch(`${CONFIG.apiBase}/ingest`, {
+    const data = await apiCall('/ingest', {
       method: 'POST',
       body: formData,
     });
-    
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-    
-    const data = await response.json();
     
     // Show results
     elements.ingestResults.innerHTML = `
@@ -382,7 +434,7 @@ async function loadDocuments() {
           </div>
         </div>
         <div class="document-actions">
-          <button class="btn btn-ghost btn-sm" data-action="delete" data-id="${doc.doc_id}">
+          <button class="btn btn-ghost btn-sm" data-action="delete" data-id="${escapeHtml(doc.doc_id)}">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
             </svg>
@@ -447,6 +499,7 @@ async function sendChatMessage() {
         messages: [{ role: 'user', content: message }],
         top_k: 5,
         use_context: true,
+        conversation_id: STATE.chatConversationId,
       }),
     });
     
@@ -458,6 +511,123 @@ async function sendChatMessage() {
   } finally {
     elements.chatSendBtn.disabled = false;
   }
+}
+
+function newChat() {
+  STATE.chatConversationId = null;
+  elements.chatMessages.innerHTML = `
+    <div class="chat-welcome">
+      <h3>Start a conversation</h3>
+      <p>Ask questions about your documents in a multi-turn conversation.</p>
+    </div>
+  `;
+  elements.chatInput.focus();
+}
+
+// =============================================================================
+// Authentication
+// =============================================================================
+
+function setToken(token) {
+  AUTH.token = token;
+  storageSet('nai_token', token);
+  if (!token) {
+    AUTH.user = null;
+    renderUser();
+  }
+}
+
+function renderUser() {
+  if (AUTH.enabled && AUTH.user) {
+    elements.userName.textContent = AUTH.user.username + (AUTH.user.is_admin ? ' (admin)' : '');
+    elements.userChip.classList.remove('hidden');
+  } else {
+    elements.userChip.classList.add('hidden');
+  }
+}
+
+function openLogin() {
+  const setup = AUTH.setupMode;
+  elements.loginTitle.textContent = setup ? 'Create admin account' : 'Sign in';
+  elements.loginHint.textContent = setup
+    ? 'No accounts exist yet. The first account becomes the administrator.'
+    : 'Sign in to your nAI account.';
+  elements.loginSubmitBtn.textContent = setup ? 'Create account' : 'Sign in';
+  elements.loginEmailGroup.classList.toggle('hidden', !setup);
+  elements.loginEmail.required = setup;
+  elements.loginPassword.autocomplete = setup ? 'new-password' : 'current-password';
+  elements.loginError.classList.add('hidden');
+  elements.loginModal.classList.remove('hidden');
+  elements.loginUsername.focus();
+}
+
+function closeLogin() {
+  elements.loginModal.classList.add('hidden');
+  elements.loginPassword.value = '';
+}
+
+async function submitLogin(event) {
+  event.preventDefault();
+  const username = elements.loginUsername.value.trim();
+  const password = elements.loginPassword.value;
+  elements.loginSubmitBtn.disabled = true;
+  elements.loginError.classList.add('hidden');
+  
+  try {
+    if (AUTH.setupMode) {
+      await apiCall('/auth/register', {
+        method: 'POST',
+        body: JSON.stringify({ username, email: elements.loginEmail.value.trim(), password }),
+      });
+      AUTH.setupMode = false;
+    }
+    const token = await apiCall('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ username, password }),
+    });
+    setToken(token.access_token);
+    AUTH.user = await apiCall('/auth/me');
+    renderUser();
+    closeLogin();
+    showToast(`Signed in as ${AUTH.user.username}`, 'success');
+  } catch (e) {
+    elements.loginError.textContent = e.message;
+    elements.loginError.classList.remove('hidden');
+  } finally {
+    elements.loginSubmitBtn.disabled = false;
+  }
+}
+
+function logout() {
+  setToken(null);
+  newChat();
+  openLogin();
+}
+
+async function initAuth() {
+  try {
+    const status = await apiCall('/auth/status');
+    AUTH.enabled = status.auth_enabled;
+    AUTH.setupMode = status.setup_required;
+  } catch {
+    return; // backend offline; health indicator shows it
+  }
+  
+  if (!AUTH.enabled) {
+    renderUser();
+    return;
+  }
+  
+  if (AUTH.token && !AUTH.setupMode) {
+    try {
+      AUTH.user = await apiCall('/auth/me');
+      renderUser();
+      return;
+    } catch {
+      setToken(null);
+    }
+  }
+  openLogin();
 }
 
 // =============================================================================
@@ -478,12 +648,13 @@ function saveSettings() {
   CONFIG.apiBase = elements.apiBaseInput.value.trim();
   CONFIG.theme = elements.themeSelect.value;
   
-  localStorage.setItem('nai_api_base', CONFIG.apiBase);
-  localStorage.setItem('nai_theme', CONFIG.theme);
+  storageSet('nai_api_base', CONFIG.apiBase);
+  storageSet('nai_theme', CONFIG.theme);
   
   applyTheme();
   closeSettings();
   checkHealth();
+  initAuth();
   showToast('Settings saved', 'success');
 }
 
@@ -558,6 +729,12 @@ elements.chatInput.addEventListener('input', function() {
   this.style.height = Math.min(this.scrollHeight, 150) + 'px';
 });
 
+elements.chatNewBtn.addEventListener('click', newChat);
+
+// Auth
+elements.loginForm.addEventListener('submit', submitLogin);
+elements.logoutBtn.addEventListener('click', logout);
+
 // Settings
 elements.settingsBtn.addEventListener('click', openSettings);
 elements.closeSettingsBtn.addEventListener('click', closeSettings);
@@ -571,4 +748,5 @@ elements.settingsModal.querySelector('.modal-backdrop').addEventListener('click'
 
 applyTheme();
 checkHealth();
+initAuth();
 setInterval(checkHealth, 30000); // Check health every 30 seconds

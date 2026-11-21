@@ -1,11 +1,9 @@
-version: "3.9"
-
 # nAI Stack - Docker Compose Configuration
 # =========================================
 # 
 # Usage:
-#   Development: docker-compose up -d
-#   Production:  docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#   docker compose up -d
+#   docker exec nai-ollama ollama pull llama3.2   # first run: download the LLM
 #
 # Services:
 #   - nai-core: FastAPI backend (required)
@@ -28,7 +26,6 @@ services:
       - "8000:8000"
     volumes:
       - nai-data:/app/data
-      - ../apps/nai-core/app:/app/app:ro  # Hot reload in dev
     environment:
       # Core
       - NAI_DEBUG=true
@@ -50,7 +47,8 @@ services:
       - NAI_QDRANT_HOST=qdrant
       - NAI_QDRANT_PORT=6333
       
-      # Auth (disabled for dev)
+      # Auth: disabled for local development. Enable it whenever the API is reachable
+      # by anyone but you; the first account registered becomes admin.
       - NAI_AUTH_ENABLED=false
       
       # Rate limiting

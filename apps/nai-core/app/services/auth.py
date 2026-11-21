@@ -1,311 +1,221 @@
 """
 nAI Core Authentication Service
-JWT-based authentication with user management
+JWT-based authentication with SQLite-backed user management.
 """
 
 import os
-import json
 import secrets
-from datetime import datetime, timedelta
-from typing import Optional, Dict, Any
+import sqlite3
+from datetime import timedelta
+from functools import lru_cache
+from typing import Any
 
-from jose import JWTError, jwt
-from passlib.context import CryptContext
+import bcrypt
+import jwt
 
 from ..config import Settings, get_settings
-from ..models.schemas import User, UserCreate, Token, TokenData
+from ..db import Database, get_db
+from ..models.schemas import Token, TokenData, User, UserCreate
 from ..utils.logging import get_logger
+from ..utils.timeutil import utc_now, utc_now_iso
 
 logger = get_logger(__name__)
 
-# Password hashing context
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# Used to keep login timing similar whether or not the username exists.
+_DUMMY_HASH = bcrypt.hashpw(b"nai-dummy-password", bcrypt.gensalt()).decode()
+
+
+def hash_password(password: str) -> str:
+    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode()
+
+
+def verify_password(password: str, password_hash: str) -> bool:
+    try:
+        return bcrypt.checkpw(password.encode("utf-8"), password_hash.encode("utf-8"))
+    except ValueError:
+        return False
+
+
+def _row_to_user(row: Any) -> User:
+    return User(
+        id=row["id"],
+        username=row["username"],
+        email=row["email"],
+        is_active=bool(row["is_active"]),
+        is_admin=bool(row["is_admin"]),
+        created_at=row["created_at"],
+    )
 
 
 class AuthService:
-    """
-    Service for authentication and user management.
-    Uses file-based storage for simplicity (upgrade to DB in production).
-    """
-    
-    def __init__(self, settings: Settings):
+    """Authentication and user management."""
+
+    def __init__(self, settings: Settings, db: Database):
         self.settings = settings
-        self._users_file = os.path.join(settings.data_path, "users.json")
-        self._ensure_storage()
-    
-    def _ensure_storage(self) -> None:
-        """Ensure users file exists."""
-        os.makedirs(os.path.dirname(self._users_file), exist_ok=True)
-        if not os.path.exists(self._users_file):
-            self._save_users({})
-    
-    def _load_users(self) -> Dict[str, Dict[str, Any]]:
-        """Load users from file."""
+        self.db = db
+        self._secret_key = self._resolve_secret_key()
+
+    def _resolve_secret_key(self) -> str:
+        if self.settings.auth_secret_key:
+            return self.settings.auth_secret_key
+
+        key_file = os.path.join(self.settings.data_path, ".secret_key")
+        if os.path.exists(key_file):
+            with open(key_file, encoding="utf-8") as f:
+                key = f.read().strip()
+            if key:
+                return key
+
+        os.makedirs(self.settings.data_path, exist_ok=True)
+        key = secrets.token_urlsafe(48)
+        fd = os.open(key_file, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(key)
+        logger.info(f"Generated JWT secret key at {key_file}")
+        return key
+
+    # ------------------------------------------------------------------
+    # Users
+    # ------------------------------------------------------------------
+
+    def count_users(self) -> int:
+        with self.db.connect() as conn:
+            return conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
+
+    def create_user(self, user_data: UserCreate, is_admin: bool = False) -> User | None:
+        """Create a user. Returns None if the username or email already exists."""
+        user_id = secrets.token_hex(8)
+        now = utc_now_iso()
         try:
-            with open(self._users_file, "r") as f:
-                return json.load(f)
-        except (FileNotFoundError, json.JSONDecodeError):
-            return {}
-    
-    def _save_users(self, users: Dict[str, Dict[str, Any]]) -> None:
-        """Save users to file."""
-        with open(self._users_file, "w") as f:
-            json.dump(users, f, indent=2)
-    
-    def _hash_password(self, password: str) -> str:
-        """Hash a password."""
-        return pwd_context.hash(password)
-    
-    def _verify_password(self, plain_password: str, hashed_password: str) -> bool:
-        """Verify a password against its hash."""
-        return pwd_context.verify(plain_password, hashed_password)
-    
-    def _generate_user_id(self) -> str:
-        """Generate a unique user ID."""
-        return secrets.token_hex(8)
-    
-    def create_user(self, user_data: UserCreate) -> Optional[User]:
-        """
-        Create a new user.
-        Returns None if username or email already exists.
-        """
-        users = self._load_users()
-        
-        # Check for existing username or email
-        for user in users.values():
-            if user["username"].lower() == user_data.username.lower():
-                logger.warning(f"Username already exists: {user_data.username}")
-                return None
-            if user["email"].lower() == user_data.email.lower():
-                logger.warning(f"Email already exists: {user_data.email}")
-                return None
-        
-        # Create user
-        user_id = self._generate_user_id()
-        now = datetime.utcnow().isoformat() + "Z"
-        
-        user_record = {
-            "id": user_id,
-            "username": user_data.username,
-            "email": user_data.email,
-            "password_hash": self._hash_password(user_data.password),
-            "is_active": True,
-            "is_admin": False,
-            "created_at": now,
-        }
-        
-        users[user_id] = user_record
-        self._save_users(users)
-        
-        logger.info(f"Created user: {user_data.username}")
-        
+            with self.db.connect() as conn:
+                conn.execute(
+                    "INSERT INTO users(id, username, email, password_hash, is_active, is_admin, created_at) "
+                    "VALUES (?, ?, ?, ?, 1, ?, ?)",
+                    (
+                        user_id,
+                        user_data.username,
+                        user_data.email,
+                        hash_password(user_data.password),
+                        int(is_admin),
+                        now,
+                    ),
+                )
+        except sqlite3.IntegrityError:
+            logger.warning(f"Username or email already exists: {user_data.username}")
+            return None
+
+        logger.info(f"Created user: {user_data.username}{' (admin)' if is_admin else ''}")
         return User(
             id=user_id,
             username=user_data.username,
             email=user_data.email,
             is_active=True,
-            is_admin=False,
+            is_admin=is_admin,
             created_at=now,
         )
-    
-    def authenticate_user(self, username: str, password: str) -> Optional[User]:
-        """
-        Authenticate user by username and password.
-        Returns User if successful, None otherwise.
-        """
-        users = self._load_users()
-        
-        for user in users.values():
-            if user["username"].lower() == username.lower():
-                if not user.get("is_active", True):
-                    logger.warning(f"Inactive user attempted login: {username}")
-                    return None
-                
-                if self._verify_password(password, user["password_hash"]):
-                    logger.info(f"User authenticated: {username}")
-                    return User(
-                        id=user["id"],
-                        username=user["username"],
-                        email=user["email"],
-                        is_active=user.get("is_active", True),
-                        is_admin=user.get("is_admin", False),
-                        created_at=user["created_at"],
-                    )
-                else:
-                    logger.warning(f"Invalid password for user: {username}")
-                    return None
-        
-        logger.warning(f"User not found: {username}")
-        return None
-    
-    def get_user_by_id(self, user_id: str) -> Optional[User]:
-        """Get user by ID."""
-        users = self._load_users()
-        user = users.get(user_id)
-        
-        if user:
-            return User(
-                id=user["id"],
-                username=user["username"],
-                email=user["email"],
-                is_active=user.get("is_active", True),
-                is_admin=user.get("is_admin", False),
-                created_at=user["created_at"],
-            )
-        return None
-    
-    def get_user_by_username(self, username: str) -> Optional[User]:
-        """Get user by username."""
-        users = self._load_users()
-        
-        for user in users.values():
-            if user["username"].lower() == username.lower():
-                return User(
-                    id=user["id"],
-                    username=user["username"],
-                    email=user["email"],
-                    is_active=user.get("is_active", True),
-                    is_admin=user.get("is_admin", False),
-                    created_at=user["created_at"],
-                )
-        return None
-    
+
+    def authenticate_user(self, username: str, password: str) -> User | None:
+        with self.db.connect() as conn:
+            row = conn.execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone()
+
+        if row is None:
+            verify_password(password, _DUMMY_HASH)
+            logger.warning("Login failed: unknown user")
+            return None
+        if not verify_password(password, row["password_hash"]):
+            logger.warning(f"Login failed: wrong password for {row['username']}")
+            return None
+        if not row["is_active"]:
+            logger.warning(f"Login failed: inactive user {row['username']}")
+            return None
+        return _row_to_user(row)
+
+    def get_user_by_id(self, user_id: str) -> User | None:
+        with self.db.connect() as conn:
+            row = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+        return _row_to_user(row) if row else None
+
+    def get_user_by_username(self, username: str) -> User | None:
+        with self.db.connect() as conn:
+            row = conn.execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone()
+        return _row_to_user(row) if row else None
+
+    def list_users(self) -> list[User]:
+        with self.db.connect() as conn:
+            rows = conn.execute("SELECT * FROM users ORDER BY created_at").fetchall()
+        return [_row_to_user(r) for r in rows]
+
+    def delete_user(self, user_id: str) -> bool:
+        with self.db.connect() as conn:
+            cur = conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
+            return cur.rowcount > 0
+
+    def update_user(
+        self,
+        user_id: str,
+        email: str | None = None,
+        password: str | None = None,
+        is_active: bool | None = None,
+        is_admin: bool | None = None,
+    ) -> User | None:
+        fields: dict[str, Any] = {}
+        if email is not None:
+            fields["email"] = email
+        if password is not None:
+            fields["password_hash"] = hash_password(password)
+        if is_active is not None:
+            fields["is_active"] = int(is_active)
+        if is_admin is not None:
+            fields["is_admin"] = int(is_admin)
+
+        if fields:
+            assignments = ", ".join(f"{k} = ?" for k in fields)
+            with self.db.connect() as conn:
+                conn.execute(f"UPDATE users SET {assignments} WHERE id = ?", (*fields.values(), user_id))
+        return self.get_user_by_id(user_id)
+
+    # ------------------------------------------------------------------
+    # Tokens
+    # ------------------------------------------------------------------
+
     def create_access_token(self, user: User) -> Token:
-        """
-        Create JWT access token for user.
-        """
-        expire = datetime.utcnow() + timedelta(minutes=self.settings.auth_token_expire_minutes)
-        
+        now = utc_now()
         payload = {
             "sub": user.id,
             "username": user.username,
-            "exp": expire,
-            "iat": datetime.utcnow(),
+            "iat": now,
+            "exp": now + timedelta(minutes=self.settings.auth_token_expire_minutes),
             "type": "access",
         }
-        
-        token = jwt.encode(
-            payload,
-            self.settings.auth_secret_key,
-            algorithm=self.settings.auth_algorithm,
-        )
-        
+        token = jwt.encode(payload, self._secret_key, algorithm=self.settings.auth_algorithm)
         return Token(
             access_token=token,
             token_type="bearer",
             expires_in=self.settings.auth_token_expire_minutes * 60,
         )
-    
-    def verify_token(self, token: str) -> Optional[TokenData]:
-        """
-        Verify JWT token and return token data.
-        Returns None if token is invalid or expired.
-        """
+
+    def verify_token(self, token: str) -> TokenData | None:
         try:
-            payload = jwt.decode(
-                token,
-                self.settings.auth_secret_key,
-                algorithms=[self.settings.auth_algorithm],
-            )
-            
-            user_id = payload.get("sub")
-            username = payload.get("username")
-            exp = payload.get("exp")
-            
-            if user_id is None or username is None:
-                return None
-            
-            return TokenData(
-                user_id=user_id,
-                username=username,
-                exp=exp,
-            )
-        except JWTError as e:
-            logger.warning(f"Token verification failed: {e}")
+            payload = jwt.decode(token, self._secret_key, algorithms=[self.settings.auth_algorithm])
+        except jwt.PyJWTError as e:
+            logger.info(f"Token verification failed: {e}")
             return None
-    
-    def get_current_user(self, token: str) -> Optional[User]:
-        """
-        Get current user from token.
-        """
+        if payload.get("type") != "access" or not payload.get("sub"):
+            return None
+        return TokenData(user_id=payload["sub"], username=payload.get("username"), exp=payload.get("exp"))
+
+    def get_current_user(self, token: str) -> User | None:
+        """User for a token; None if the token is invalid or the user is gone/inactive."""
         token_data = self.verify_token(token)
-        if token_data is None:
+        if token_data is None or token_data.user_id is None:
             return None
-        
-        return self.get_user_by_id(token_data.user_id)
-    
-    def delete_user(self, user_id: str) -> bool:
-        """Delete a user by ID."""
-        users = self._load_users()
-        
-        if user_id in users:
-            del users[user_id]
-            self._save_users(users)
-            logger.info(f"Deleted user: {user_id}")
-            return True
-        
-        return False
-    
-    def update_user(
-        self,
-        user_id: str,
-        email: Optional[str] = None,
-        password: Optional[str] = None,
-        is_active: Optional[bool] = None,
-        is_admin: Optional[bool] = None,
-    ) -> Optional[User]:
-        """Update user fields."""
-        users = self._load_users()
-        
-        if user_id not in users:
+        user = self.get_user_by_id(token_data.user_id)
+        if user is None or not user.is_active:
             return None
-        
-        user = users[user_id]
-        
-        if email is not None:
-            user["email"] = email
-        if password is not None:
-            user["password_hash"] = self._hash_password(password)
-        if is_active is not None:
-            user["is_active"] = is_active
-        if is_admin is not None:
-            user["is_admin"] = is_admin
-        
-        self._save_users(users)
-        
-        return User(
-            id=user["id"],
-            username=user["username"],
-            email=user["email"],
-            is_active=user.get("is_active", True),
-            is_admin=user.get("is_admin", False),
-            created_at=user["created_at"],
-        )
-    
-    def list_users(self) -> list[User]:
-        """List all users."""
-        users = self._load_users()
-        return [
-            User(
-                id=u["id"],
-                username=u["username"],
-                email=u["email"],
-                is_active=u.get("is_active", True),
-                is_admin=u.get("is_admin", False),
-                created_at=u["created_at"],
-            )
-            for u in users.values()
-        ]
+        return user
 
 
-# Singleton instance
-_auth_service_instance: Optional[AuthService] = None
-
-
+@lru_cache(maxsize=1)
 def get_auth_service() -> AuthService:
-    """Get or create the auth service singleton."""
-    global _auth_service_instance
-    if _auth_service_instance is None:
-        _auth_service_instance = AuthService(get_settings())
-    return _auth_service_instance
-
+    """Get the auth service singleton."""
+    return AuthService(get_settings(), get_db())

@@ -4,56 +4,57 @@ Pydantic schemas and data models
 """
 
 from .schemas import (
-    # Health
-    HealthResponse,
-    # Documents
-    DocumentInfo,
-    DocumentListResponse,
-    DocumentDeleteResponse,
-    ChunkRecord,
-    # Ingestion
-    IngestFileResult,
-    IngestResponse,
     # Search & Ask
     AskRequest,
-    SearchRequest,
-    Citation,
-    SearchResult,
     AskResponse,
-    SearchResponse,
     # Chat
     ChatMessage,
     ChatRequest,
     ChatResponse,
+    ChunkRecord,
+    Citation,
+    ConversationSummary,
+    DocumentDeleteResponse,
+    # Documents
+    DocumentInfo,
+    DocumentListResponse,
+    # Health
+    HealthResponse,
+    # Ingestion
+    IngestFileResult,
+    IngestResponse,
+    SearchRequest,
+    SearchResponse,
+    SearchResult,
+    Token,
+    TokenData,
+    User,
     # Auth
     UserCreate,
     UserLogin,
-    User,
-    Token,
-    TokenData,
 )
 
 __all__ = [
-    "HealthResponse",
-    "DocumentInfo",
-    "DocumentListResponse",
-    "DocumentDeleteResponse",
-    "ChunkRecord",
-    "IngestFileResult",
-    "IngestResponse",
     "AskRequest",
-    "SearchRequest",
-    "Citation",
-    "SearchResult",
     "AskResponse",
-    "SearchResponse",
     "ChatMessage",
     "ChatRequest",
     "ChatResponse",
-    "UserCreate",
-    "UserLogin",
-    "User",
+    "ChunkRecord",
+    "Citation",
+    "ConversationSummary",
+    "DocumentDeleteResponse",
+    "DocumentInfo",
+    "DocumentListResponse",
+    "HealthResponse",
+    "IngestFileResult",
+    "IngestResponse",
+    "SearchRequest",
+    "SearchResponse",
+    "SearchResult",
     "Token",
     "TokenData",
+    "User",
+    "UserCreate",
+    "UserLogin",
 ]
-

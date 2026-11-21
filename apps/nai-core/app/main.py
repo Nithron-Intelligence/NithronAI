@@ -18,20 +18,21 @@ See config.py for all available options.
 """
 
 from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .config import get_settings
 from .middleware import setup_middleware
-from .utils.logging import setup_logging, get_logger
 from .routes import (
+    ask_router,
+    auth_router,
+    chat_router,
+    documents_router,
     health_router,
     ingest_router,
-    ask_router,
-    documents_router,
-    chat_router,
-    auth_router,
 )
+from .utils.logging import get_logger, setup_logging
 
 
 @asynccontextmanager
@@ -39,39 +40,43 @@ async def lifespan(app: FastAPI):
     """Application lifespan handler for startup/shutdown."""
     settings = get_settings()
     logger = get_logger(__name__)
-    
+
     # Startup
     logger.info(f"Starting {settings.app_name} v{settings.app_version}")
     logger.info(f"Debug mode: {settings.debug}")
     logger.info(f"Embeddings enabled: {settings.embeddings_enabled}")
     logger.info(f"LLM enabled: {settings.llm_enabled}")
     logger.info(f"Auth enabled: {settings.auth_enabled}")
-    
-    # Initialize services (they're singletons, so this warms them up)
-    from .services import get_indexer, get_retriever, get_answerer, get_embedding_service
-    
+
+    # Warm up singletons: opens/migrates the database and builds the BM25 index
+    from .services import get_answerer, get_embedding_service, get_indexer, get_retriever
+
     indexer = get_indexer()
     retriever = get_retriever()
-    _ = get_answerer()  # Initialize answerer singleton
-    
-    # Pre-load index
+    _ = get_answerer()
+
     records = indexer.load_index()
     logger.info(f"Loaded {len(records)} chunks from index")
-    
-    # Pre-build BM25 index if we have data
     if records:
-        retriever.ensure_index(records)
-    
-    # Initialize embeddings if enabled
+        retriever.ensure_index(records, indexer.revision)
+
     if settings.embeddings_enabled:
-        embedding_service = get_embedding_service()
-        if embedding_service.initialize():
+        if get_embedding_service().initialize():
             logger.info("Embedding service initialized")
         else:
             logger.warning("Embedding service failed to initialize")
-    
+
+    if settings.auth_enabled:
+        from .services import get_auth_service
+
+        if get_auth_service().count_users() == 0:
+            logger.warning(
+                "Authentication is enabled but no users exist yet: "
+                "the first account registered via /auth/register becomes admin."
+            )
+
     yield
-    
+
     # Shutdown
     logger.info("Shutting down nAI Core")
 
@@ -79,13 +84,13 @@ async def lifespan(app: FastAPI):
 def create_app() -> FastAPI:
     """Create and configure the FastAPI application."""
     settings = get_settings()
-    
+
     # Setup logging
     setup_logging(
         level=settings.log_level,
         json_format=not settings.debug,
     )
-    
+
     # Create app
     app = FastAPI(
         title=settings.app_name,
@@ -96,21 +101,21 @@ def create_app() -> FastAPI:
         redoc_url="/redoc",
         openapi_url="/openapi.json",
     )
-    
+
     # CORS middleware
     origins = ["*"] if settings.cors_allow_all else settings.cors_origins
     app.add_middleware(
         CORSMiddleware,
         allow_origins=origins,
-        allow_credentials=True,
+        allow_credentials=False,  # bearer tokens, no cookies
         allow_methods=["*"],
         allow_headers=["*"],
         expose_headers=["X-Request-ID", "X-Response-Time", "X-RateLimit-Limit", "X-RateLimit-Remaining"],
     )
-    
+
     # Custom middleware
     setup_middleware(app)
-    
+
     # Register routers
     app.include_router(health_router)
     app.include_router(ingest_router)
@@ -118,7 +123,7 @@ def create_app() -> FastAPI:
     app.include_router(documents_router)
     app.include_router(chat_router)
     app.include_router(auth_router)
-    
+
     return app
 
 
@@ -129,7 +134,7 @@ app = create_app()
 # For running directly with: python -m app.main
 if __name__ == "__main__":
     import uvicorn
-    
+
     settings = get_settings()
     uvicorn.run(
         "app.main:app",

@@ -1,19 +1,19 @@
 """
 nAI Core Answerer Service
-Answer generation with extractive fallback and LLM support
+Answer generation: LLM when available, extractive fallback otherwise.
 """
 
-from typing import List, Optional, Tuple
 import os
+from functools import lru_cache
 
 from ..config import Settings, get_settings
-from ..models.schemas import Citation, AskResponse
+from ..models.schemas import AskResponse, ChatMessage, Citation
 from ..utils.logging import get_logger
+from .llm import LLMService, get_llm_service
 
 logger = get_logger(__name__)
 
 
-# LLM prompts
 SYSTEM_PROMPT = """You are a helpful AI assistant that answers questions based on the provided context documents.
 
 Instructions:
@@ -36,214 +36,135 @@ Question: {question}
 
 Provide a clear, accurate answer based only on the information in the context above. If the context doesn't contain enough information to answer the question fully, say so and provide what information is available."""
 
+CHAT_SYSTEM_PROMPT = """You are a helpful AI assistant that answers questions based on provided documents and conversation history.
+
+When relevant context is provided, use it to answer accurately. If the context doesn't contain enough information, say so clearly.
+
+Be conversational and helpful. Reference previous parts of the conversation when relevant."""
+
+
+def _source_name(citation: Citation) -> str:
+    return citation.metadata.get("original_filename") or os.path.basename(citation.doc_path)
+
 
 class AnswererService:
-    """
-    Service for answer generation.
-    Supports extractive answers (no LLM) and LLM-powered generation.
-    """
-    
-    def __init__(self, settings: Settings):
+    """Generates answers from retrieved citations."""
+
+    def __init__(self, settings: Settings, llm: LLMService):
         self.settings = settings
-        self._llm_client = None
-        self._llm_available: Optional[bool] = None
-    
-    def _init_llm_client(self) -> bool:
-        """Initialize the LLM client if enabled and available."""
-        if not self.settings.llm_enabled:
-            return False
-        
-        if self._llm_available is not None:
-            return self._llm_available
-        
-        try:
-            # Use LiteLLM for unified interface
-            import litellm
-            
-            # Configure based on provider
-            if self.settings.llm_provider == "ollama":
-                litellm.api_base = self.settings.llm_base_url
-            elif self.settings.llm_api_key:
-                # For OpenAI, Anthropic, etc.
-                os.environ["OPENAI_API_KEY"] = self.settings.llm_api_key
-            
-            self._llm_available = True
-            logger.info(f"LLM initialized: {self.settings.llm_provider}/{self.settings.llm_model}")
-            return True
-        
-        except ImportError:
-            logger.warning("LiteLLM not installed, falling back to extractive answers")
-            self._llm_available = False
-            return False
-        except Exception as e:
-            logger.error(f"Failed to initialize LLM: {e}")
-            self._llm_available = False
-            return False
-    
-    def _format_context(self, citations: List[Citation]) -> str:
-        """Format citations as context for LLM."""
-        context_parts = []
-        
-        for i, citation in enumerate(citations):
-            filename = os.path.basename(citation.doc_path)
-            context_parts.append(
-                f"[Source: {filename}, Chunk #{citation.chunk_id}]\n"
-                f"{citation.text}\n"
-            )
-        
-        return "\n---\n".join(context_parts)
-    
+        self.llm = llm
+
+    # ------------------------------------------------------------------
+    # Helpers
+    # ------------------------------------------------------------------
+
+    def is_llm_available(self) -> bool:
+        return self.llm.is_available()
+
+    @staticmethod
+    def _format_context(citations: list[Citation], max_chars: int | None = None) -> str:
+        parts = []
+        for citation in citations:
+            text = citation.text if max_chars is None else citation.text[:max_chars]
+            parts.append(f"[Source: {_source_name(citation)}, Chunk #{citation.chunk_id}]\n{text}\n")
+        return "\n---\n".join(parts)
+
+    @staticmethod
+    def _sources_footer(citations: list[Citation]) -> str:
+        if not citations:
+            return ""
+        lines = [f"- [{i}] {_source_name(c)} (chunk {c.chunk_id})" for i, c in enumerate(citations[:5], 1)]
+        return "\n\n**Sources:**\n" + "\n".join(lines) + "\n"
+
     def compose_extractive_answer(
         self,
         question: str,
-        citations: List[Citation],
-        max_excerpt_length: int = 500
+        citations: list[Citation],
+        max_excerpt_length: int = 500,
     ) -> str:
-        """
-        Generate an extractive answer by selecting and formatting relevant passages.
-        No LLM required.
-        """
+        """Answer by quoting the most relevant passages (no LLM required)."""
         if not citations:
             return "I couldn't find any relevant information in the indexed documents for your question."
-        
-        # Select top passages
-        top_citations = citations[:3]
-        
-        # Format excerpts
+
         excerpts = []
-        for i, cit in enumerate(top_citations, 1):
+        for i, cit in enumerate(citations[:3], 1):
             text = cit.text[:max_excerpt_length]
             if len(cit.text) > max_excerpt_length:
-                # Try to end at a sentence
-                last_period = text.rfind('.')
+                last_period = text.rfind(".")
                 if last_period > max_excerpt_length // 2:
-                    text = text[:last_period + 1]
+                    text = text[: last_period + 1]
                 else:
                     text = text + "..."
-            
-            filename = os.path.basename(cit.doc_path)
-            excerpts.append(
-                f"**[{i}] From: {filename}** (relevance: {cit.score:.2f})\n"
-                f"> {text}"
-            )
-        
-        answer = f"""Based on your indexed documents, here are the most relevant excerpts:
+            excerpts.append(f"**[{i}] From: {_source_name(cit)}** (relevance: {cit.score:.2f})\n> {text}")
 
-{chr(10).join(excerpts)}
-
----
-*This is an extractive answer based on BM25 retrieval. For better answers, enable LLM generation by setting `NAI_LLM_ENABLED=true`.*
-"""
-        
-        return answer.strip()
-    
-    async def compose_llm_answer(
-        self,
-        question: str,
-        citations: List[Citation]
-    ) -> Tuple[str, Optional[int]]:
-        """
-        Generate an answer using LLM.
-        Returns (answer, tokens_used).
-        """
-        import litellm
-        
-        context = self._format_context(citations)
-        prompt = QA_PROMPT_TEMPLATE.format(context=context, question=question)
-        
-        # Determine model name based on provider
-        if self.settings.llm_provider == "ollama":
-            model = f"ollama/{self.settings.llm_model}"
-        elif self.settings.llm_provider == "anthropic":
-            model = f"anthropic/{self.settings.llm_model}"
-        else:
-            model = self.settings.llm_model
-        
-        try:
-            response = await litellm.acompletion(
-                model=model,
-                messages=[
-                    {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=self.settings.llm_temperature,
-                max_tokens=self.settings.llm_max_tokens,
-                api_base=self.settings.llm_base_url if self.settings.llm_provider == "ollama" else None,
+        joined = "\n\n".join(excerpts)
+        hint = ""
+        if not self.settings.llm_enabled:
+            hint = (
+                "\n\n---\n*This is an extractive answer. For generated answers, enable an LLM "
+                "with `NAI_LLM_ENABLED=true`.*"
             )
-            
-            answer = response.choices[0].message.content
-            tokens = response.usage.total_tokens if response.usage else None
-            
-            # Add citation references
-            if citations:
-                sources = "\n\n**Sources:**\n"
-                for i, cit in enumerate(citations[:5], 1):
-                    filename = os.path.basename(cit.doc_path)
-                    sources += f"- [{i}] {filename} (chunk {cit.chunk_id})\n"
-                answer += sources
-            
-            return answer, tokens
-        
-        except Exception as e:
-            logger.error(f"LLM generation failed: {e}")
-            # Fall back to extractive
-            return self.compose_extractive_answer(question, citations), None
-    
-    async def answer(
-        self,
-        question: str,
-        citations: List[Citation],
-        use_llm: bool = True
-    ) -> AskResponse:
-        """
-        Generate an answer for the question based on retrieved citations.
-        
-        Args:
-            question: User's question
-            citations: Retrieved relevant passages
-            use_llm: Whether to use LLM (if available)
-        
-        Returns:
-            AskResponse with answer and metadata
-        """
-        # Check if LLM should be used
-        llm_ready = use_llm and self._init_llm_client() and self._llm_available
-        
-        if llm_ready:
+        return f"Based on your indexed documents, here are the most relevant excerpts:\n\n{joined}{hint}"
+
+    # ------------------------------------------------------------------
+    # Single question
+    # ------------------------------------------------------------------
+
+    async def answer(self, question: str, citations: list[Citation], use_llm: bool = True) -> AskResponse:
+        """Answer a question from retrieved citations."""
+        if use_llm and citations and self.llm.is_available():
+            prompt = QA_PROMPT_TEMPLATE.format(context=self._format_context(citations), question=question)
             try:
-                answer, tokens = await self.compose_llm_answer(question, citations)
+                text, tokens = await self.llm.complete(
+                    [
+                        {"role": "system", "content": SYSTEM_PROMPT},
+                        {"role": "user", "content": prompt},
+                    ]
+                )
                 return AskResponse(
-                    answer=answer,
+                    answer=text + self._sources_footer(citations),
                     citations=citations,
                     method="llm",
-                    model=f"{self.settings.llm_provider}/{self.settings.llm_model}",
+                    model=self.llm.display_name,
                     tokens_used=tokens,
                 )
             except Exception as e:
                 logger.warning(f"LLM failed, falling back to extractive: {e}")
-        
-        # Extractive fallback
-        answer = self.compose_extractive_answer(question, citations)
+
         return AskResponse(
-            answer=answer,
+            answer=self.compose_extractive_answer(question, citations),
             citations=citations,
             method="extractive",
             model=None,
         )
-    
-    def is_llm_available(self) -> bool:
-        """Check if LLM is available."""
-        return self._init_llm_client()
+
+    # ------------------------------------------------------------------
+    # Multi-turn chat
+    # ------------------------------------------------------------------
+
+    async def chat(self, history: list[ChatMessage], citations: list[Citation]) -> tuple[str, str]:
+        """
+        Reply to a conversation. ``history`` ends with the latest user message.
+        Returns (reply, method) where method is ``llm`` or ``extractive``.
+        """
+        latest_question = next((m.content for m in reversed(history) if m.role == "user"), "")
+
+        if self.llm.is_available():
+            system = CHAT_SYSTEM_PROMPT
+            if citations:
+                system += "\n\nRelevant document context:\n" + self._format_context(citations[:5], 500)
+            messages = [{"role": "system", "content": system}]
+            messages += [{"role": m.role, "content": m.content} for m in history if m.role != "system"]
+            try:
+                text, _ = await self.llm.complete(messages)
+                return text, "llm"
+            except Exception as e:
+                logger.warning(f"Chat LLM failed, falling back to extractive: {e}")
+
+        return self.compose_extractive_answer(latest_question, citations), "extractive"
 
 
-# Singleton instance
-_answerer_instance: Optional[AnswererService] = None
-
-
+@lru_cache(maxsize=1)
 def get_answerer() -> AnswererService:
-    """Get or create the answerer service singleton."""
-    global _answerer_instance
-    if _answerer_instance is None:
-        _answerer_instance = AnswererService(get_settings())
-    return _answerer_instance
-
+    """Get the answerer service singleton."""
+    return AnswererService(get_settings(), get_llm_service())
