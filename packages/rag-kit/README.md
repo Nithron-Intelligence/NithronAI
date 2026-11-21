@@ -101,4 +101,5 @@ print(aggregate.summary())
 
 ## License
 
-AGPL-3.0-only
+Nithron Community License (NCL) v1.0: free for non-commercial use; see the repository's
+[LICENSE](../../LICENSE) and [COMMERCIAL.md](../../COMMERCIAL.md).

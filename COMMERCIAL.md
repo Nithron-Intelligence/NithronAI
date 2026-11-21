@@ -3,7 +3,7 @@
 This document explains how companies, MSPs, and resellers can use NithronAI commercially and how Official Build Artifacts (container images, packages, update repos) are licensed.
 
 > **Summary**
-> - Source code: available under the NithronOS Community License (NCL) for **non-commercial** use and contributions.
+> - Source code: available under the Nithron Community License (NCL) for **non-commercial** use and contributions.
 > - Commercial use, hosting, resale, or binary redistribution requires a **Commercial License**.
 > - Official Build Artifacts are licensed under a **Binary EULA** and may not be mirrored or resold.
 

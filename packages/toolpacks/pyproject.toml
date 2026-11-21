@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Specialized content extractors for nAI: PDF, Web, Email, Code"
 readme = "README.md"
 requires-python = ">=3.10"
-license = {text = "LicenseRef-NithronOS-Community-License-1.0"}
+license = {text = "LicenseRef-Nithron-Community-License-1.0"}
 authors = [
     {name = "Nithron Team", email = "dev@nithron.io"}
 ]

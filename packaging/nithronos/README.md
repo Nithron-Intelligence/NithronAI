@@ -33,8 +33,8 @@ Keep this folder and the NithronOS copy in sync.
 
 ## Before publishing
 
-1. Tag a release (`v0.4.0`) so `release.yml` publishes `ghcr.io/nithron/nithronai/nai-core:0.4.0`
-   (multi-arch: amd64 + arm64).
+1. ~~Tag a release (`v0.4.0`) so `release.yml` publishes the image.~~ Done 2026-11-22:
+   `ghcr.io/nithron/nithronai/nai-core:0.4.0` is public (amd64 + arm64).
 2. ~~Copy the files above into the NithronOS repo.~~ Done 2026-11-21; commit it there.
 
 ## Later (Phase 2)

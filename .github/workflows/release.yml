@@ -43,7 +43,12 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
             type=sha
-      
+          # GitHub reports the custom license as NOASSERTION; state it explicitly
+          labels: |
+            org.opencontainers.image.licenses=LicenseRef-Nithron-Community-License-1.0
+            org.opencontainers.image.description=nAI, the AI that knows your NAS: search and ask questions about your files, locally
+            org.opencontainers.image.vendor=Nithron
+
       - name: Build and push
         uses: docker/build-push-action@v7
         with:

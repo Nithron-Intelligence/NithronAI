@@ -1,6 +1,6 @@
 # nAI (Nithron AI) — the AI that knows your NAS
 
-[![License: NCL v1.0](https://img.shields.io/badge/License-NithronOS_Community_License-blue.svg)](./LICENSE)
+[![License: NCL v1.0](https://img.shields.io/badge/License-Nithron_Community_License-blue.svg)](./LICENSE)
 [![Backend](https://img.shields.io/badge/Backend-FastAPI-informational.svg)](apps/nai-core)
 [![Status](https://img.shields.io/badge/status-beta-green.svg)](#)
 [![Release](https://img.shields.io/badge/nAI-v0.5.0-blue)](https://github.com/Nithron/NithronAI/releases)
@@ -317,8 +317,8 @@ The goal: nAI as **the AI that knows your NAS**, shipped as a NithronOS app.
 
 ## 📜 License
 
-nAI is source-available under the **NithronOS Community License (NCL) v1.0**, the same license as
-NithronOS: free for non-commercial use; commercial use, hosting and binary redistribution need a
+nAI is source-available under the **Nithron Community License (NCL) v1.0**, the license shared by all
+Nithron software (including NithronOS): free for non-commercial use; commercial use, hosting and binary redistribution need a
 commercial agreement. See [LICENSE](LICENSE), [COMMERCIAL.md](COMMERCIAL.md),
 [TRADEMARK_POLICY.md](TRADEMARK_POLICY.md) and [BINARIES-EULA.md](BINARIES-EULA.md).
 
