@@ -17,7 +17,7 @@ class Settings(BaseSettings):
 
     # Application
     app_name: str = "nAI Core"
-    app_version: str = "0.3.0"
+    app_version: str = "0.4.0"
     debug: bool = Field(default=False, description="Enable debug mode")
     log_level: str = Field(default="INFO", description="Logging level")
 
@@ -34,13 +34,58 @@ class Settings(BaseSettings):
 
     # Paths
     data_dir: str = Field(default="data", description="Data directory path")
+    web_dir: str | None = Field(
+        default=None,
+        description=(
+            "Directory with the web UI, served at '/'. Unset: use apps/nai-docs/web from the "
+            "source tree if present. Empty string: don't serve the UI."
+        ),
+    )
     docs_subdir: str = Field(default="docs", description="Documents subdirectory")
     index_subdir: str = Field(default="index", description="Index subdirectory")
 
     # Ingestion
     max_file_size_mb: int = Field(default=50, description="Maximum file size in MB")
     allowed_extensions: list[str] = Field(
-        default=[".pdf", ".txt", ".md", ".markdown", ".rst", ".html", ".htm"],
+        default=[
+            # documents
+            ".pdf",
+            ".docx",
+            ".txt",
+            ".md",
+            ".markdown",
+            ".rst",
+            ".html",
+            ".htm",
+            # data / config
+            ".csv",
+            ".json",
+            ".yaml",
+            ".yml",
+            ".xml",
+            ".toml",
+            ".ini",
+            ".log",
+            # code
+            ".py",
+            ".js",
+            ".ts",
+            ".go",
+            ".rs",
+            ".java",
+            ".c",
+            ".h",
+            ".cpp",
+            ".sh",
+            ".sql",
+            # images (indexed only when OCR is available)
+            ".png",
+            ".jpg",
+            ".jpeg",
+            ".tif",
+            ".tiff",
+            ".webp",
+        ],
         description="Allowed file extensions",
     )
     chunk_size: int = Field(default=1000, description="Default chunk size in characters")
@@ -53,25 +98,69 @@ class Settings(BaseSettings):
         ),
     )
     ingest_url_timeout_seconds: int = Field(default=30, description="Timeout for URL ingestion")
+    ocr_enabled: bool = Field(
+        default=True,
+        description="OCR scanned PDFs and images when pytesseract + the tesseract binary are available",
+    )
+    ocr_languages: str = Field(default="eng+deu", description="Tesseract language codes, '+'-separated")
+
+    # Sources (folders on the NAS that are indexed in place and kept in sync)
+    sources_allowed_roots: list[str] = Field(
+        default=["/shares"],
+        description="Sources must live under one of these directories (realpath-checked)",
+    )
+    sources_background: bool = Field(
+        default=True,
+        description="Run the periodic rescan and file watcher in the background",
+    )
+    sources_scan_interval_seconds: int = Field(
+        default=900, description="Full incremental rescan interval (catches changes the watcher misses)"
+    )
+    sources_watch: bool = Field(
+        default=True, description="React to file changes immediately (inotify via watchfiles)"
+    )
 
     # BM25 Search
     bm25_k1: float = Field(default=1.5, description="BM25 k1 parameter")
     bm25_b: float = Field(default=0.75, description="BM25 b parameter")
     default_top_k: int = Field(default=5, description="Default number of results")
 
-    # Embeddings
-    embeddings_enabled: bool = Field(default=False, description="Enable embedding-based search")
-    embeddings_model: str = Field(
-        default="sentence-transformers/all-MiniLM-L6-v2",
-        description="Sentence transformer model for embeddings",
+    # Embeddings (semantic search). Vectors are stored in SQLite and searched in memory.
+    embeddings_enabled: bool = Field(default=True, description="Enable semantic (vector) search")
+    embeddings_provider: str = Field(
+        default="auto",
+        description="auto | fastembed | ollama | sentence-transformers",
     )
-    embeddings_dimension: int = Field(default=384, description="Embedding vector dimension")
+    embeddings_model: str = Field(
+        default="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+        description="Embedding model (multilingual by default). For ollama e.g. 'nomic-embed-text'",
+    )
+    embeddings_batch_size: int = Field(default=32, description="Chunks embedded per batch")
+    embeddings_background: bool = Field(
+        default=True, description="Embed new chunks in a background thread (disable only for testing)"
+    )
+    embeddings_min_score: float = Field(
+        default=0.3,
+        description=(
+            "Minimum cosine similarity for a vector hit (filters unrelated chunks). "
+            "Model dependent: 0.3 suits the default MiniLM model; raise it for models with higher baselines."
+        ),
+    )
+    embeddings_relative_cutoff: float = Field(
+        default=0.5,
+        description="Drop vector hits scoring below this fraction of the best hit (0 disables)",
+    )
+    models_dir: str = Field(default="models", description="Model cache directory (relative to data_dir)")
 
-    # Qdrant
-    qdrant_enabled: bool = Field(default=False, description="Enable Qdrant vector store")
-    qdrant_host: str = Field(default="localhost", description="Qdrant host")
-    qdrant_port: int = Field(default=6333, description="Qdrant port")
-    qdrant_collection: str = Field(default="nai_documents", description="Qdrant collection name")
+    # Retrieval
+    rrf_k: int = Field(default=60, description="Reciprocal Rank Fusion constant")
+    retrieval_candidates: int = Field(default=50, description="Candidates per retriever before fusion")
+    reranker: str = Field(default="false", description="Cross-encoder reranking: true | false | auto")
+    reranker_model: str = Field(
+        default="Xenova/ms-marco-MiniLM-L-6-v2",
+        description="fastembed cross-encoder (multilingual option: BAAI/bge-reranker-v2-m3-int8)",
+    )
+    reranker_candidates: int = Field(default=30, description="Fused candidates passed to the reranker")
 
     # LLM
     llm_enabled: bool = Field(default=False, description="Enable LLM for answer generation")
@@ -82,7 +171,10 @@ class Settings(BaseSettings):
             "For OpenAI-compatible servers (vLLM, llama.cpp, LM Studio) use 'openai' + llm_base_url."
         ),
     )
-    llm_model: str = Field(default="llama3.2", description="LLM model name")
+    llm_model: str = Field(
+        default="llama3.2",
+        description="LLM model name, or 'auto' to pick the largest installed Ollama model that fits",
+    )
     llm_base_url: str | None = Field(
         default=None,
         description=f"LLM API base URL (defaults to {DEFAULT_OLLAMA_BASE_URL} for ollama)",
@@ -154,6 +246,22 @@ class Settings(BaseSettings):
     def db_file(self) -> str:
         """SQLite database file."""
         return os.path.join(self.data_path, "nai.db")
+
+    @property
+    def web_path(self) -> str | None:
+        """Web UI directory to serve, or None."""
+        if self.web_dir == "":
+            return None
+        if self.web_dir:
+            return self.web_dir if os.path.isdir(self.web_dir) else None
+        base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # apps/nai-core
+        candidate = os.path.join(os.path.dirname(base), "nai-docs", "web")
+        return candidate if os.path.isdir(candidate) else None
+
+    @property
+    def models_path(self) -> str:
+        """Model cache directory."""
+        return os.path.join(self.data_path, self.models_dir)
 
     @property
     def max_file_size_bytes(self) -> int:

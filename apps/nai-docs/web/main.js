@@ -18,8 +18,17 @@ function storageSet(key, value) {
   } catch { /* storage unavailable (private mode) */ }
 }
 
+function defaultApiBase() {
+  // Served by nAI itself (also behind a reverse-proxy prefix such as /apps/nai/): same origin.
+  // The dev server on :5173 talks to a backend on :8000.
+  if (location.protocol.startsWith('http') && location.port !== '5173') {
+    return location.origin + location.pathname.replace(/[^/]*$/, '').replace(/\/$/, '');
+  }
+  return 'http://localhost:8000';
+}
+
 const CONFIG = {
-  apiBase: storageGet('nai_api_base') || 'http://localhost:8000',
+  apiBase: storageGet('nai_api_base') || defaultApiBase(),
   theme: storageGet('nai_theme') || 'dark',
 };
 
@@ -106,6 +115,20 @@ const elements = {
   loginError: document.getElementById('loginError'),
   loginSubmitBtn: document.getElementById('loginSubmitBtn'),
 
+  // Sources (admin)
+  sourcesTab: document.getElementById('sourcesTab'),
+  sourcesList: document.getElementById('sourcesList'),
+  refreshSourcesBtn: document.getElementById('refreshSourcesBtn'),
+  sourceForm: document.getElementById('sourceForm'),
+  sourceName: document.getElementById('sourceName'),
+  sourcePath: document.getElementById('sourcePath'),
+  sourceGroups: document.getElementById('sourceGroups'),
+  sourceExclude: document.getElementById('sourceExclude'),
+  sourceAddBtn: document.getElementById('sourceAddBtn'),
+  sourceRootsHint: document.getElementById('sourceRootsHint'),
+  systemInfo: document.getElementById('systemInfo'),
+  appVersion: document.getElementById('appVersion'),
+
   // Toast
   toastContainer: document.getElementById('toastContainer'),
 };
@@ -188,6 +211,100 @@ async function apiCall(endpoint, options = {}) {
   return response.json();
 }
 
+/**
+ * POST to a Server-Sent Events endpoint and call onEvent(name, data) per event.
+ * (EventSource can't POST or send an Authorization header, so this reads the stream by hand.)
+ */
+async function streamCall(endpoint, body, onEvent) {
+  const response = await fetch(`${CONFIG.apiBase}${endpoint}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify(body),
+  });
+  if (response.status === 401 && AUTH.enabled) {
+    setToken(null);
+    openLogin();
+    throw new Error('Please sign in');
+  }
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(errorDetail(error, response.status));
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    let boundary;
+    while ((boundary = buffer.indexOf('\n\n')) >= 0) {
+      const block = buffer.slice(0, boundary);
+      buffer = buffer.slice(boundary + 2);
+      let name = 'message';
+      let data = '';
+      for (const line of block.split('\n')) {
+        if (line.startsWith('event: ')) name = line.slice(7);
+        else if (line.startsWith('data: ')) data += line.slice(6);
+      }
+      if (data) onEvent(name, JSON.parse(data));
+    }
+  }
+}
+
+/** Open a document's original file (fetched with the auth header, shown in a new tab). */
+async function openDocument(docId) {
+  const win = window.open('', '_blank'); // open synchronously so popup blockers allow it
+  try {
+    const response = await fetch(`${CONFIG.apiBase}/documents/${encodeURIComponent(docId)}/file`, {
+      headers: authHeaders(),
+    });
+    if (!response.ok) throw new Error(response.status === 404 ? 'File is no longer available' : `HTTP ${response.status}`);
+    const url = URL.createObjectURL(await response.blob());
+    if (win) win.location = url;
+    else window.location = url;
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  } catch (e) {
+    if (win) win.close();
+    showToast(`Could not open file: ${e.message}`, 'error');
+  }
+}
+
+function isAdmin() {
+  return !AUTH.enabled || Boolean(AUTH.user && AUTH.user.is_admin);
+}
+
+/** Where a citation comes from, e.g. "Documents/Insurance/car.pdf · page 3 · Coverage". */
+function citationLocation(cit) {
+  const path = cit.source_name ? `${cit.source_name}/${cit.doc_path}` : (cit.filename || cit.doc_path);
+  const parts = [path];
+  if (cit.page !== null && cit.page !== undefined) parts.push(`page ${cit.page}`);
+  if (cit.heading) parts.push(cit.heading);
+  return parts.join(' · ');
+}
+
+function renderCitations(citations) {
+  return citations.map((cit, i) => `
+    <div class="citation-item">
+      <div class="citation-rank">${i + 1}</div>
+      <div class="citation-content">
+        <div class="citation-source">
+          <span>${escapeHtml(citationLocation(cit))}</span>
+          <button class="btn btn-ghost btn-sm" data-open-doc="${escapeHtml(cit.doc_id)}">Open</button>
+        </div>
+        <div class="citation-text">${escapeHtml(cit.text.slice(0, 300))}${cit.text.length > 300 ? '...' : ''}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// One delegated handler for every "Open" button (citations, documents, chat sources)
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-open-doc]');
+  if (btn) openDocument(btn.dataset.openDoc);
+});
+
 function escapeHtml(text) {
   const div = document.createElement('div');
   div.textContent = text;
@@ -213,6 +330,7 @@ async function checkHealth() {
   
   try {
     const data = await apiCall('/health');
+    elements.appVersion.textContent = `v${data.version}`;
     statusDot.className = 'status-dot online';
     statusText.textContent = `Online (v${data.version})`;
     return true;
@@ -239,6 +357,9 @@ function switchTab(tabName) {
   // Load data when switching to certain tabs
   if (tabName === 'documents') {
     loadDocuments();
+  } else if (tabName === 'sources') {
+    loadSources();
+    loadSystemInfo();
   }
 }
 
@@ -256,36 +377,38 @@ async function askQuestion() {
   STATE.isLoading = true;
   elements.askBtn.disabled = true;
   elements.askBtn.innerHTML = '<span>Thinking...</span>';
-  elements.resultsArea.classList.add('hidden');
-  
+  elements.resultMethod.textContent = 'searching…';
+  elements.answerContent.innerHTML = '<div class="answer-text loading">Searching your files…</div>';
+  elements.citationsList.innerHTML = '';
+  elements.resultsArea.classList.remove('hidden');
+
+  let answer = '';
+  const answerEl = () => elements.answerContent.querySelector('.answer-text');
   try {
-    const data = await apiCall('/ask', {
-      method: 'POST',
-      body: JSON.stringify({
-        question,
-        top_k: parseInt(elements.topK.value),
-        use_llm: elements.useLlm.checked,
-      }),
+    await streamCall('/ask/stream', {
+      question,
+      top_k: parseInt(elements.topK.value),
+      use_llm: elements.useLlm.checked,
+    }, (event, data) => {
+      if (event === 'citations') {
+        elements.citationsList.innerHTML = data.length
+          ? renderCitations(data)
+          : '<div class="empty-state"><p>No matching passages.</p></div>';
+        elements.resultMethod.textContent = 'answering…';
+      } else if (event === 'token') {
+        answer += data.text;
+        const el = answerEl();
+        el.classList.remove('loading');
+        el.innerHTML = renderMarkdown(escapeHtml(answer));
+      } else if (event === 'error') {
+        showToast(data.message, 'warning');
+      } else if (event === 'done') {
+        const model = data.model ? ` · ${data.model}` : '';
+        elements.resultMethod.textContent = `${data.method}${model}`;
+      }
     });
-    
-    // Display results
-    elements.resultMethod.textContent = data.method;
-    elements.answerContent.innerHTML = `<div class="answer-text">${renderMarkdown(escapeHtml(data.answer))}</div>`;
-    
-    // Display citations
-    elements.citationsList.innerHTML = data.citations.map((cit, i) => `
-      <div class="citation-item">
-        <div class="citation-rank">${i + 1}</div>
-        <div class="citation-content">
-          <div class="citation-source">${escapeHtml(cit.doc_path)} (chunk #${cit.chunk_id})</div>
-          <div class="citation-text">${escapeHtml(cit.text.slice(0, 300))}${cit.text.length > 300 ? '...' : ''}</div>
-          <div class="citation-score">Score: ${cit.score.toFixed(3)}</div>
-        </div>
-      </div>
-    `).join('');
-    
-    elements.resultsArea.classList.remove('hidden');
   } catch (e) {
+    elements.resultsArea.classList.add('hidden');
     showToast(`Error: ${e.message}`, 'error');
   } finally {
     STATE.isLoading = false;
@@ -411,7 +534,7 @@ async function loadDocuments() {
     if (data.documents.length === 0) {
       elements.documentsList.innerHTML = `
         <div class="empty-state">
-          <p>No documents indexed yet. Upload some files to get started.</p>
+          <p>No documents indexed yet. Upload files, or ask an admin to add a NAS folder under Sources.</p>
         </div>
       `;
       return;
@@ -426,19 +549,22 @@ async function loadDocuments() {
           </svg>
         </div>
         <div class="document-info">
-          <div class="document-name">${escapeHtml(doc.filename)}</div>
+          <div class="document-name">${escapeHtml(doc.source_name ? `${doc.source_name}/${doc.path}` : doc.filename)}</div>
           <div class="document-meta">
+            <span>${doc.source_name ? 'NAS folder' : 'Upload'}</span>
             <span>${doc.chunk_count} chunks</span>
-            <span>${formatBytes(doc.total_chars)}</span>
+            <span>${formatBytes(doc.file_size || doc.total_chars)}</span>
             <span>${formatDate(doc.indexed_at)}</span>
           </div>
         </div>
         <div class="document-actions">
-          <button class="btn btn-ghost btn-sm" data-action="delete" data-id="${escapeHtml(doc.doc_id)}">
+          <button class="btn btn-ghost btn-sm" data-open-doc="${escapeHtml(doc.doc_id)}">Open</button>
+          ${!doc.source_id && isAdmin() ? `
+          <button class="btn btn-ghost btn-sm" data-action="delete" data-id="${escapeHtml(doc.doc_id)}" title="Delete upload">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
             </svg>
-          </button>
+          </button>` : ''}
         </div>
       </div>
     `).join('');
@@ -482,6 +608,17 @@ function addChatMessage(role, content) {
   `;
   elements.chatMessages.appendChild(messageEl);
   elements.chatMessages.scrollTop = elements.chatMessages.scrollHeight;
+  return messageEl.querySelector('.chat-bubble');
+}
+
+function chatSources(citations) {
+  if (!citations.length) return '';
+  const seen = new Set();
+  const chips = citations.filter(c => !seen.has(c.doc_id) && seen.add(c.doc_id)).slice(0, 5).map(c => `
+    <button class="source-chip" data-open-doc="${escapeHtml(c.doc_id)}" title="${escapeHtml(citationLocation(c))}">
+      ${escapeHtml(c.filename || c.doc_path)}${c.page != null ? ` · p.${c.page}` : ''}
+    </button>`).join('');
+  return `<div class="chat-sources">${chips}</div>`;
 }
 
 async function sendChatMessage() {
@@ -491,23 +628,33 @@ async function sendChatMessage() {
   addChatMessage('user', message);
   elements.chatInput.value = '';
   elements.chatSendBtn.disabled = true;
+  const bubble = addChatMessage('assistant', '…');
+  let reply = '';
+  let citations = [];
   
   try {
-    const data = await apiCall('/chat', {
-      method: 'POST',
-      body: JSON.stringify({
-        messages: [{ role: 'user', content: message }],
-        top_k: 5,
-        use_context: true,
-        conversation_id: STATE.chatConversationId,
-      }),
+    await streamCall('/chat/stream', {
+      messages: [{ role: 'user', content: message }],
+      top_k: 5,
+      use_context: true,
+      conversation_id: STATE.chatConversationId,
+    }, (event, data) => {
+      if (event === 'conversation') {
+        STATE.chatConversationId = data.conversation_id;
+      } else if (event === 'citations') {
+        citations = data;
+      } else if (event === 'token') {
+        reply += data.text;
+        bubble.innerHTML = renderMarkdown(escapeHtml(reply));
+        elements.chatMessages.scrollTop = elements.chatMessages.scrollHeight;
+      } else if (event === 'error') {
+        showToast(data.message, 'warning');
+      } else if (event === 'done') {
+        bubble.innerHTML = renderMarkdown(escapeHtml(reply)) + chatSources(citations);
+      }
     });
-    
-    STATE.chatConversationId = data.conversation_id;
-    addChatMessage('assistant', data.message.content);
-    
   } catch (e) {
-    addChatMessage('assistant', `Error: ${e.message}`);
+    bubble.textContent = `Error: ${e.message}`;
   } finally {
     elements.chatSendBtn.disabled = false;
   }
@@ -525,6 +672,132 @@ function newChat() {
 }
 
 // =============================================================================
+// Sources (admin): NAS folders indexed in place
+// =============================================================================
+
+function splitList(value) {
+  return value.split(',').map(v => v.trim()).filter(Boolean);
+}
+
+function sourceStatus(src) {
+  if (src.scanning) return '<span class="status-badge scanning">scanning…</span>';
+  if (!src.enabled) return '<span class="status-badge">paused</span>';
+  if (src.last_scan_status === 'error') return '<span class="status-badge error">error</span>';
+  if (src.last_scan_status === 'ok') return '<span class="status-badge success">in sync</span>';
+  return `<span class="status-badge">${escapeHtml(src.last_scan_status)}</span>`;
+}
+
+async function loadSources() {
+  try {
+    const sources = await apiCall('/sources');
+    if (!sources.length) {
+      elements.sourcesList.innerHTML = '<div class="empty-state"><p>No folders yet. Add one below.</p></div>';
+      return;
+    }
+    elements.sourcesList.innerHTML = sources.map(src => `
+      <div class="document-item">
+        <div class="document-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+          </svg>
+        </div>
+        <div class="document-info">
+          <div class="document-name">${escapeHtml(src.name)} ${sourceStatus(src)}</div>
+          <div class="document-meta">
+            <span>${escapeHtml(src.path || '')}</span>
+            <span>${src.document_count} files</span>
+            <span>${src.allowed_groups.length ? 'groups: ' + escapeHtml(src.allowed_groups.join(', ')) : 'all users'}</span>
+            ${src.last_scan_finished ? `<span>synced ${formatDate(src.last_scan_finished)}</span>` : ''}
+          </div>
+          ${src.last_error ? `<div class="form-error">${escapeHtml(src.last_error)}</div>` : ''}
+        </div>
+        <div class="document-actions">
+          <button class="btn btn-ghost btn-sm" data-source-action="scan" data-id="${src.id}" ${src.scanning ? 'disabled' : ''}>Rescan</button>
+          <button class="btn btn-ghost btn-sm" data-source-action="toggle" data-id="${src.id}" data-enabled="${src.enabled}">${src.enabled ? 'Pause' : 'Resume'}</button>
+          <button class="btn btn-ghost btn-sm" data-source-action="delete" data-id="${src.id}" data-name="${escapeHtml(src.name)}">Remove</button>
+        </div>
+      </div>
+    `).join('');
+    if (sources.some(s => s.scanning)) setTimeout(loadSources, 3000);
+  } catch (e) {
+    showToast(`Failed to load sources: ${e.message}`, 'error');
+  }
+}
+
+async function sourceAction(btn) {
+  const id = btn.dataset.id;
+  try {
+    if (btn.dataset.sourceAction === 'scan') {
+      await apiCall(`/sources/${id}/scan`, { method: 'POST' });
+      showToast('Rescan started', 'success');
+    } else if (btn.dataset.sourceAction === 'toggle') {
+      await apiCall(`/sources/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ enabled: btn.dataset.enabled !== 'true' }),
+      });
+    } else if (btn.dataset.sourceAction === 'delete') {
+      if (!confirm(`Remove "${btn.dataset.name}" from nAI? Its files stay on the NAS; only the index is removed.`)) return;
+      await apiCall(`/sources/${id}`, { method: 'DELETE' });
+      showToast('Source removed', 'success');
+    }
+  } catch (e) {
+    showToast(e.message, 'error');
+  }
+  setTimeout(loadSources, 300);
+}
+
+async function addSource(event) {
+  event.preventDefault();
+  elements.sourceAddBtn.disabled = true;
+  try {
+    await apiCall('/sources', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: elements.sourceName.value.trim(),
+        path: elements.sourcePath.value.trim(),
+        allowed_groups: splitList(elements.sourceGroups.value),
+        exclude_patterns: splitList(elements.sourceExclude.value),
+      }),
+    });
+    elements.sourceForm.reset();
+    showToast('Folder added; indexing has started', 'success');
+    loadSources();
+  } catch (e) {
+    showToast(e.message, 'error');
+  } finally {
+    elements.sourceAddBtn.disabled = false;
+  }
+}
+
+async function loadSystemInfo() {
+  try {
+    const sys = await apiCall('/system');
+    const hw = sys.hardware;
+    const emb = sys.features.embeddings;
+    const llm = sys.features.llm;
+    const gpu = hw.gpus.length
+      ? hw.gpus.map(g => `${g.vendor} ${g.name}${g.memory_gb ? ` (${g.memory_gb} GB)` : ''}`).join(', ')
+      : 'none detected';
+    const semantic = emb.state === 'ready'
+      ? `ready${emb.pending ? ` · ${emb.pending} passages still being processed` : ''}`
+      : emb.state === 'loading' ? 'downloading/loading model…' : emb.state;
+    const rows = [
+      ['Hardware', `${hw.cpu_count} CPUs · ${hw.memory_gb} GB RAM · GPU: ${gpu} · tier: ${hw.tier}`],
+      ['Semantic search', `${semantic}${emb.error ? ` (${emb.error})` : ''}`],
+      ['Reranker', sys.features.reranker.active ? 'on' : 'off'],
+      ['OCR', sys.features.ocr ? 'available' : 'not available'],
+      ['Answer model', llm.enabled ? (llm.active_model ? `${llm.provider}/${llm.active_model}` : 'no model available') : 'off (extractive answers)'],
+    ];
+    elements.systemInfo.innerHTML = rows.map(([k, v]) => `
+      <div class="system-row"><span class="system-key">${k}</span><span>${escapeHtml(v)}</span></div>
+    `).join('') + `<ul class="system-tips">${sys.recommendations.map(r => `<li>${escapeHtml(r)}</li>`).join('')}</ul>`;
+    elements.sourceRootsHint.textContent = `Must be inside: ${sys.sources.allowed_roots.join(', ')}`;
+  } catch (e) {
+    elements.systemInfo.textContent = `Could not load system info: ${e.message}`;
+  }
+}
+
+// =============================================================================
 // Authentication
 // =============================================================================
 
@@ -538,6 +811,8 @@ function setToken(token) {
 }
 
 function renderUser() {
+  elements.sourcesTab.classList.toggle('hidden', !isAdmin());
+  if (!isAdmin() && elements.sourcesTab.classList.contains('active')) switchTab('ask');
   if (AUTH.enabled && AUTH.user) {
     elements.userName.textContent = AUTH.user.username + (AUTH.user.is_admin ? ' (admin)' : '');
     elements.userChip.classList.remove('hidden');
@@ -635,7 +910,7 @@ async function initAuth() {
 // =============================================================================
 
 function openSettings() {
-  elements.apiBaseInput.value = CONFIG.apiBase;
+  elements.apiBaseInput.value = storageGet('nai_api_base') || '';
   elements.themeSelect.value = CONFIG.theme;
   elements.settingsModal.classList.remove('hidden');
 }
@@ -645,10 +920,11 @@ function closeSettings() {
 }
 
 function saveSettings() {
-  CONFIG.apiBase = elements.apiBaseInput.value.trim();
+  const customBase = elements.apiBaseInput.value.trim().replace(/\/$/, '');
+  CONFIG.apiBase = customBase || defaultApiBase();
   CONFIG.theme = elements.themeSelect.value;
   
-  storageSet('nai_api_base', CONFIG.apiBase);
+  storageSet('nai_api_base', customBase || null);
   storageSet('nai_theme', CONFIG.theme);
   
   applyTheme();
@@ -730,6 +1006,14 @@ elements.chatInput.addEventListener('input', function() {
 });
 
 elements.chatNewBtn.addEventListener('click', newChat);
+
+// Sources
+elements.refreshSourcesBtn.addEventListener('click', () => { loadSources(); loadSystemInfo(); });
+elements.sourceForm.addEventListener('submit', addSource);
+elements.sourcesList.addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-source-action]');
+  if (btn) sourceAction(btn);
+});
 
 // Auth
 elements.loginForm.addEventListener('submit', submitLogin);

@@ -10,7 +10,7 @@ import json
 import os
 import sqlite3
 import threading
-from collections.abc import Iterator
+from collections.abc import Generator
 from contextlib import contextmanager
 from functools import lru_cache
 from typing import Any
@@ -21,7 +21,7 @@ from .utils.timeutil import utc_now_iso
 
 logger = get_logger(__name__)
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS meta (
@@ -80,6 +80,53 @@ CREATE TABLE IF NOT EXISTS messages (
 CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id, id);
 """
 
+# Schema migrations: version -> SQL. Applied in order on databases older than SCHEMA_VERSION.
+MIGRATIONS: dict[int, str] = {
+    2: """
+    -- Sources: NAS folders indexed in place
+    CREATE TABLE IF NOT EXISTS sources (
+        id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+        name               TEXT NOT NULL UNIQUE COLLATE NOCASE,
+        path               TEXT NOT NULL,
+        recursive          INTEGER NOT NULL DEFAULT 1,
+        exclude_patterns   TEXT NOT NULL DEFAULT '[]',
+        allowed_groups     TEXT NOT NULL DEFAULT '[]',
+        enabled            INTEGER NOT NULL DEFAULT 1,
+        created_at         TEXT NOT NULL,
+        last_scan_started  TEXT,
+        last_scan_finished TEXT,
+        last_scan_status   TEXT NOT NULL DEFAULT 'never',
+        last_error         TEXT
+    );
+
+    ALTER TABLE documents ADD COLUMN source_id INTEGER REFERENCES sources(id) ON DELETE CASCADE;
+    ALTER TABLE documents ADD COLUMN mtime REAL;
+    ALTER TABLE documents ADD COLUMN content_hash TEXT NOT NULL DEFAULT '';
+    ALTER TABLE documents ADD COLUMN owner_id TEXT;
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_documents_source_path
+        ON documents(source_id, path) WHERE source_id IS NOT NULL;
+
+    ALTER TABLE chunks ADD COLUMN context TEXT NOT NULL DEFAULT '';
+    ALTER TABLE chunks ADD COLUMN page INTEGER;
+
+    CREATE TABLE IF NOT EXISTS chunk_embeddings (
+        chunk_rowid INTEGER PRIMARY KEY REFERENCES chunks(id) ON DELETE CASCADE,
+        model       TEXT NOT NULL,
+        dim         INTEGER NOT NULL,
+        vector      BLOB NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_chunk_embeddings_model ON chunk_embeddings(model);
+
+    CREATE TABLE IF NOT EXISTS user_groups (
+        user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        group_name TEXT NOT NULL COLLATE NOCASE,
+        PRIMARY KEY (user_id, group_name)
+    );
+
+    INSERT OR IGNORE INTO meta(key, value) VALUES ('embedding_revision', '0');
+    """,
+}
+
 
 class Database:
     """Thin wrapper around a SQLite file."""
@@ -97,7 +144,7 @@ class Database:
         return conn
 
     @contextmanager
-    def connect(self) -> Iterator[sqlite3.Connection]:
+    def connect(self) -> Generator[sqlite3.Connection, None, None]:
         """Open a connection; commits on success, rolls back on error."""
         self.initialize()
         conn = self._open()
@@ -122,15 +169,24 @@ class Database:
             try:
                 conn.execute("PRAGMA journal_mode = WAL")
                 conn.executescript(SCHEMA)
-                conn.execute(
-                    "INSERT OR IGNORE INTO meta(key, value) VALUES ('schema_version', ?)",
-                    (str(SCHEMA_VERSION),),
-                )
+                conn.execute("INSERT OR IGNORE INTO meta(key, value) VALUES ('schema_version', '1')")
                 conn.execute("INSERT OR IGNORE INTO meta(key, value) VALUES ('index_revision', '0')")
                 conn.commit()
+                self._migrate(conn)
             finally:
                 conn.close()
             self._initialized = True
+
+    @staticmethod
+    def _migrate(conn: sqlite3.Connection) -> None:
+        current = int(conn.execute("SELECT value FROM meta WHERE key = 'schema_version'").fetchone()[0])
+        for version in sorted(v for v in MIGRATIONS if v > current):
+            logger.info(f"Migrating database schema to version {version}")
+            conn.executescript(
+                "BEGIN;\n"
+                + MIGRATIONS[version]
+                + f"\nUPDATE meta SET value = '{version}' WHERE key = 'schema_version';\nCOMMIT;"
+            )
 
     # ------------------------------------------------------------------
     # Index revision: bumped on every document change so in-memory caches
@@ -144,8 +200,19 @@ class Database:
 
     @staticmethod
     def bump_index_revision(conn: sqlite3.Connection) -> None:
+        Database.bump_counter(conn, "index_revision")
+
+    def get_counter(self, key: str) -> int:
+        with self.connect() as conn:
+            row = conn.execute("SELECT value FROM meta WHERE key = ?", (key,)).fetchone()
+            return int(row["value"]) if row else 0
+
+    @staticmethod
+    def bump_counter(conn: sqlite3.Connection, key: str) -> None:
         conn.execute(
-            "UPDATE meta SET value = CAST(CAST(value AS INTEGER) + 1 AS TEXT) WHERE key = 'index_revision'"
+            "INSERT INTO meta(key, value) VALUES (?, '1') "
+            "ON CONFLICT(key) DO UPDATE SET value = CAST(CAST(value AS INTEGER) + 1 AS TEXT)",
+            (key,),
         )
 
 

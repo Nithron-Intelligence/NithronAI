@@ -4,9 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>nAI — Nithron AI</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='none' stroke='%236366f1' stroke-width='3'/%3E%3Cpath d='M10 16l4 4 8-8' fill='none' stroke='%2322d3ee' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -25,7 +23,7 @@
           </svg>
         </div>
         <span class="logo-text">nAI</span>
-        <span class="logo-version">v0.3.0</span>
+        <span class="logo-version" id="appVersion"></span>
       </div>
       <div class="header-actions">
         <div class="status-indicator" id="statusIndicator">
@@ -51,11 +49,11 @@
     <!-- Hero Section -->
     <section class="hero">
       <h1 class="hero-title">
-        <span class="gradient-text">Local-first</span> Document Intelligence
+        The AI that <span class="gradient-text">knows your NAS</span>
       </h1>
       <p class="hero-subtitle">
-        Upload your documents, ask questions, get answers with citations. 
-        Private by default. No external APIs required.
+        Ask questions about the files on your NAS and get answers that point to the exact file and page.
+        Runs on your own hardware. Nothing leaves your network unless you choose a cloud model.
       </p>
     </section>
 
@@ -74,7 +72,7 @@
           <polyline points="17 8 12 3 7 8"/>
           <line x1="12" y1="3" x2="12" y2="15"/>
         </svg>
-        Ingest
+        Upload
       </button>
       <button class="tab" data-tab="documents">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -88,6 +86,12 @@
           <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
         </svg>
         Chat
+      </button>
+      <button class="tab hidden" data-tab="sources" id="sourcesTab">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+        </svg>
+        Sources
       </button>
     </div>
 
@@ -106,7 +110,7 @@
                 type="text" 
                 id="questionInput" 
                 class="search-input" 
-                placeholder="Ask anything about your documents..."
+                placeholder="e.g. When is the car insurance due?"
                 autocomplete="off"
               />
               <button class="btn btn-primary" id="askBtn">
@@ -174,8 +178,9 @@
               </svg>
             </div>
             <h3 class="upload-title">Drop files here or click to upload</h3>
-            <p class="upload-subtitle">Supports PDF, Markdown, TXT, HTML (max 50MB)</p>
-            <input type="file" id="fileInput" multiple accept=".pdf,.txt,.md,.markdown,.html,.htm,.rst" class="hidden" />
+            <p class="upload-subtitle">PDF, Word (DOCX), Markdown, HTML, text, CSV/JSON, code; scans and photos with OCR (max 50MB).
+              To index whole NAS folders, add them under Sources instead.</p>
+            <input type="file" id="fileInput" multiple class="hidden" />
             <button class="btn btn-secondary" id="browseBtn">Browse Files</button>
           </div>
 
@@ -261,6 +266,51 @@
           </div>
         </div>
       </div>
+
+      <!-- Sources Panel (admins) -->
+      <div class="tab-panel" data-panel="sources">
+        <div class="card">
+          <div class="documents-header">
+            <h3 class="documents-title">NAS folders</h3>
+            <button class="btn btn-ghost" id="refreshSourcesBtn">Refresh</button>
+          </div>
+          <p class="form-hint">nAI indexes these folders in place (files are never copied or changed) and keeps
+            the index in sync as files are added, edited or deleted.</p>
+          <div class="documents-list" id="sourcesList"></div>
+        </div>
+
+        <div class="card">
+          <h3 class="documents-title">Add a folder</h3>
+          <form id="sourceForm" class="source-form">
+            <div class="form-group">
+              <label class="form-label" for="sourceName">Name</label>
+              <input type="text" id="sourceName" class="form-input" placeholder="Documents" required maxlength="80" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="sourcePath">Folder path on the server</label>
+              <input type="text" id="sourcePath" class="form-input" placeholder="/shares/Documents" required />
+              <p class="form-hint" id="sourceRootsHint"></p>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="sourceGroups">Visible to groups (optional)</label>
+              <input type="text" id="sourceGroups" class="form-input" placeholder="family, finance" />
+              <p class="form-hint">Comma-separated. Empty: every user can search this folder. Admins always can.</p>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="sourceExclude">Skip files matching (optional)</label>
+              <input type="text" id="sourceExclude" class="form-input" placeholder="*.tmp, Archive/*" />
+            </div>
+            <div class="modal-footer">
+              <button type="submit" class="btn btn-primary" id="sourceAddBtn">Add and scan</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="card" id="systemCard">
+          <h3 class="documents-title">This machine</h3>
+          <div id="systemInfo" class="system-info"></div>
+        </div>
+      </div>
     </div>
   </main>
 
@@ -280,8 +330,8 @@
       <div class="modal-body">
         <div class="form-group">
           <label class="form-label">API Base URL</label>
-          <input type="text" id="apiBaseInput" class="form-input" value="http://localhost:8000" />
-          <p class="form-hint">The nAI Core backend URL</p>
+          <input type="text" id="apiBaseInput" class="form-input" placeholder="(this server)" />
+          <p class="form-hint">Leave empty when the UI is served by nAI itself. Otherwise e.g. http://nas.local:8000</p>
         </div>
         <div class="form-group">
           <label class="form-label">Theme</label>

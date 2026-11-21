@@ -1,16 +1,15 @@
 """
 nAI Core - Local-first AI Document Q&A System
 
-A privacy-focused, open-core AI stack for document ingestion,
-search, and question answering.
+"The AI that knows your NAS": search and ask questions about the files on your NAS.
 
 Features:
-- Document ingestion (PDF, Markdown, TXT, HTML)
-- BM25 full-text search
-- Optional embedding-based semantic search (Qdrant)
-- Optional LLM-powered answer generation (Ollama, OpenAI, etc.)
-- JWT authentication
-- Multi-turn chat
+- Sources: NAS folders indexed in place and kept in sync (file watcher + incremental rescans)
+- Uploads: PDF, DOCX, Markdown, HTML, text, code; OCR for scans and images when available
+- Hybrid search: BM25 + semantic vectors (stored in SQLite) fused with RRF, optional reranker
+- Answers with citations (file, page, section) from a local or remote LLM, or extractive
+- Streaming (Server-Sent Events), persistent multi-turn chat
+- Per-group access to sources, JWT authentication
 - RESTful API with OpenAPI documentation
 
 For configuration, set environment variables with NAI_ prefix.
@@ -21,6 +20,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from .config import get_settings
 from .middleware import setup_middleware
@@ -31,6 +31,8 @@ from .routes import (
     documents_router,
     health_router,
     ingest_router,
+    sources_router,
+    system_router,
 )
 from .utils.logging import get_logger, setup_logging
 
@@ -44,27 +46,21 @@ async def lifespan(app: FastAPI):
     # Startup
     logger.info(f"Starting {settings.app_name} v{settings.app_version}")
     logger.info(f"Debug mode: {settings.debug}")
-    logger.info(f"Embeddings enabled: {settings.embeddings_enabled}")
+    logger.info(f"Embeddings enabled: {settings.embeddings_enabled} ({settings.embeddings_provider})")
     logger.info(f"LLM enabled: {settings.llm_enabled}")
     logger.info(f"Auth enabled: {settings.auth_enabled}")
 
     # Warm up singletons: opens/migrates the database and builds the BM25 index
-    from .services import get_answerer, get_embedding_service, get_indexer, get_retriever
+    from .services import get_indexer, get_retriever, start_background, stop_background
 
     indexer = get_indexer()
     retriever = get_retriever()
-    _ = get_answerer()
-
     records = indexer.load_index()
     logger.info(f"Loaded {len(records)} chunks from index")
-    if records:
-        retriever.ensure_index(records, indexer.revision)
+    retriever.ensure_index(records, indexer.revision)
 
-    if settings.embeddings_enabled:
-        if get_embedding_service().initialize():
-            logger.info("Embedding service initialized")
-        else:
-            logger.warning("Embedding service failed to initialize")
+    # Embedding worker (vectors for new chunks) and source sync (watcher + rescans)
+    start_background()
 
     if settings.auth_enabled:
         from .services import get_auth_service
@@ -79,6 +75,7 @@ async def lifespan(app: FastAPI):
 
     # Shutdown
     logger.info("Shutting down nAI Core")
+    stop_background()
 
 
 def create_app() -> FastAPI:
@@ -123,6 +120,13 @@ def create_app() -> FastAPI:
     app.include_router(documents_router)
     app.include_router(chat_router)
     app.include_router(auth_router)
+    app.include_router(sources_router)
+    app.include_router(system_router)
+
+    # Web UI on the same origin (mounted last so API routes take precedence)
+    web_path = settings.web_path
+    if web_path:
+        app.mount("/", StaticFiles(directory=web_path, html=True), name="web")
 
     return app
 

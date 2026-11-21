@@ -1228,3 +1228,128 @@ body {
 .chat-new {
   flex-shrink: 0;
 }
+
+/* =============================================================================
+   Phase 1: sources, citations, streaming
+   ============================================================================= */
+
+.btn-sm {
+  padding: 4px 10px;
+  font-size: 0.8125rem;
+}
+
+.empty-state {
+  padding: var(--space-lg);
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 1px 8px;
+  margin-left: var(--space-sm);
+  border-radius: 999px;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  vertical-align: middle;
+  color: var(--text-secondary);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+}
+
+.status-badge.success { color: var(--success); border-color: var(--success); }
+.status-badge.error { color: var(--error); border-color: var(--error); }
+.status-badge.scanning { color: var(--accent-secondary); border-color: var(--accent-secondary); }
+
+.citation-source {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+}
+
+.citation-source span {
+  overflow-wrap: anywhere;
+}
+
+.answer-text.loading {
+  color: var(--text-muted);
+}
+
+.chat-sources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  margin-top: var(--space-sm);
+}
+
+.source-chip {
+  font: inherit;
+  font-size: 0.75rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  cursor: pointer;
+  color: var(--accent-secondary);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+}
+
+.source-chip:hover {
+  border-color: var(--accent-secondary);
+}
+
+.tab-panel > .card + .card {
+  margin-top: var(--space-lg);
+}
+
+.source-form .modal-footer {
+  padding: var(--space-sm) 0 0;
+  border-top: none;
+}
+
+.document-meta span {
+  overflow-wrap: anywhere;
+}
+
+.system-info {
+  display: grid;
+  gap: var(--space-xs);
+  font-size: 0.875rem;
+}
+
+.system-row {
+  display: flex;
+  gap: var(--space-md);
+}
+
+.system-key {
+  flex: 0 0 140px;
+  color: var(--text-muted);
+}
+
+.system-tips {
+  margin: var(--space-md) 0 0;
+  padding-left: 1.2rem;
+  color: var(--text-secondary);
+  font-size: 0.8125rem;
+}
+
+@media (max-width: 640px) {
+  .system-row { flex-direction: column; gap: 0; }
+  .system-key { flex: none; }
+  .document-actions { flex-wrap: wrap; }
+}
+
+/* Compact header on phones (status dot only, truncated user name) */
+@media (max-width: 640px) {
+  .header-content { gap: var(--space-sm); }
+  .header-actions { gap: var(--space-xs); min-width: 0; }
+  .status-text, .logo-version { display: none; }
+  .user-chip { min-width: 0; }
+  .user-name {
+    max-width: 96px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}

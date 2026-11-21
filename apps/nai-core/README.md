@@ -24,18 +24,26 @@ app/
 │   ├── ask.py
 │   ├── documents.py
 │   ├── chat.py
+│   ├── sources.py     # NAS folders (admin)
+│   ├── system.py      # Hardware + features (admin)
 │   └── auth.py
 ├── services/          # Business logic
-│   ├── indexer.py     # Document indexing
-│   ├── retriever.py   # BM25 search with caching
-│   ├── answerer.py    # Answer generation
-│   ├── embeddings.py  # Semantic search (Qdrant)
-│   └── auth.py        # Authentication
+│   ├── indexer.py     # Extraction, chunking, storage (uploads + source files in place)
+│   ├── sources.py     # Folder sync: incremental scans, file watcher
+│   ├── retriever.py   # BM25 + vectors, RRF fusion, reranking, access filtering
+│   ├── embeddings.py  # Embedding providers, vectors in SQLite, background worker
+│   ├── reranker.py    # Optional cross-encoder
+│   ├── access.py      # Which sources a user may see
+│   ├── answerer.py    # LLM / extractive answers (plain and streaming)
+│   ├── llm.py         # LiteLLM wrapper, model auto-selection
+│   ├── conversations.py
+│   └── auth.py        # Authentication + groups
+├── hardware.py        # CPU/RAM/GPU detection, model recommendations
 ├── models/            # Pydantic schemas
 │   └── schemas.py
 └── utils/             # Utilities
-    ├── text.py        # Chunking, tokenization
-    ├── extractors.py  # Text extraction
+    ├── text.py        # Chunking, contextual headers, tokenization
+    ├── extractors.py  # Sections (page/heading) from PDF, DOCX, MD, HTML, text; OCR
     └── logging.py     # Structured logging
 ```
 
@@ -44,17 +52,18 @@ app/
 ### Local Development
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8000
+uv venv -p 3.11 .venv && source .venv/bin/activate
+pip install -r requirements-full.txt   # requirements.txt: without LLM and OCR
+python -c "import nltk; nltk.download('punkt'); nltk.download('punkt_tab')"
+uvicorn app.main:app --reload --port 8000   # UI + API on http://localhost:8000
 ```
 
 ### Docker
 
 ```bash
-docker build -t nai-core .
-docker run -p 8000:8000 -v $(pwd)/data:/app/data nai-core
+# from the repository root (the image includes the web UI)
+docker build -f apps/nai-core/Dockerfile -t nai-core .
+docker run -p 8000:8000 -v nai-data:/app/data -v /path/to/shares:/shares:ro nai-core
 ```
 
 ### With Full Stack
@@ -79,18 +88,16 @@ NAI_LLM_PROVIDER=ollama
 NAI_LLM_MODEL=llama3.2
 NAI_LLM_BASE_URL=http://localhost:11434
 
-# Embeddings
+# Sources (NAS folders indexed in place)
+NAI_SOURCES_ALLOWED_ROOTS='["/shares"]'
+
+# Semantic search (vectors stored in SQLite, model downloaded on first start)
 NAI_EMBEDDINGS_ENABLED=true
-NAI_EMBEDDINGS_MODEL=sentence-transformers/all-MiniLM-L6-v2
+NAI_EMBEDDINGS_MODEL=sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
+NAI_RERANKER=auto
 
-# Qdrant
-NAI_QDRANT_ENABLED=true
-NAI_QDRANT_HOST=localhost
-NAI_QDRANT_PORT=6333
-
-# Authentication
+# Authentication (secret generated into data/.secret_key when unset)
 NAI_AUTH_ENABLED=true
-NAI_AUTH_SECRET_KEY=change-me-in-production
 ```
 
 ## API Usage

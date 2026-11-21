@@ -1,10 +1,13 @@
 """
 nAI Core Answerer Service
 Answer generation: LLM when available, extractive fallback otherwise.
+Every entry point has a streaming variant that yields events for SSE.
 """
 
 import os
+from collections.abc import AsyncIterator
 from functools import lru_cache
+from typing import Any
 
 from ..config import Settings, get_settings
 from ..models.schemas import AskResponse, ChatMessage, Citation
@@ -21,10 +24,10 @@ Instructions:
 2. Be concise and accurate.
 3. When referencing information, mention which source document it comes from.
 4. If you're uncertain, express that uncertainty.
-5. Format your response clearly with proper structure when appropriate.
+5. Answer in the language of the question.
 
 Context documents will be provided in the following format:
-[Source: filename, Chunk #N]
+[Source: path, page N]
 <content>
 """
 
@@ -40,11 +43,22 @@ CHAT_SYSTEM_PROMPT = """You are a helpful AI assistant that answers questions ba
 
 When relevant context is provided, use it to answer accurately. If the context doesn't contain enough information, say so clearly.
 
-Be conversational and helpful. Reference previous parts of the conversation when relevant."""
+Be conversational and helpful. Reference previous parts of the conversation when relevant. Answer in the user's language."""
 
 
-def _source_name(citation: Citation) -> str:
-    return citation.metadata.get("original_filename") or os.path.basename(citation.doc_path)
+def source_label(citation: Citation) -> str:
+    """Human-readable location, e.g. 'Documents/Insurance/car.pdf, page 3'."""
+    if citation.source_name:
+        name = f"{citation.source_name}/{citation.doc_path}"
+    else:
+        name = (
+            citation.filename
+            or citation.metadata.get("original_filename")
+            or os.path.basename(citation.doc_path)
+        )
+    if citation.page is not None:
+        name += f", page {citation.page}"
+    return name
 
 
 class AnswererService:
@@ -54,27 +68,39 @@ class AnswererService:
         self.settings = settings
         self.llm = llm
 
-    # ------------------------------------------------------------------
-    # Helpers
-    # ------------------------------------------------------------------
-
     def is_llm_available(self) -> bool:
         return self.llm.is_available()
+
+    # ------------------------------------------------------------------
+    # Prompt helpers
+    # ------------------------------------------------------------------
 
     @staticmethod
     def _format_context(citations: list[Citation], max_chars: int | None = None) -> str:
         parts = []
         for citation in citations:
             text = citation.text if max_chars is None else citation.text[:max_chars]
-            parts.append(f"[Source: {_source_name(citation)}, Chunk #{citation.chunk_id}]\n{text}\n")
+            parts.append(f"[Source: {source_label(citation)}]\n{text}\n")
         return "\n---\n".join(parts)
 
     @staticmethod
     def _sources_footer(citations: list[Citation]) -> str:
         if not citations:
             return ""
-        lines = [f"- [{i}] {_source_name(c)} (chunk {c.chunk_id})" for i, c in enumerate(citations[:5], 1)]
+        lines = [f"- [{i}] {source_label(c)}" for i, c in enumerate(citations[:5], 1)]
         return "\n\n**Sources:**\n" + "\n".join(lines) + "\n"
+
+    def _qa_messages(self, question: str, citations: list[Citation]) -> list[dict[str, str]]:
+        prompt = QA_PROMPT_TEMPLATE.format(context=self._format_context(citations), question=question)
+        return [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": prompt}]
+
+    def _chat_messages(self, history: list[ChatMessage], citations: list[Citation]) -> list[dict[str, str]]:
+        system = CHAT_SYSTEM_PROMPT
+        if citations:
+            system += "\n\nRelevant document context:\n" + self._format_context(citations[:5], 500)
+        messages = [{"role": "system", "content": system}]
+        messages += [{"role": m.role, "content": m.content} for m in history if m.role != "system"]
+        return messages
 
     def compose_extractive_answer(
         self,
@@ -95,7 +121,7 @@ class AnswererService:
                     text = text[: last_period + 1]
                 else:
                     text = text + "..."
-            excerpts.append(f"**[{i}] From: {_source_name(cit)}** (relevance: {cit.score:.2f})\n> {text}")
+            excerpts.append(f"**[{i}] {source_label(cit)}**\n> {text}")
 
         joined = "\n\n".join(excerpts)
         hint = ""
@@ -107,20 +133,13 @@ class AnswererService:
         return f"Based on your indexed documents, here are the most relevant excerpts:\n\n{joined}{hint}"
 
     # ------------------------------------------------------------------
-    # Single question
+    # Non-streaming
     # ------------------------------------------------------------------
 
     async def answer(self, question: str, citations: list[Citation], use_llm: bool = True) -> AskResponse:
-        """Answer a question from retrieved citations."""
         if use_llm and citations and self.llm.is_available():
-            prompt = QA_PROMPT_TEMPLATE.format(context=self._format_context(citations), question=question)
             try:
-                text, tokens = await self.llm.complete(
-                    [
-                        {"role": "system", "content": SYSTEM_PROMPT},
-                        {"role": "user", "content": prompt},
-                    ]
-                )
+                text, tokens = await self.llm.complete(self._qa_messages(question, citations))
                 return AskResponse(
                     answer=text + self._sources_footer(citations),
                     citations=citations,
@@ -135,36 +154,76 @@ class AnswererService:
             answer=self.compose_extractive_answer(question, citations),
             citations=citations,
             method="extractive",
-            model=None,
         )
 
-    # ------------------------------------------------------------------
-    # Multi-turn chat
-    # ------------------------------------------------------------------
-
     async def chat(self, history: list[ChatMessage], citations: list[Citation]) -> tuple[str, str]:
-        """
-        Reply to a conversation. ``history`` ends with the latest user message.
-        Returns (reply, method) where method is ``llm`` or ``extractive``.
-        """
+        """Reply to a conversation (history ends with the user message). Returns (reply, method)."""
         latest_question = next((m.content for m in reversed(history) if m.role == "user"), "")
-
         if self.llm.is_available():
-            system = CHAT_SYSTEM_PROMPT
-            if citations:
-                system += "\n\nRelevant document context:\n" + self._format_context(citations[:5], 500)
-            messages = [{"role": "system", "content": system}]
-            messages += [{"role": m.role, "content": m.content} for m in history if m.role != "system"]
             try:
-                text, _ = await self.llm.complete(messages)
+                text, _ = await self.llm.complete(self._chat_messages(history, citations))
                 return text, "llm"
             except Exception as e:
                 logger.warning(f"Chat LLM failed, falling back to extractive: {e}")
-
         return self.compose_extractive_answer(latest_question, citations), "extractive"
+
+    # ------------------------------------------------------------------
+    # Streaming: yields {"type": "token", "text"}, optionally {"type": "error", "message"},
+    # and finally {"type": "done", "method", "model", "answer"}.
+    # ------------------------------------------------------------------
+
+    async def _stream_llm(self, messages: list[dict[str, str]], footer: str) -> AsyncIterator[dict[str, Any]]:
+        parts: list[str] = []
+        try:
+            async for delta in self.llm.stream(messages):
+                parts.append(delta)
+                yield {"type": "token", "text": delta}
+        except Exception as e:
+            if not parts:
+                raise  # nothing sent yet: the caller falls back to extractive
+            yield {"type": "error", "message": f"The model stopped unexpectedly: {e}"}
+        if footer:
+            parts.append(footer)
+            yield {"type": "token", "text": footer}
+        yield {"type": "done", "method": "llm", "model": self.llm.display_name, "answer": "".join(parts)}
+
+    async def _stream_extractive(
+        self, question: str, citations: list[Citation]
+    ) -> AsyncIterator[dict[str, Any]]:
+        text = self.compose_extractive_answer(question, citations)
+        yield {"type": "token", "text": text}
+        yield {"type": "done", "method": "extractive", "model": None, "answer": text}
+
+    async def stream_answer(
+        self, question: str, citations: list[Citation], use_llm: bool = True
+    ) -> AsyncIterator[dict[str, Any]]:
+        if use_llm and citations and self.llm.is_available():
+            try:
+                async for event in self._stream_llm(
+                    self._qa_messages(question, citations), self._sources_footer(citations)
+                ):
+                    yield event
+                return
+            except Exception as e:
+                logger.warning(f"LLM streaming failed, falling back to extractive: {e}")
+        async for event in self._stream_extractive(question, citations):
+            yield event
+
+    async def stream_chat(
+        self, history: list[ChatMessage], citations: list[Citation]
+    ) -> AsyncIterator[dict[str, Any]]:
+        latest_question = next((m.content for m in reversed(history) if m.role == "user"), "")
+        if self.llm.is_available():
+            try:
+                async for event in self._stream_llm(self._chat_messages(history, citations), ""):
+                    yield event
+                return
+            except Exception as e:
+                logger.warning(f"Chat LLM streaming failed, falling back to extractive: {e}")
+        async for event in self._stream_extractive(latest_question, citations):
+            yield event
 
 
 @lru_cache(maxsize=1)
 def get_answerer() -> AnswererService:
-    """Get the answerer service singleton."""
     return AnswererService(get_settings(), get_llm_service())

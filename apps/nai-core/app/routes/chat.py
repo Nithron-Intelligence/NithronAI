@@ -1,10 +1,13 @@
 """
 nAI Core Chat Routes
-Multi-turn conversation endpoints (history persisted per user)
+Multi-turn conversation endpoints (history persisted per user), plain and streaming
 """
+
+from collections.abc import AsyncIterator
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.concurrency import run_in_threadpool
+from fastapi.responses import StreamingResponse
 
 from ..models.schemas import (
     ChatMessage,
@@ -14,10 +17,12 @@ from ..models.schemas import (
     ConversationSummary,
     User,
 )
-from ..security import require_auth
+from ..security import get_scope, require_auth
+from ..services.access import AccessScope
 from ..services.answerer import AnswererService, get_answerer
 from ..services.conversations import ConversationStore, get_conversation_store
 from ..services.retriever import RetrieverService, get_retriever
+from ..utils.sse import SSE_HEADERS, sse_event
 
 router = APIRouter(prefix="/chat", tags=["Chat"])
 
@@ -25,21 +30,15 @@ HISTORY_LIMIT = 20  # messages sent to the LLM
 CONTEXT_TURNS = 3  # recent user turns used to build the retrieval query
 
 
-@router.post("", response_model=ChatResponse)
-async def chat(
+async def _prepare(
     request: ChatRequest,
-    conversation_id: str | None = None,
-    user: User = Depends(require_auth),
-    store: ConversationStore = Depends(get_conversation_store),
-    retriever: RetrieverService = Depends(get_retriever),
-    answerer: AnswererService = Depends(get_answerer),
-) -> ChatResponse:
-    """
-    Send message(s) to a conversation and get the assistant's reply.
-
-    Pass ``conversation_id`` (body, or query parameter for older clients) to continue a
-    conversation; omit it to start a new one. Retrieval uses the recent user turns.
-    """
+    conversation_id: str | None,
+    user: User,
+    scope: AccessScope,
+    store: ConversationStore,
+    retriever: RetrieverService,
+) -> tuple[str, list[ChatMessage], list[Citation]]:
+    """Validate, store the new user message(s), load history and retrieve context."""
     new_messages = [m for m in request.messages if m.role != "system"]
     if not any(m.role == "user" for m in new_messages):
         raise HTTPException(status_code=400, detail="No user message found")
@@ -54,19 +53,69 @@ async def chat(
 
     for message in new_messages:
         store.add_message(conv_id, message)
-
     history = store.get_messages(conv_id, limit=HISTORY_LIMIT)
 
     citations: list[Citation] = []
     if request.use_context:
         recent_user_turns = [m.content for m in history if m.role == "user"][-CONTEXT_TURNS:]
-        results, _ = await run_in_threadpool(retriever.search, " ".join(recent_user_turns), request.top_k)
+        narrowed = scope.narrow(request.source_ids, request.include_uploads)
+        results, _ = await run_in_threadpool(
+            retriever.search, " ".join(recent_user_turns), request.top_k, "auto", narrowed
+        )
         citations = retriever.results_to_citations(results)
+    return conv_id, history, citations
 
+
+@router.post("", response_model=ChatResponse)
+async def chat(
+    request: ChatRequest,
+    conversation_id: str | None = None,
+    user: User = Depends(require_auth),
+    scope: AccessScope = Depends(get_scope),
+    store: ConversationStore = Depends(get_conversation_store),
+    retriever: RetrieverService = Depends(get_retriever),
+    answerer: AnswererService = Depends(get_answerer),
+) -> ChatResponse:
+    """
+    Send message(s) to a conversation and get the assistant's reply.
+
+    Pass ``conversation_id`` (body, or query parameter for older clients) to continue a
+    conversation; omit it to start a new one.
+    """
+    conv_id, history, citations = await _prepare(request, conversation_id, user, scope, store, retriever)
     reply, method = await answerer.chat(history, citations)
     saved = store.add_message(conv_id, ChatMessage(role="assistant", content=reply), citations)
-
     return ChatResponse(message=saved, citations=citations, conversation_id=conv_id, method=method)
+
+
+@router.post("/stream")
+async def chat_stream(
+    request: ChatRequest,
+    user: User = Depends(require_auth),
+    scope: AccessScope = Depends(get_scope),
+    store: ConversationStore = Depends(get_conversation_store),
+    retriever: RetrieverService = Depends(get_retriever),
+    answerer: AnswererService = Depends(get_answerer),
+) -> StreamingResponse:
+    """
+    Like ``POST /chat`` but streams Server-Sent Events: ``conversation`` (id),
+    ``citations``, ``token`` deltas, optional ``error``, then ``done``.
+    The full reply is saved to the conversation when the stream finishes.
+    """
+    conv_id, history, citations = await _prepare(request, None, user, scope, store, retriever)
+
+    async def events() -> AsyncIterator[str]:
+        yield sse_event("conversation", {"conversation_id": conv_id})
+        yield sse_event("citations", [c.model_dump() for c in citations])
+        async for event in answerer.stream_chat(history, citations):
+            kind = event.pop("type")
+            if kind == "done":
+                answer = event.pop("answer", "")
+                store.add_message(conv_id, ChatMessage(role="assistant", content=answer), citations)
+                event["conversation_id"] = conv_id
+            yield sse_event(kind, event)
+
+    return StreamingResponse(events(), media_type="text/event-stream", headers=SSE_HEADERS)
 
 
 @router.get("", response_model=list[ConversationSummary])

@@ -6,7 +6,7 @@ Authentication and user management endpoints
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from ..config import Settings, get_config
-from ..models.schemas import Token, User, UserCreate, UserLogin
+from ..models.schemas import Token, User, UserCreate, UserGroupsUpdate, UserLogin
 from ..security import get_current_user, require_admin, require_auth
 from ..services.auth import AuthService, get_auth_service
 from ..utils.logging import get_logger
@@ -120,3 +120,20 @@ def set_admin(
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
     return {"success": True, "user": user}
+
+
+@router.put("/users/{user_id}/groups", response_model=User)
+def set_groups(
+    user_id: str,
+    data: UserGroupsUpdate,
+    _admin: User = Depends(require_admin),
+    auth: AuthService = Depends(get_auth_service),
+) -> User:
+    """
+    Replace a user's groups (admin only). Groups decide which sources a non-admin user
+    can search: a source with ``allowed_groups`` is visible to members of those groups.
+    """
+    user = auth.set_groups(user_id, data.groups)
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user

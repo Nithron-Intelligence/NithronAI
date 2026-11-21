@@ -25,6 +25,10 @@ BASE_ENV = {
     "NAI_EMBEDDINGS_ENABLED": "false",
     "NAI_AUTH_ENABLED": "false",
     "NAI_RATE_LIMIT_ENABLED": "false",
+    # No background threads, model downloads or system binaries unless a test opts in
+    "NAI_SOURCES_BACKGROUND": "false",
+    "NAI_RERANKER": "false",
+    "NAI_OCR_ENABLED": "false",
 }
 os.environ.update(BASE_ENV)
 
@@ -102,3 +106,69 @@ def sample_text_file(test_data_dir) -> str:
     with open(filepath, "w") as f:
         f.write(content)
     return filepath
+
+
+# ---------------------------------------------------------------------------
+# Phase 1 helpers: fake embedding model and a fake NAS share
+# ---------------------------------------------------------------------------
+
+# Words in the same group get the same vector dimension, so "automobile" matches "car"
+# semantically even though BM25 sees no shared term.
+SYNONYM_GROUPS = [
+    {"car", "automobile", "vehicle", "auto"},
+    {"insurance", "policy", "coverage"},
+    {"invoice", "bill", "receipt"},
+    {"holiday", "vacation", "trip"},
+    {"router", "network", "wifi"},
+]
+
+
+class FakeEmbeddingProvider:
+    name = "fake"
+    model = "fake-synonyms"
+
+    def __init__(self, settings=None):
+        pass
+
+    def _vector(self, text: str):
+        import numpy as np
+
+        vec = np.zeros(len(SYNONYM_GROUPS) + 1, dtype=np.float32)
+        for word in text.lower().replace(".", " ").replace(",", " ").split():
+            for i, group in enumerate(SYNONYM_GROUPS):
+                if word in group:
+                    vec[i] += 1.0
+        vec[-1] = 0.01  # never an all-zero vector
+        return vec
+
+    def embed_documents(self, texts):
+        import numpy as np
+
+        return np.stack([self._vector(t) for t in texts])
+
+    def embed_query(self, text):
+        return self._vector(text)
+
+
+@pytest.fixture
+def fake_embeddings() -> dict[str, str]:
+    """Env overrides that enable semantic search with the fake provider."""
+    from app.services.embeddings import register_provider
+
+    register_provider("fake", FakeEmbeddingProvider)
+    return {
+        "NAI_EMBEDDINGS_ENABLED": "true",
+        "NAI_EMBEDDINGS_PROVIDER": "fake",
+        "NAI_EMBEDDINGS_MIN_SCORE": "0.3",
+        "NAI_EMBEDDINGS_BACKGROUND": "false",  # tests call embed_pending() themselves
+    }
+
+
+@pytest.fixture
+def share(tmp_path) -> tuple[str, dict[str, str]]:
+    """A folder standing in for a NAS share, plus env that allows it as a source root."""
+    import json
+
+    root = tmp_path / "shares"
+    (root / "Documents").mkdir(parents=True)
+    return str(root), {"NAI_SOURCES_ALLOWED_ROOTS": json.dumps([str(root)])}

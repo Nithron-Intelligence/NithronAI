@@ -1,0 +1,8 @@
+# Build context is the repo root (apps/nai-core/Dockerfile); only send what the image needs
+*
+!apps/nai-core/requirements.txt
+!apps/nai-core/requirements-full.txt
+!apps/nai-core/app/
+!apps/nai-docs/web/
+**/__pycache__
+**/*.pyc

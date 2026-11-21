@@ -258,3 +258,18 @@ class TestRateLimiting:
         # Headers should be present (but values depend on config)
         # Just check endpoint works
         assert response.status_code == 200
+
+
+def test_web_ui_is_served_next_to_the_api(make_client, tmp_path):
+    web = tmp_path / "web"
+    web.mkdir()
+    (web / "index.html").write_text("<html>nAI UI</html>")
+    c = make_client(NAI_WEB_DIR=str(web))
+    assert "nAI UI" in c.get("/").text
+    assert c.get("/health").json()["status"] == "ok"  # API routes still win
+    assert c.get("/openapi.json").status_code == 200
+
+
+def test_web_ui_can_be_disabled(make_client):
+    c = make_client(NAI_WEB_DIR="")
+    assert c.get("/").status_code == 404

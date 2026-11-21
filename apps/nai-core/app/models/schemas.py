@@ -50,6 +50,8 @@ class DocumentInfo(BaseModel):
     file_size: int = Field(0, description="File size in bytes")
     file_type: str = Field(..., description="File extension/type")
     indexed_at: str = Field(..., description="Indexing timestamp")
+    source_id: int | None = Field(None, description="Source folder id (None for uploads)")
+    source_name: str | None = Field(None, description="Source folder name")
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -108,7 +110,10 @@ class AskRequest(BaseModel):
     top_k: int = Field(default=5, ge=1, le=50)
     use_llm: bool = Field(default=True, description="Use LLM for answer generation if available")
     include_sources: bool = Field(default=True, description="Include source chunks in response")
-    filters: dict[str, Any] | None = Field(default=None, description="Optional filters")
+    source_ids: list[int] | None = Field(
+        default=None, description="Only search these sources (default: every source you can access)"
+    )
+    include_uploads: bool = Field(default=True, description="Include uploaded documents")
 
     @field_validator("question")
     @classmethod
@@ -121,8 +126,11 @@ class SearchRequest(BaseModel):
 
     query: str = Field(..., min_length=1, max_length=2000)
     top_k: int = Field(default=10, ge=1, le=100)
-    method: Literal["bm25", "embedding", "hybrid"] = Field(default="bm25")
-    filters: dict[str, Any] | None = Field(default=None)
+    method: Literal["auto", "bm25", "embedding", "hybrid"] = Field(default="auto")
+    source_ids: list[int] | None = Field(
+        default=None, description="Only search these sources (default: every source you can access)"
+    )
+    include_uploads: bool = Field(default=True, description="Include uploaded documents")
 
 
 class Citation(BaseModel):
@@ -133,6 +141,11 @@ class Citation(BaseModel):
     chunk_id: int
     text: str
     score: float
+    filename: str | None = None
+    page: int | None = None
+    heading: str | None = None
+    source_id: int | None = None
+    source_name: str | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -145,6 +158,11 @@ class SearchResult(BaseModel):
     text: str
     score: float
     highlight: str | None = None
+    filename: str | None = None
+    page: int | None = None
+    heading: str | None = None
+    source_id: int | None = None
+    source_name: str | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -190,7 +208,10 @@ class ChatRequest(BaseModel):
     conversation_id: str | None = Field(
         default=None, description="Continue an existing conversation (omit to start a new one)"
     )
-    stream: bool = Field(default=False, description="Stream response (not implemented yet)")
+    source_ids: list[int] | None = Field(
+        default=None, description="Only search these sources (default: every source you can access)"
+    )
+    include_uploads: bool = Field(default=True, description="Include uploaded documents")
 
 
 class ChatResponse(BaseModel):
@@ -253,6 +274,21 @@ class User(BaseModel):
     is_active: bool = True
     is_admin: bool = False
     created_at: str
+    groups: list[str] = Field(default_factory=list)
+
+
+class UserGroupsUpdate(BaseModel):
+    """Replace a user's groups."""
+
+    groups: list[str] = Field(default_factory=list, max_length=50)
+
+    @field_validator("groups")
+    @classmethod
+    def clean_groups(cls, v: list[str]) -> list[str]:
+        cleaned = sorted({g.strip() for g in v if g.strip()})
+        if any(len(g) > 64 for g in cleaned):
+            raise ValueError("Group names must be at most 64 characters")
+        return cleaned
 
 
 class Token(BaseModel):
@@ -269,3 +305,87 @@ class TokenData(BaseModel):
     user_id: str | None = None
     username: str | None = None
     exp: int | None = None
+
+
+# ============================================================================
+# Sources (NAS folders indexed in place)
+# ============================================================================
+
+
+class SourceCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=80)
+    path: str = Field(..., min_length=1, description="Absolute folder path on the server")
+    recursive: bool = True
+    exclude_patterns: list[str] = Field(
+        default_factory=list, description="Glob patterns on relative paths to skip, e.g. '*.tmp', 'Archive/*'"
+    )
+    allowed_groups: list[str] = Field(
+        default_factory=list, description="Groups that may see this source (empty: every user)"
+    )
+    enabled: bool = True
+
+
+class SourceUpdate(BaseModel):
+    name: str | None = Field(None, min_length=1, max_length=80)
+    recursive: bool | None = None
+    exclude_patterns: list[str] | None = None
+    allowed_groups: list[str] | None = None
+    enabled: bool | None = None
+
+
+class SourceInfo(BaseModel):
+    id: int
+    name: str
+    path: str | None = Field(None, description="Only shown to admins")
+    recursive: bool = True
+    exclude_patterns: list[str] = Field(default_factory=list)
+    allowed_groups: list[str] = Field(default_factory=list)
+    enabled: bool = True
+    created_at: str
+    last_scan_started: str | None = None
+    last_scan_finished: str | None = None
+    last_scan_status: str = "never"
+    last_error: str | None = None
+    document_count: int = 0
+    scanning: bool = False
+
+
+class ScanResult(BaseModel):
+    source_id: int
+    indexed: int = 0
+    unchanged: int = 0
+    removed: int = 0
+    skipped: int = 0
+    errors: int = 0
+    seconds: float = 0.0
+
+
+__all__ = [
+    "HealthResponse",
+    "ChunkRecord",
+    "DocumentInfo",
+    "DocumentListResponse",
+    "DocumentDeleteResponse",
+    "IngestFileResult",
+    "IngestResponse",
+    "AskRequest",
+    "SearchRequest",
+    "Citation",
+    "SearchResult",
+    "AskResponse",
+    "SearchResponse",
+    "ChatMessage",
+    "ChatRequest",
+    "ChatResponse",
+    "ConversationSummary",
+    "UserCreate",
+    "UserLogin",
+    "User",
+    "UserGroupsUpdate",
+    "Token",
+    "TokenData",
+    "SourceCreate",
+    "SourceUpdate",
+    "SourceInfo",
+    "ScanResult",
+]

@@ -36,7 +36,9 @@ def health_check(
         components["index"] = False
 
     if settings.embeddings_enabled:
-        components["embeddings"] = embeddings.is_available()
+        # "loading" counts as healthy: the model may still be downloading on first start
+        embeddings.ensure_loading()
+        components["embeddings"] = embeddings.state != "error"
     if settings.llm_enabled:
         components["llm"] = answerer.is_llm_available()
 
@@ -63,12 +65,13 @@ def detailed_health(
         "config": {
             "debug": settings.debug,
             "embeddings_enabled": settings.embeddings_enabled,
-            "qdrant_enabled": settings.qdrant_enabled,
+            "embeddings_provider": settings.embeddings_provider,
+            "reranker": settings.reranker,
             "llm_enabled": settings.llm_enabled,
             "llm_provider": settings.llm_provider if settings.llm_enabled else None,
             "auth_enabled": settings.auth_enabled,
         },
         "index": indexer.get_stats(),
         "retriever": retriever.get_stats(),
-        "embeddings": embeddings.get_stats() if settings.embeddings_enabled else None,
+        "embeddings": embeddings.stats() if settings.embeddings_enabled else None,
     }

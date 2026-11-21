@@ -4,6 +4,7 @@ Chunking, normalization, tokenization
 """
 
 import re
+from dataclasses import dataclass
 
 import nltk
 
@@ -176,12 +177,44 @@ def chunk_text_semantic(
 
 def tokenize(text: str) -> list[str]:
     """
-    Tokenize text for BM25 and search.
-    Returns lowercase word tokens.
+    Tokenize text for BM25 and search. Returns lowercase word tokens.
+
+    Compounds joined by ``-`` or ``_`` (file names like ``car_insurance_2024``,
+    ``2023-tax-return``) yield the whole compound *and* its parts, so both the exact
+    name and its individual words match.
     """
     if not text:
         return []
-    return re.findall(r"[\w\-]+", text.lower())
+    tokens: list[str] = []
+    for token in re.findall(r"[\w\-]+", text.lower()):
+        token = token.strip("-_")
+        if not token:
+            continue
+        tokens.append(token)
+        if "-" in token or "_" in token:
+            tokens.extend(part for part in re.split(r"[-_]+", token) if part)
+    return tokens
+
+
+# Function words that carry no meaning for keyword ranking (English, German, Portuguese).
+# Without this, "the contract for the car" ranks any chunk full of "the"/"for" highly.
+STOPWORDS = frozenset(
+    """
+    a an and are as at be been but by can could did do does for from had has have how i if in into is it
+    its me my no not of on or our so than that the their them then there these they this to was we were
+    what when where which who why will with would you your
+    aber als am an auch auf aus bei bin bis bist da damit dann das dass dem den der des die dies diese
+    dieser du durch ein eine einem einen einer es für hat hatte ich ihr im in ist ja kann mein mit nach
+    nicht noch nur oder sich sie sind so über um und uns von vor war was wie wir wird wo zu zum zur
+    ao aos as com como da das de do dos e ela ele em entre era essa este eu foi isso mais mas me na nas
+    no nos o os ou para pela pelo por qual que se sem seu sua são também um uma você
+    """.split()
+)
+
+
+def index_tokens(text: str) -> list[str]:
+    """Tokens used for BM25 (``tokenize`` without stopwords)."""
+    return [t for t in tokenize(text) if t not in STOPWORDS]
 
 
 def highlight_matches(text: str, query: str, max_length: int = 300, context_chars: int = 50) -> str:
@@ -233,3 +266,61 @@ def highlight_matches(text: str, query: str, max_length: int = 300, context_char
         snippet = snippet + "..."
 
     return snippet
+
+
+# ---------------------------------------------------------------------------
+# Section-aware chunking with contextual headers
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class ChunkDraft:
+    text: str
+    context: str
+    page: int | None = None
+    heading: str | None = None
+
+
+def build_context_header(
+    display_path: str,
+    title: str | None = None,
+    heading: str | None = None,
+    page: int | None = None,
+) -> str:
+    """
+    Short header prepended to each chunk for indexing (not shown as the chunk text).
+    It tells BM25 and the embedding model which document and section a passage
+    belongs to: a cheap, deterministic form of "contextual retrieval".
+    """
+    parts = [f"Document: {display_path}"]
+    if title and title.strip() and title.strip().lower() not in display_path.lower():
+        parts.append(f"Title: {title.strip()}")
+    if heading:
+        parts.append(f"Section: {heading}")
+    if page is not None:
+        parts.append(f"Page {page}")
+    return " | ".join(parts)
+
+
+def chunk_sections(
+    sections: list,
+    display_path: str,
+    title: str | None = None,
+    max_chars: int = 1000,
+    overlap_sentences: int = 1,
+) -> list[ChunkDraft]:
+    """Chunk each section separately so chunks never straddle pages or headings."""
+    drafts: list[ChunkDraft] = []
+    for section in sections:
+        for piece in chunk_text_semantic(
+            section.text, max_chars=max_chars, overlap_sentences=overlap_sentences
+        ):
+            drafts.append(
+                ChunkDraft(
+                    text=piece,
+                    context=build_context_header(display_path, title, section.heading, section.page),
+                    page=section.page,
+                    heading=section.heading,
+                )
+            )
+    return drafts

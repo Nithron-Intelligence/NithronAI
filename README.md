@@ -1,41 +1,26 @@
-# nAI (Nithron AI) — Local-first, Open-core AI Stack
+# nAI (Nithron AI) — the AI that knows your NAS
 
 [![License: NCL v1.0](https://img.shields.io/badge/License-NithronOS_Community_License-blue.svg)](./LICENSE)
 [![Backend](https://img.shields.io/badge/Backend-FastAPI-informational.svg)](apps/nai-core)
 [![Status](https://img.shields.io/badge/status-beta-green.svg)](#)
-[![Release](https://img.shields.io/badge/nAI-v0.3.0-blue)](https://github.com/Nithron/NithronAI/releases)
+[![Release](https://img.shields.io/badge/nAI-v0.4.0-blue)](https://github.com/Nithron/NithronAI/releases)
 [![Built by Nithron](https://img.shields.io/badge/built_by-Nithron-0b8fe0.svg)](https://nithron.com/projects/)
 
-**nAI** is a local-first AI document Q&A system, built to become the built-in AI of
-[NithronOS](https://github.com/Nithron/NithronOS): search and ask questions about the files on your NAS,
-privately, on your own hardware.
+**nAI** lets you search and ask questions about the files on your NAS, privately, on your own
+hardware. It is built to become the built-in AI of [NithronOS](https://github.com/Nithron/NithronOS).
 
-- 📄 **Ingest** PDFs, Markdown, TXT, HTML, RST
-- 🔍 **Search** with BM25 + optional semantic embeddings (Qdrant)
-- 💬 **Ask** questions → get **answers with citations**
-- 🤖 **Optional LLM** integration (Ollama, OpenAI, Anthropic via LiteLLM)
-- 🔐 **JWT Authentication** and rate limiting
-- 🎨 **Modern Web UI** with dark theme
+Ask *"the insurance contract for the car"* and get `scan_0042.pdf`, page 2, even though the file
+name says nothing and the contract is in German.
 
-> Privacy by default. Open-core by design. Runs great on a homelab.
+- 📂 **Indexes NAS folders in place** and keeps them in sync (file watcher + incremental rescans); uploads work too
+- 🔍 **Hybrid search**: keyword (BM25) + multilingual semantic search, fused with Reciprocal Rank Fusion, optional reranker
+- 📄 **Reads** PDF, Word, Markdown, HTML, text, data and code files; **OCR** for scans and photos of documents
+- 💬 **Answers with citations** (file, page, section) that open the original file; streamed as they're written
+- 🤖 **Bring your own model**: Ollama on the NAS or on a PC with a GPU, any OpenAI-compatible server, or a cloud API. Without one, nAI answers with exact quotes
+- 🔐 **Per-group access** to folders, JWT auth, rate limiting
+- 🪶 **Runs on a CPU-only NAS**: no PyTorch, no vector database; one container, one SQLite file
 
----
-
-## 🚀 Features
-
-| Feature | Description |
-|---------|-------------|
-| **Document Ingestion** | PDF, Markdown, TXT, HTML, RST (upload or URL) |
-| **BM25 Search** | Fast full-text search with caching |
-| **Semantic Search** | Embedding-based search via Qdrant (optional) |
-| **LLM Answers** | Generate answers with Ollama/OpenAI/Anthropic |
-| **Multi-turn Chat** | Persistent, per-user conversation history with context retrieval |
-| **Document Management** | List, view, delete indexed documents |
-| **Authentication** | JWT auth on every data endpoint; first account becomes admin |
-| **Rate Limiting** | Configurable request throttling (proxy-aware) |
-| **Storage** | Single SQLite file — no database server needed |
-| **Modern API** | OpenAPI docs, structured responses |
-| **Docker Ready** | Full stack with Qdrant + Ollama |
+> Privacy by default: nothing leaves your network unless you configure a cloud model.
 
 ---
 
@@ -45,31 +30,35 @@ privately, on your own hardware.
 
 ```bash
 cd infra
-docker-compose up -d
+NAI_SHARES_DIR=/path/to/your/shares docker compose up -d
+docker exec nai-ollama ollama pull qwen3:8b   # optional: a model for generated answers
 ```
+
+Open **http://localhost:8000**, create the first account (it becomes admin), then add folders under
+**Sources** (paths under `/shares`). The search model (~0.5 GB) downloads on first start; until it is
+ready, search is keyword-only.
 
 This starts:
-- **nai-core** on `http://localhost:8000` (API)
-- **nai-web** on `http://localhost:5173` (Web UI)
-- **qdrant** on `http://localhost:6333` (Vector DB)
-- **ollama** on `http://localhost:11434` (Local LLM)
+- **nai-core** on `http://localhost:8000` (web UI + API)
+- **ollama** on `http://localhost:11434` (optional local LLM)
 
-### Option 2: Local Development
+### Option 2: NithronOS
+
+A catalog template lives in [`packaging/nithronos/`](packaging/nithronos/). It mounts the NithronOS
+shares (`/srv/shares`) read-only.
+
+### Option 3: Local Development
 
 ```bash
-# Backend
 cd apps/nai-core
-python -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8000
-
-# Web UI (separate terminal)
-cd apps/nai-docs/web
-python -m http.server 5173
+uv venv -p 3.11 .venv && source .venv/bin/activate
+pip install -r requirements-full.txt   # or requirements.txt without LLM/OCR
+python -c "import nltk; nltk.download('punkt'); nltk.download('punkt_tab')"
+NAI_SOURCES_ALLOWED_ROOTS='["/home/me/Documents"]' uvicorn app.main:app --reload --port 8000
 ```
 
-Open: http://localhost:5173
+Open http://localhost:8000 (the UI is served by the backend). OCR additionally needs the
+`tesseract` binary and language packs.
 
 ---
 
@@ -78,88 +67,91 @@ Open: http://localhost:5173
 Configure via environment variables (prefix `NAI_`):
 
 ```bash
-# Core
-NAI_DEBUG=false
-NAI_LOG_LEVEL=INFO
+# Sources: NAS folders indexed in place (paths must be inside these roots)
+NAI_SOURCES_ALLOWED_ROOTS='["/shares"]'
+NAI_SOURCES_WATCH=true                    # apply file changes within seconds (inotify)
+NAI_SOURCES_SCAN_INTERVAL_SECONDS=900     # full incremental rescan (catches what the watcher misses)
 
-# LLM (Ollama example)
-NAI_LLM_ENABLED=true
-NAI_LLM_PROVIDER=ollama
-NAI_LLM_MODEL=llama3.2
-NAI_LLM_BASE_URL=http://localhost:11434
-
-# Embeddings + Qdrant
+# Semantic search (vectors live in SQLite; no vector database)
 NAI_EMBEDDINGS_ENABLED=true
-NAI_QDRANT_ENABLED=true
-NAI_QDRANT_HOST=localhost
+NAI_EMBEDDINGS_PROVIDER=auto              # fastembed (ONNX, CPU) | ollama | sentence-transformers
+NAI_EMBEDDINGS_MODEL=sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
+NAI_RERANKER=false                        # true | false | auto (on when the hardware can afford it)
+
+# OCR for scanned PDFs and images (needs pytesseract + tesseract)
+NAI_OCR_ENABLED=true
+NAI_OCR_LANGUAGES=eng+deu
+
+# LLM answers (any LiteLLM provider). "auto" picks the largest installed Ollama model that fits.
+NAI_LLM_ENABLED=true
+NAI_LLM_PROVIDER=ollama                   # or openai (+ base URL for vLLM/llama.cpp/LM Studio), anthropic, ...
+NAI_LLM_MODEL=auto
+NAI_LLM_BASE_URL=http://192.168.1.50:11434   # e.g. Ollama on a gaming PC
 
 # Authentication (secret key is generated and stored in data/.secret_key if unset)
 NAI_AUTH_ENABLED=true
-NAI_AUTH_ALLOW_REGISTRATION=false   # only admins create accounts after the first one
+NAI_AUTH_ALLOW_REGISTRATION=false         # only admins create accounts after the first one
 
 # Behind a reverse proxy: trust its X-Forwarded-For for rate limiting
 NAI_TRUSTED_PROXIES='["10.0.0.0/8"]'
-
-# Allow /ingest/url to fetch LAN addresses (off by default: SSRF protection)
-NAI_INGEST_URL_ALLOW_PRIVATE=false
 ```
 
-### Authentication
+See [`apps/nai-core/app/config.py`](apps/nai-core/app/config.py) for all options. `GET /system`
+(admin) shows the detected hardware, which features are active, and recommendations.
 
-With `NAI_AUTH_ENABLED=true`, every data endpoint requires a bearer token. On a fresh install the
-web UI asks you to create the **first account, which becomes admin**; after that, registration is
-closed and admins create accounts (`POST /auth/register` with an admin token). With auth disabled,
-the API runs as a single local admin, which is fine on a trusted machine but not on a shared network.
+### Access control
 
-See [`apps/nai-core/app/config.py`](apps/nai-core/app/config.py) for all options.
+With `NAI_AUTH_ENABLED=true`, every data endpoint requires a bearer token. The first account becomes
+admin; after that, admins create accounts. Admins see everything. Uploaded documents are visible to
+every signed-in user. A source with `allowed_groups` is visible only to members of those groups
+(`PUT /auth/users/{id}/groups`); access is applied before ranking, so restricted files never appear
+in results, citations, document lists or downloads. With auth disabled, the API runs as a single local
+admin, which is fine on a trusted machine but not on a shared network.
 
 ---
 
 ## 📡 API Endpoints
 
-### Core Endpoints
-
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/health` | GET | Health check (public) |
-| `/health/detailed` | GET | Config and stats (admin) |
-| `/ingest` | POST | Upload and index documents |
-| `/ingest/url` | POST | Fetch a URL and index it |
-| `/ask` | POST | Ask a question |
-| `/search` | POST | Raw search (no answer) |
-| `/documents` | GET | List indexed documents |
-| `/documents/{id}` | GET / DELETE | Document details / delete (admin) |
-| `/documents/{id}/chunks` | GET | Inspect a document's chunks |
-| `/chat` | POST / GET | Send a message (pass `conversation_id` to continue) / list conversations |
+| `/ask` | POST | Ask a question; answer + citations |
+| `/ask/stream` | POST | Same, streamed as Server-Sent Events (`citations`, `token`…, `done`) |
+| `/search` | POST | Search without an answer (`method`: auto, bm25, embedding, hybrid) |
+| `/chat`, `/chat/stream` | POST | Multi-turn chat (pass `conversation_id` to continue) |
+| `/chat` | GET | Your conversations |
 | `/chat/{id}` | GET / DELETE | Conversation history / delete |
+| `/documents` | GET | Documents you can access (`source_id`, `uploads_only` filters) |
+| `/documents/{id}` | GET / DELETE | Details / delete an upload (admin) |
+| `/documents/{id}/file` | GET | The original file (to open a citation) |
+| `/documents/{id}/chunks` | GET | Inspect chunks (with page and context header) |
+| `/ingest`, `/ingest/url` | POST | Upload files / fetch a URL |
+| `/sources` | GET / POST | Sources you can search / add a folder (admin) |
+| `/sources/{id}` | PATCH / DELETE | Change / remove a source (admin; files are never touched) |
+| `/sources/{id}/scan` | POST | Rescan now (admin) |
+| `/system` | GET | Hardware, active features, recommendations (admin) |
+| `/auth/status`, `/auth/register`, `/auth/login`, `/auth/me` | | Authentication |
+| `/auth/users`, `/auth/users/{id}/groups` | GET / PUT | User management (admin) |
 
-### Authentication (when enabled)
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/auth/status` | GET | Is auth enabled / is first-time setup pending (public) |
-| `/auth/register` | POST | First user (becomes admin), or admin creating a user |
-| `/auth/login` | POST | Get JWT token |
-| `/auth/me` | GET | Get current user |
-| `/auth/users` | GET | List users (admin) |
+`/ask`, `/search` and `/chat` accept `source_ids` and `include_uploads` to narrow the search.
 
 ### Example: Ask a Question
 
 ```bash
 curl -X POST http://localhost:8000/ask \
-  -H "Content-Type: application/json" \
-  -d '{"question": "What is machine learning?", "top_k": 5}'
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"question": "When is the car insurance due?"}'
 ```
 
-Response:
 ```json
 {
-  "answer": "Based on your documents...",
+  "answer": "The premium of 612 EUR is due on 1 March each year.\n\n**Sources:**\n- [1] Documents/Insurance/scan_0042.pdf, page 2\n",
   "citations": [
-    {"doc_path": "ml_intro.pdf", "chunk_id": 3, "score": 8.5, "text": "..."}
+    {"doc_id": "s09436dac6d6b3a6", "source_name": "Documents", "doc_path": "Insurance/scan_0042.pdf",
+     "page": 2, "heading": null, "text": "Die Jahresprämie beträgt 612 Euro ...", "score": 0.033}
   ],
   "method": "llm",
-  "model": "ollama/llama3.2"
+  "model": "ollama/qwen3:8b"
 }
 ```
 
@@ -180,8 +172,10 @@ nAI/
 │   │   │   └── utils/         # Utilities
 │   │   └── tests/         # API tests
 │   └── nai-docs/          # Web UI
-│       └── web/           # Static frontend
-├── packages/
+│       └── web/           # Static frontend (served by nai-core at /)
+├── packaging/
+│   └── nithronos/         # NithronOS app catalog template
+├── packages/              # Standalone libraries, not used by nai-core
 │   ├── rag-kit/           # Chunkers, rerankers, evaluators
 │   └── toolpacks/         # PDF OCR, web, email, code extractors
 ├── evals/
@@ -195,6 +189,8 @@ nAI/
 ---
 
 ## 🧩 Packages
+
+These are standalone libraries kept in the repo; nai-core does not import them.
 
 ### RAG Kit (`packages/rag-kit`)
 
@@ -248,9 +244,9 @@ print(code.summary)
 
 ```bash
 cd apps/nai-core
-pip install pytest pytest-asyncio httpx ruff==0.17.6
+pip install pytest pytest-asyncio httpx ruff==0.17.6 mypy
 pytest tests/ -v
-ruff check app tests && ruff format --check app tests
+ruff check app tests && ruff format --check app tests && mypy app
 ```
 
 ---
@@ -274,9 +270,12 @@ The goal: nAI as **the AI that knows your NAS**, shipped as a NithronOS app.
 
 - [x] **Phase 0 — Foundation** (v0.3): auth on every endpoint, SQLite storage, persistent chat,
       SSRF-safe URL ingestion, green CI
-- [ ] **Phase 1 — "Ask your NAS" MVP**: watch NAS shares and index them incrementally, permission-aware
-      results, better parsing (Docling, OCR), hybrid search with RRF + reranking, embedded vector store,
-      streaming answers, hardware-aware model selection, NithronOS catalog app
+- [x] **Phase 1 — "Ask your NAS" MVP** (v0.4): NAS folders indexed in place with a file watcher and
+      incremental rescans; per-group access; page/heading-aware parsing for PDF, DOCX, Markdown, HTML,
+      plus OCR; hybrid search (BM25 + multilingual vectors in SQLite, RRF, optional reranker) with
+      contextual chunk headers; streaming answers; hardware-aware model choice; NithronOS catalog template
+  - Still open: publish the v0.4.0 image and add the template to the NithronOS catalog; map NithronOS
+    share permissions to nAI groups automatically; Docling for complex layouts (tables in PDFs)
 - [ ] **Phase 2 — Assistant**: MCP server for NithronOS (read-only first, then confirmed actions),
       tool use, OpenAI-compatible API
 - [ ] **Phase 3 — Everywhere**: NithronOS desktop/mobile clients, photo search, eval suite from real questions

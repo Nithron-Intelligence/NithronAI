@@ -10,7 +10,9 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from .config import Settings, get_config
+from .db import get_db
 from .models.schemas import User
+from .services.access import AccessScope, scope_for_user
 from .services.auth import AuthService, get_auth_service
 
 bearer_scheme = HTTPBearer(auto_error=False)
@@ -54,3 +56,8 @@ def require_admin(user: User = Depends(require_auth)) -> User:
     if not user.is_admin:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin privileges required")
     return user
+
+
+def get_scope(user: User = Depends(require_auth)) -> AccessScope:
+    """Documents the current user may see (sources filtered by their groups)."""
+    return scope_for_user(get_db(), user)

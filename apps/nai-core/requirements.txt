@@ -1,5 +1,7 @@
 # nAI Core Dependencies
 # ======================
+# Everything needed for keyword + semantic search over uploads and NAS folders.
+# All of it runs on a CPU-only NAS (no PyTorch).
 
 # Core Framework
 fastapi>=0.115.0
@@ -13,10 +15,17 @@ aiohttp>=3.11.0
 
 # Document Processing
 pypdf>=5.1.0
+pypdfium2>=4.30.0          # renders scanned PDF pages for OCR
+python-docx>=1.1.0
 nltk>=3.9.0
 
 # Search
 rank-bm25>=0.2.2
+numpy>=1.26.0
+fastembed>=0.4.0           # ONNX embeddings + cross-encoder reranker, CPU-friendly
+
+# Sources (NAS folders kept in sync)
+watchfiles>=0.24.0
 
 # Authentication
 PyJWT>=2.9.0
@@ -26,14 +35,10 @@ bcrypt>=4.2.0
 # Logging: stdlib logging (no extra deps)
 
 # ======================
-# Optional: Install separately if needed
+# Optional
 # ======================
-# LLM Integration (pip install litellm)
-# litellm>=1.52.0
-
-# Embeddings (pip install sentence-transformers torch)
-# sentence-transformers>=3.3.0
-# torch>=2.0.0
-
-# Vector Store (pip install qdrant-client)
-# qdrant-client>=1.12.0
+# OCR for scanned PDFs and images (also needs the `tesseract` binary + language packs):
+#   pip install pytesseract Pillow
+# LLM answers (Ollama, OpenAI-compatible servers, cloud APIs):
+#   pip install litellm
+# See requirements-full.txt for everything at once.

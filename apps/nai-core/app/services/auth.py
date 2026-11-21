@@ -36,7 +36,7 @@ def verify_password(password: str, password_hash: str) -> bool:
         return False
 
 
-def _row_to_user(row: Any) -> User:
+def _row_to_user(row: Any, groups: list[str] | None = None) -> User:
     return User(
         id=row["id"],
         username=row["username"],
@@ -44,6 +44,7 @@ def _row_to_user(row: Any) -> User:
         is_active=bool(row["is_active"]),
         is_admin=bool(row["is_admin"]),
         created_at=row["created_at"],
+        groups=groups or [],
     )
 
 
@@ -133,7 +134,26 @@ class AuthService:
     def get_user_by_id(self, user_id: str) -> User | None:
         with self.db.connect() as conn:
             row = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
-        return _row_to_user(row) if row else None
+        return _row_to_user(row, self.get_groups(user_id)) if row else None
+
+    def get_groups(self, user_id: str) -> list[str]:
+        with self.db.connect() as conn:
+            rows = conn.execute(
+                "SELECT group_name FROM user_groups WHERE user_id = ? ORDER BY group_name", (user_id,)
+            ).fetchall()
+        return [r["group_name"] for r in rows]
+
+    def set_groups(self, user_id: str, groups: list[str]) -> User | None:
+        """Replace a user's groups."""
+        if self.get_user_by_id(user_id) is None:
+            return None
+        with self.db.connect() as conn:
+            conn.execute("DELETE FROM user_groups WHERE user_id = ?", (user_id,))
+            conn.executemany(
+                "INSERT OR IGNORE INTO user_groups(user_id, group_name) VALUES (?, ?)",
+                [(user_id, g) for g in groups],
+            )
+        return self.get_user_by_id(user_id)
 
     def get_user_by_username(self, username: str) -> User | None:
         with self.db.connect() as conn:
@@ -143,7 +163,13 @@ class AuthService:
     def list_users(self) -> list[User]:
         with self.db.connect() as conn:
             rows = conn.execute("SELECT * FROM users ORDER BY created_at").fetchall()
-        return [_row_to_user(r) for r in rows]
+            group_rows = conn.execute(
+                "SELECT user_id, group_name FROM user_groups ORDER BY group_name"
+            ).fetchall()
+        groups: dict[str, list[str]] = {}
+        for g in group_rows:
+            groups.setdefault(g["user_id"], []).append(g["group_name"])
+        return [_row_to_user(r, groups.get(r["id"])) for r in rows]
 
     def delete_user(self, user_id: str) -> bool:
         with self.db.connect() as conn:

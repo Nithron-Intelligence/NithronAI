@@ -1,57 +1,48 @@
 # nAI Stack - Docker Compose Configuration
 # =========================================
-# 
+#
 # Usage:
 #   docker compose up -d
-#   docker exec nai-ollama ollama pull llama3.2   # first run: download the LLM
+#   docker exec nai-ollama ollama pull llama3.2   # first run: download an LLM (optional)
+#
+# Then add your NAS folders as sources (UI: Sources tab, or POST /sources with a path
+# under /shares). nAI indexes them in place and keeps the index in sync.
 #
 # Services:
-#   - nai-core: FastAPI backend (required)
-#   - nai-web: Static web UI (optional)
-#   - qdrant: Vector database for embeddings (optional)
-#   - ollama: Local LLM server (optional)
+#   - nai-core: API + web UI on http://localhost:8000. Semantic search runs inside it (no vector DB).
+#   - ollama:   Local LLM server (optional; or point NAI_LLM_BASE_URL at Ollama on another PC)
 
 services:
-  # ====================
-  # Core Services
-  # ====================
-  
   nai-core:
     build:
-      context: ../apps/nai-core
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: apps/nai-core/Dockerfile
     container_name: nai-core
     restart: unless-stopped
     ports:
       - "8000:8000"
     volumes:
       - nai-data:/app/data
+      # NAS folders to index, read-only. Adjust the host paths to your shares.
+      - ${NAI_SHARES_DIR:-./shares}:/shares:ro
     environment:
-      # Core
-      - NAI_DEBUG=true
       - NAI_LOG_LEVEL=INFO
-      - NAI_CORS_ALLOW_ALL=true
-      
-      # LLM (connect to Ollama)
+
+      # Auth: on by default. The first account you create in the UI becomes admin.
+      - NAI_AUTH_ENABLED=true
+
+      # LLM. "auto" picks the largest installed Ollama model that fits this machine.
+      # A GPU on another PC? Set NAI_LLM_BASE_URL=http://<pc-ip>:11434 instead.
       - NAI_LLM_ENABLED=true
       - NAI_LLM_PROVIDER=ollama
-      - NAI_LLM_MODEL=llama3.2
+      - NAI_LLM_MODEL=auto
       - NAI_LLM_BASE_URL=http://ollama:11434
-      
-      # Embeddings
+
+      # Semantic search (multilingual model, downloaded once into the data volume)
       - NAI_EMBEDDINGS_ENABLED=true
-      - NAI_EMBEDDINGS_MODEL=sentence-transformers/all-MiniLM-L6-v2
-      
-      # Qdrant
-      - NAI_QDRANT_ENABLED=true
-      - NAI_QDRANT_HOST=qdrant
-      - NAI_QDRANT_PORT=6333
-      
-      # Auth: disabled for local development. Enable it whenever the API is reachable
-      # by anyone but you; the first account registered becomes admin.
-      - NAI_AUTH_ENABLED=false
-      
-      # Rate limiting
+      # Cross-encoder reranking: "auto" enables it on machines with enough CPU/RAM or a GPU
+      - NAI_RERANKER=auto
+
       - NAI_RATE_LIMIT_ENABLED=true
       - NAI_RATE_LIMIT_REQUESTS=100
     healthcheck:
@@ -60,59 +51,18 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
-    depends_on:
-      qdrant:
-        condition: service_healthy
     networks:
       - nai-network
 
-  nai-web:
-    image: nginx:alpine
-    container_name: nai-web
-    restart: unless-stopped
-    ports:
-      - "5173:80"
-    volumes:
-      - ../apps/nai-docs/web:/usr/share/nginx/html:ro
-    networks:
-      - nai-network
-
-  # ====================
-  # Vector Database
-  # ====================
-  
-  qdrant:
-    image: qdrant/qdrant:latest
-    container_name: nai-qdrant
-    restart: unless-stopped
-    ports:
-      - "6333:6333"  # REST API
-      - "6334:6334"  # gRPC
-    volumes:
-      - qdrant-data:/qdrant/storage
-    environment:
-      - QDRANT__SERVICE__GRPC_PORT=6334
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:6333/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    networks:
-      - nai-network
-
-  # ====================
-  # Local LLM Server
-  # ====================
-  
   ollama:
-    image: ollama/ollama:latest
+    image: ollama/ollama:0.40.17
     container_name: nai-ollama
     restart: unless-stopped
     ports:
       - "11434:11434"
     volumes:
       - ollama-data:/root/.ollama
-    # GPU support (uncomment for NVIDIA)
+    # GPU support (uncomment for NVIDIA; for AMD use the ollama/ollama:<version>-rocm image)
     # deploy:
     #   resources:
     #     reservations:
@@ -123,22 +73,12 @@ services:
     networks:
       - nai-network
 
-# ====================
-# Networks
-# ====================
-
 networks:
   nai-network:
     driver: bridge
 
-# ====================
-# Volumes
-# ====================
-
 volumes:
   nai-data:
-    driver: local
-  qdrant-data:
     driver: local
   ollama-data:
     driver: local

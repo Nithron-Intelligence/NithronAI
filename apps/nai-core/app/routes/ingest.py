@@ -1,6 +1,10 @@
 """
 nAI Core Ingest Routes
-Document ingestion and indexing endpoints
+Upload documents (or fetch one from a URL) and index them.
+
+Embeddings are not computed here: the indexer notifies the background embedding worker,
+which vectorizes new chunks shortly afterwards. Until then a document is found by
+keyword search only.
 """
 
 import os
@@ -11,14 +15,13 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.concurrency import run_in_threadpool
 
 from ..config import Settings, get_config
-from ..models.schemas import IngestFileResult, IngestResponse
+from ..models.schemas import IngestFileResult, IngestResponse, User
 from ..security import require_auth
-from ..services.embeddings import EmbeddingService, get_embedding_service
 from ..services.indexer import IndexerService, get_indexer
 from ..utils.logging import get_logger
 from ..utils.net import FetchError, UnsafeURLError, fetch_url
 
-router = APIRouter(prefix="/ingest", tags=["Ingestion"], dependencies=[Depends(require_auth)])
+router = APIRouter(prefix="/ingest", tags=["Ingestion"])
 logger = get_logger(__name__)
 
 CONTENT_TYPE_EXTENSIONS = {
@@ -29,19 +32,6 @@ CONTENT_TYPE_EXTENSIONS = {
     "text/x-markdown": ".md",
     "text/plain": ".txt",
 }
-
-
-def _index_embeddings(
-    result: IngestFileResult,
-    settings: Settings,
-    indexer: IndexerService,
-    embeddings: EmbeddingService,
-) -> None:
-    if result.status != "success" or not settings.embeddings_enabled or not embeddings.is_available():
-        return
-    chunks = indexer.get_chunks(result.doc_id)
-    if chunks:
-        embeddings.index_chunks(chunks)
 
 
 def _build_response(results: list[IngestFileResult]) -> IngestResponse:
@@ -56,15 +46,15 @@ def _build_response(results: list[IngestFileResult]) -> IngestResponse:
 @router.post("", response_model=IngestResponse)
 async def ingest_documents(
     files: list[UploadFile] = File(..., description="Files to ingest"),
-    settings: Settings = Depends(get_config),
+    user: User = Depends(require_auth),
     indexer: IndexerService = Depends(get_indexer),
-    embeddings: EmbeddingService = Depends(get_embedding_service),
 ) -> IngestResponse:
     """
-    Ingest one or more documents (PDF, Markdown, TXT, HTML, RST).
+    Upload one or more documents (PDF, DOCX, Markdown, HTML, text, code; images with OCR).
 
     Files are extracted, chunked and indexed. Per-file problems are reported in the
     response (status ``error`` or ``skipped``) rather than failing the whole request.
+    Uploaded documents are visible to every signed-in user.
     """
     if not files:
         raise HTTPException(status_code=400, detail="No files provided")
@@ -73,8 +63,9 @@ async def ingest_documents(
     for file in files:
         content = await file.read()
         # Extraction and chunking are CPU/disk bound: keep them off the event loop.
-        result = await run_in_threadpool(indexer.ingest_bytes, content, file.filename or "unknown")
-        await run_in_threadpool(_index_embeddings, result, settings, indexer, embeddings)
+        result = await run_in_threadpool(
+            indexer.ingest_bytes, content, file.filename or "unknown", None, user.id
+        )
         results.append(result)
 
     return _build_response(results)
@@ -94,9 +85,9 @@ def _filename_for_url(url: str, content_type: str, allowed: list[str]) -> str:
 @router.post("/url", response_model=IngestResponse)
 async def ingest_from_url(
     url: str = Query(..., description="http(s) URL to fetch and ingest"),
+    user: User = Depends(require_auth),
     settings: Settings = Depends(get_config),
     indexer: IndexerService = Depends(get_indexer),
-    embeddings: EmbeddingService = Depends(get_embedding_service),
 ) -> IngestResponse:
     """
     Fetch a document from a URL and ingest it (HTML, PDF, Markdown or plain text).
@@ -118,7 +109,6 @@ async def ingest_from_url(
 
     filename = _filename_for_url(fetched.final_url, fetched.content_type, settings.allowed_extensions)
     result = await run_in_threadpool(
-        indexer.ingest_bytes, fetched.content, filename, {"source_url": fetched.final_url}
+        indexer.ingest_bytes, fetched.content, filename, {"source_url": fetched.final_url}, user.id
     )
-    await run_in_threadpool(_index_embeddings, result, settings, indexer, embeddings)
     return _build_response([result])

@@ -1,17 +1,14 @@
 # nAI Core Full Dependencies
 # ===========================
-# Use this for full functionality including LLM and embeddings
+# Core plus LLM answers and OCR. Still no PyTorch: embeddings and reranking use
+# fastembed (ONNX). Install sentence-transformers yourself only if you want
+# NAI_EMBEDDINGS_PROVIDER=sentence-transformers.
 
-# Core (always required)
 -r requirements.txt
 
-# LLM Integration
+# LLM Integration (Ollama, OpenAI-compatible servers, cloud APIs)
 litellm>=1.52.0
 
-# Embeddings
-sentence-transformers>=3.3.0
-torch>=2.0.0
-
-# Vector Store
-qdrant-client>=1.12.0
-
+# OCR (needs the `tesseract` binary and language packs on the system)
+pytesseract>=0.3.13
+Pillow>=10.4.0

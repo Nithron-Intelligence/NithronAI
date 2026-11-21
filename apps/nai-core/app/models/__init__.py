@@ -3,58 +3,7 @@ nAI Core Models
 Pydantic schemas and data models
 """
 
-from .schemas import (
-    # Search & Ask
-    AskRequest,
-    AskResponse,
-    # Chat
-    ChatMessage,
-    ChatRequest,
-    ChatResponse,
-    ChunkRecord,
-    Citation,
-    ConversationSummary,
-    DocumentDeleteResponse,
-    # Documents
-    DocumentInfo,
-    DocumentListResponse,
-    # Health
-    HealthResponse,
-    # Ingestion
-    IngestFileResult,
-    IngestResponse,
-    SearchRequest,
-    SearchResponse,
-    SearchResult,
-    Token,
-    TokenData,
-    User,
-    # Auth
-    UserCreate,
-    UserLogin,
-)
+from .schemas import *  # noqa: F403
+from .schemas import __all__ as _schema_all
 
-__all__ = [
-    "AskRequest",
-    "AskResponse",
-    "ChatMessage",
-    "ChatRequest",
-    "ChatResponse",
-    "ChunkRecord",
-    "Citation",
-    "ConversationSummary",
-    "DocumentDeleteResponse",
-    "DocumentInfo",
-    "DocumentListResponse",
-    "HealthResponse",
-    "IngestFileResult",
-    "IngestResponse",
-    "SearchRequest",
-    "SearchResponse",
-    "SearchResult",
-    "Token",
-    "TokenData",
-    "User",
-    "UserCreate",
-    "UserLogin",
-]
+__all__ = list(_schema_all)

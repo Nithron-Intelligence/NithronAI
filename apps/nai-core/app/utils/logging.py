@@ -6,6 +6,7 @@ Structured logging with request tracking
 import logging
 import sys
 import time
+from collections.abc import MutableMapping
 from contextvars import ContextVar
 from functools import wraps
 from typing import Any
@@ -20,11 +21,11 @@ class StructuredFormatter(logging.Formatter):
     """Custom formatter for structured logging."""
 
     def format(self, record: logging.LogRecord) -> str:
-        # Add timestamp
-        record.timestamp = utc_now_iso()
-
-        # Add request ID if available
-        record.request_id = request_id_var.get() or "-"
+        # Attach timestamp and request id (also available to other formatters/handlers)
+        timestamp = utc_now_iso()
+        request_id = request_id_var.get() or "-"
+        record.timestamp = timestamp  # type: ignore[attr-defined]  # dynamic LogRecord attributes
+        record.request_id = request_id  # type: ignore[attr-defined]
 
         # Format message
         if hasattr(record, "extra_data") and record.extra_data:
@@ -32,13 +33,15 @@ class StructuredFormatter(logging.Formatter):
         else:
             extra = ""
 
-        return f"[{record.timestamp}] [{record.levelname}] [{record.request_id}] {record.name}: {record.getMessage()}{extra}"
+        return (
+            f"[{timestamp}] [{record.levelname}] [{request_id}] {record.name}: {record.getMessage()}{extra}"
+        )
 
 
 class RequestLogger(logging.LoggerAdapter):
     """Logger adapter that includes request context."""
 
-    def process(self, msg: str, kwargs: dict[str, Any]) -> tuple:
+    def process(self, msg: Any, kwargs: MutableMapping[str, Any]) -> tuple[Any, MutableMapping[str, Any]]:
         extra = kwargs.get("extra", {})
         extra["request_id"] = request_id_var.get() or "-"
         kwargs["extra"] = extra

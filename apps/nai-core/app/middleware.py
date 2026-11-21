@@ -11,6 +11,7 @@ from collections.abc import Callable
 
 from fastapi import FastAPI, Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.types import ASGIApp
 
 from .config import get_settings
 from .utils.logging import get_logger, log_request, request_id_var
@@ -64,7 +65,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
     SWEEP_EVERY = 1000
 
-    def __init__(self, app: FastAPI):
+    def __init__(self, app: ASGIApp):
         super().__init__(app)
         self.settings = get_settings()
         self._trusted = _parse_networks(self.settings.trusted_proxies)
