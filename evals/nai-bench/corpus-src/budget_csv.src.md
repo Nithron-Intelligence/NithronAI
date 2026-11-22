@@ -1,0 +1,18 @@
+---
+out: Arbeit/Nordlicht/Finanzen/budget_2024_Q1.csv
+format: text
+language: en
+kind: spreadsheet
+license: CC0-1.0
+source: written for nai-bench (fictional company)
+provenance: claude-authored
+---
+category,jan_2024_eur,feb_2024_eur,mar_2024_eur,q1_total_eur,notes
+Software subscriptions,89.00,89.00,89.00,267.00,"Design suite, project tool, password manager"
+Hosting and domains,0.00,0.00,0.00,0.00,"Cloudberry invoice is paid yearly in July"
+Freelance photography,0.00,0.00,450.00,450.00,"Test shoot for Kornfeld"
+Hardware,0.00,1249.00,0.00,1249.00,"Laptop for Mateus"
+Co-working desk,320.00,320.00,320.00,960.00,"Coworking Dreisam"
+Travel,0.00,0.00,612.80,612.80,"Lisbon trip to meet Pastelaria Sol"
+Insurance,41.50,41.50,41.50,124.50,"Professional liability"
+Total,450.50,1699.50,1513.30,3663.30,

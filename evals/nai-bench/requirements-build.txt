@@ -1,0 +1,4 @@
+# Build-time only: renders corpus-src/ into corpus/ (not needed to run the benchmark).
+reportlab>=4.0        # BSD-3-Clause, text PDFs
+python-docx>=1.1.0    # MIT, DOCX files
+Pillow>=10.4.0        # MIT-CMU (HPND), scanned PDFs and receipt photos

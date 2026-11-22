@@ -34,7 +34,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install ruff==0.17.6 mypy
+          pip install ruff==0.17.6 mypy httpx
           pip install -r apps/nai-core/requirements.txt
       
       - name: Run Ruff (linter)
@@ -48,6 +48,12 @@ jobs:
       - name: Run MyPy (type check)
         working-directory: apps/nai-core
         run: mypy app
+
+      - name: Lint and type-check evals (nai-bench)
+        run: |
+          ruff check --config apps/nai-core/pyproject.toml evals --output-format=github
+          ruff format --config apps/nai-core/pyproject.toml evals --check
+          mypy --ignore-missing-imports evals/*.py evals/retrieval/eval_retrieval.py evals/answers/eval_answers.py evals/nai-bench/build_corpus.py
 
   # ====================
   # Tests
@@ -84,6 +90,9 @@ jobs:
         working-directory: apps/nai-core
         run: |
           pytest tests/ -v --cov=app --cov-report=xml --cov-report=term-missing
+
+      - name: Run nai-bench tests (dataset, corpus manifest, scoring)
+        run: pytest evals/tests -v
       
       - name: Upload coverage
         if: matrix.python-version == '3.11'
@@ -216,29 +225,28 @@ jobs:
         run: |
           python -c "import nltk; nltk.download('punkt', quiet=True); nltk.download('punkt_tab', quiet=True)"
       
-      - name: Start API server
+      - name: Start API server (embeddings on, nai-bench corpus allowed as a source)
         working-directory: apps/nai-core
+        env:
+          NAI_EMBEDDINGS_ENABLED: "true"
+          NAI_SOURCES_ALLOWED_ROOTS: '["${{ github.workspace }}/evals/nai-bench"]'
         run: |
           uvicorn app.main:app --host 0.0.0.0 --port 8000 &
-          sleep 5
-      
-      - name: Ingest sample documents
+          for i in $(seq 90); do curl -sf http://localhost:8000/health && exit 0; sleep 2; done
+          echo "nAI did not start" && exit 1
+
+      # No Tesseract here, so scanned files are not indexed and their questions miss:
+      # compare CI numbers only with earlier CI runs, not with evals/results/ baselines.
+      - name: Run nai-bench (retrieval + extractive answers)
         run: |
-          curl -X POST http://localhost:8000/ingest \
-            -F "files=@apps/nai-core/data/docs/sample.txt"
-      
-      - name: Run evaluation
-        run: |
-          python evals/retrieval/eval_retrieval.py \
-            --test-file evals/retrieval/test_cases.json \
-            --api-url http://localhost:8000 \
-            --output eval_results.json
+          python evals/run_baseline.py --no-llm --label ci --out-dir eval-results \
+            --index-corpus "${{ github.workspace }}/evals/nai-bench/corpus"
         continue-on-error: true
-      
+
       - name: Upload evaluation results
         uses: actions/upload-artifact@v7
         with:
           name: eval-results
-          path: eval_results.json
+          path: eval-results/
         if: always()
 
