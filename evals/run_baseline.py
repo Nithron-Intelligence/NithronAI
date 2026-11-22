@@ -45,7 +45,13 @@ def git_commit() -> str | None:
         out = subprocess.run(
             ["git", "rev-parse", "--short", "HEAD"], cwd=EVALS, capture_output=True, text=True
         )
-        dirty = subprocess.run(["git", "status", "--porcelain"], cwd=EVALS, capture_output=True, text=True)
+        # Only tracked changes to what produces the numbers make a run "+dirty".
+        dirty = subprocess.run(
+            ["git", "status", "--porcelain", "--untracked-files=no", "--", "apps", "evals", "infra"],
+            cwd=EVALS.parent,
+            capture_output=True,
+            text=True,
+        )
     except OSError:
         return None
     return out.stdout.strip() + ("+dirty" if dirty.stdout.strip() else "") if out.returncode == 0 else None
@@ -80,6 +86,7 @@ def markdown(report: dict[str, Any]) -> str:
     lines = [
         f"# nai-bench {meta['label']} – {meta['date']}",
         "",
+        *([meta["notes"], ""] if meta.get("notes") else []),
         f"nAI {meta['nai_version']} at commit `{meta['git_commit']}`; embeddings "
         f"`{meta['embeddings']['model']}` ({meta['embeddings']['provider']}); reranker `{cfg.get('reranker')}`; "
         f"{retrieval['questions']} answerable + {retrieval['skipped_unanswerable']} unanswerable questions over "
@@ -106,6 +113,9 @@ def markdown(report: dict[str, Any]) -> str:
     ]
     for name, o in retrieval[best]["by_category"].items():
         lines.append(f"| {name} | {o['n']} | {fmt(o['hit@5'])} | {fmt(o['mrr'])} |")
+    for flag, o in retrieval[best].get("by_cross_lingual", {}).items():
+        label = "question language ≠ source language" if flag == "yes" else "same language"
+        lines.append(f"| *{label}* | {o['n']} | {fmt(o['hit@5'])} | {fmt(o['mrr'])} |")
     lines += [
         "",
         "## Answers",
@@ -125,6 +135,8 @@ def markdown(report: dict[str, Any]) -> str:
     lines += [
         "",
         "Rates are 0–1. Extractive answers quote passages, so their refusal and language numbers say little.",
+        "Correct refusal is over the unanswerable questions; the other answer columns are over the answerable ones,",
+        "except Language match (all questions).",
         "Judge scores are normalized to 0–1 and only present when a judge model was given.",
         "",
     ]
@@ -145,6 +157,7 @@ def main() -> int:
     parser.add_argument("--judge-url")
     parser.add_argument("--judge-model")
     parser.add_argument("--label", default="baseline")
+    parser.add_argument("--notes", help="free text for the summary, e.g. the hardware the LLM ran on")
     parser.add_argument("--out-dir", type=Path, default=RESULTS_DIR)
     args = parser.parse_args()
 
@@ -155,6 +168,7 @@ def main() -> int:
     items = load_items()
     methods = [m.strip() for m in args.methods.split(",") if m.strip()]
     meta = metadata(client, args.label)
+    meta["notes"] = args.notes
 
     report: dict[str, Any] = {"meta": meta, "methods": methods}
     report["retrieval"] = eval_retrieval.evaluate(client, items, methods)
