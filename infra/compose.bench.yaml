@@ -1,0 +1,59 @@
+# nai-bench stack: nAI + Ollama for benchmarks and the end-to-end smoke test
+# ==========================================================================
+#
+# Not for production: auth is OFF and the API is bound to 127.0.0.1 only.
+# The nai-bench corpus is mounted read-only at /shares/nai-bench.
+#
+#   docker compose -f infra/compose.bench.yaml up -d --build
+#   docker compose -f infra/compose.bench.yaml exec ollama ollama pull qwen2.5:1.5b
+#   python evals/smoke_ollama.py                      # end-to-end smoke test
+#   python evals/run_baseline.py                      # nai-bench baseline
+#   docker compose -f infra/compose.bench.yaml down -v
+#
+# AMD GPU (ROCm): OLLAMA_IMAGE=ollama/ollama:0.40.17-rocm docker compose -f infra/compose.bench.yaml \
+#   -f infra/compose.bench.rocm.yaml up -d
+# CPU only works too (slower): the default image is the plain CPU/NVIDIA build.
+
+name: nai-bench
+
+services:
+  nai-core:
+    build:
+      context: ..
+      dockerfile: apps/nai-core/Dockerfile
+    image: ${NAI_IMAGE:-nai-core:bench}
+    ports:
+      - "127.0.0.1:${NAI_PORT:-8000}:8000"
+    volumes:
+      - nai-bench-data:/app/data
+      - ../evals/nai-bench/corpus:/shares/nai-bench:ro
+    environment:
+      - NAI_LOG_LEVEL=INFO
+      - NAI_AUTH_ENABLED=false
+      - NAI_RATE_LIMIT_ENABLED=false
+      - NAI_EMBEDDINGS_ENABLED=true
+      - NAI_RERANKER=${NAI_RERANKER:-false}
+      - NAI_OCR_ENABLED=true
+      - NAI_LLM_ENABLED=${NAI_LLM_ENABLED:-true}
+      - NAI_LLM_PROVIDER=ollama
+      - NAI_LLM_MODEL=${NAI_LLM_MODEL:-qwen2.5:1.5b}
+      - NAI_LLM_BASE_URL=http://ollama:11434
+    depends_on:
+      - ollama
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+
+  ollama:
+    image: ${OLLAMA_IMAGE:-ollama/ollama:0.40.17}
+    ports:
+      - "127.0.0.1:${OLLAMA_PORT:-11434}:11434"
+    volumes:
+      - ollama-models:/root/.ollama
+
+volumes:
+  nai-bench-data:
+  ollama-models:
