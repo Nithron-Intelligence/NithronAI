@@ -166,41 +166,43 @@ contract), which is what the multi-hop questions use. Near-duplicate files (2023
 
 | File | Lang | Kind | Format | License | Source |
 |---|---|---|---|---|---|
-| `Arbeit/Nordlicht/Angebote/Proposta_Pastelaria_Sol.md` | pt | proposal | text | CC0-1.0 | written for nai-bench (fictional) |
-| `Arbeit/Nordlicht/Finanzen/budget_2024_Q1.csv` | en | spreadsheet | text | CC0-1.0 | written for nai-bench (fictional) |
-| `Arbeit/Nordlicht/Meetings/2024-03-12_Kickoff_Kornfeld.md` | de | meeting notes | text | CC0-1.0 | written for nai-bench (fictional) |
-| `Arbeit/Nordlicht/Meetings/2024-04-02_weekly_sync.md` | en | meeting notes | text | CC0-1.0 | written for nai-bench (fictional) |
-| `Arbeit/Nordlicht/Rechnungen/invoice_2023-089_cloudberry.pdf` | en | invoice | pdf | CC0-1.0 | written for nai-bench (fictional) |
-| `Arbeit/Nordlicht/Rechnungen/invoice_2024-117_cloudberry.pdf` | en | invoice | pdf | CC0-1.0 | written for nai-bench (fictional) |
+| `Arbeit/Nordlicht/Angebote/Proposta_Pastelaria_Sol.md` | pt | proposal | text | CC-BY-4.0 | written for nai-bench (fictional) |
+| `Arbeit/Nordlicht/Finanzen/budget_2024_Q1.csv` | en | spreadsheet | text | CC-BY-4.0 | written for nai-bench (fictional) |
+| `Arbeit/Nordlicht/Meetings/2024-03-12_Kickoff_Kornfeld.md` | de | meeting notes | text | CC-BY-4.0 | written for nai-bench (fictional) |
+| `Arbeit/Nordlicht/Meetings/2024-04-02_weekly_sync.md` | en | meeting notes | text | CC-BY-4.0 | written for nai-bench (fictional) |
+| `Arbeit/Nordlicht/Rechnungen/invoice_2023-089_cloudberry.pdf` | en | invoice | pdf | CC-BY-4.0 | written for nai-bench (fictional) |
+| `Arbeit/Nordlicht/Rechnungen/invoice_2024-117_cloudberry.pdf` | en | invoice | pdf | CC-BY-4.0 | written for nai-bench (fictional) |
 | `Gesetze/BGB_Mietrecht_Auszug.txt` | de | statute | text | public domain (§ 5 Abs. 1 UrhG) | [BGB §§ 535, 551, 573c, gesetze-im-internet.de](https://www.gesetze-im-internet.de/bgb/), 2026-11-22 |
 | `Gesetze/Jordabalken_12kap_utdrag.txt` | sv | statute | text | public domain (9 § URL) | [Jordabalk 12 kap. 4 §, data.riksdagen.se](https://data.riksdagen.se/dokument/sfs-1970-994.text), 2026-11-22 |
-| `Handbuecher/Aurora_SilentWash_SW600_manual_EN.pdf` | en | manual | pdf, 3 pages | CC0-1.0 | written for nai-bench (fictional) |
-| `Handbuecher/NetHaven_AX3000_quickstart.md` | en | manual | text | CC0-1.0 | written for nai-bench (fictional) |
-| `Handbuecher/ThermaComfort_TC20_Bedienungsanleitung.pdf` | de | manual | pdf, 2 pages | CC0-1.0 | written for nai-bench (fictional) |
-| `Handbuecher/notice_poele_granules_Flamea_P8.md` | fr | manual | text | CC0-1.0 | written for nai-bench (fictional) |
-| `Rechnungen/IMG_2231.png` | de | receipt | photo (OCR) | CC0-1.0 | written for nai-bench (fictional) |
-| `Rechnungen/scan_0042.pdf` | de | invoice | scanned PDF (OCR) | CC0-1.0 | written for nai-bench (fictional) |
-| `Reisen/Reiseplan_Schweden_Sommer2024.md` | de | notes | text | CC0-1.0 | written for nai-bench (fictional) |
-| `Sverige/faktura_stuga_2024.pdf` | sv | invoice | pdf | CC0-1.0 | written for nai-bench (fictional) |
-| `Sverige/hyresavtal_stuga_Bjorkudden.docx` | sv | contract | docx | CC0-1.0 | written for nai-bench (fictional) |
-| `Sverige/kvitto_Dalabutiken_Leksand.png` | sv | receipt | photo (OCR) | CC0-1.0 | written for nai-bench (fictional) |
-| `Sverige/protokoll_vagsamfallighet_2024-05-18.docx` | sv | meeting notes | docx | CC0-1.0 | written for nai-bench (fictional) |
-| `Technik/homelab/backup.sh` | en | code | text | CC0-1.0 | written for nai-bench |
-| `Technik/homelab/docker-compose.yml` | en | code | text | CC0-1.0 | written for nai-bench |
-| `Technik/photo_sorter.py` | en | code | text | CC0-1.0 | written for nai-bench |
-| `Versicherungen/Hausrat_Police_2024.pdf` | de | contract | pdf | CC0-1.0 | written for nai-bench (fictional) |
-| `Versicherungen/Kfz-Versicherung_2023.pdf` | de | contract | pdf | CC0-1.0 | written for nai-bench (fictional) |
-| `Versicherungen/Kfz-Versicherung_2024.pdf` | de | contract | pdf, 2 pages | CC0-1.0 | written for nai-bench (fictional) |
-| `Wohnung/Mietvertrag_Ahornweg7.pdf` | de | contract | pdf, 3 pages | CC0-1.0 | written for nai-bench (fictional) |
-| `Wohnung/Nebenkostenabrechnung_2023.pdf` | de | statement | scanned PDF (OCR) | CC0-1.0 | written for nai-bench (fictional) |
+| `Handbuecher/Aurora_SilentWash_SW600_manual_EN.pdf` | en | manual | pdf, 3 pages | CC-BY-4.0 | written for nai-bench (fictional) |
+| `Handbuecher/NetHaven_AX3000_quickstart.md` | en | manual | text | CC-BY-4.0 | written for nai-bench (fictional) |
+| `Handbuecher/ThermaComfort_TC20_Bedienungsanleitung.pdf` | de | manual | pdf, 2 pages | CC-BY-4.0 | written for nai-bench (fictional) |
+| `Handbuecher/notice_poele_granules_Flamea_P8.md` | fr | manual | text | CC-BY-4.0 | written for nai-bench (fictional) |
+| `Rechnungen/IMG_2231.png` | de | receipt | photo (OCR) | CC-BY-4.0 | written for nai-bench (fictional) |
+| `Rechnungen/scan_0042.pdf` | de | invoice | scanned PDF (OCR) | CC-BY-4.0 | written for nai-bench (fictional) |
+| `Reisen/Reiseplan_Schweden_Sommer2024.md` | de | notes | text | CC-BY-4.0 | written for nai-bench (fictional) |
+| `Sverige/faktura_stuga_2024.pdf` | sv | invoice | pdf | CC-BY-4.0 | written for nai-bench (fictional) |
+| `Sverige/hyresavtal_stuga_Bjorkudden.docx` | sv | contract | docx | CC-BY-4.0 | written for nai-bench (fictional) |
+| `Sverige/kvitto_Dalabutiken_Leksand.png` | sv | receipt | photo (OCR) | CC-BY-4.0 | written for nai-bench (fictional) |
+| `Sverige/protokoll_vagsamfallighet_2024-05-18.docx` | sv | meeting notes | docx | CC-BY-4.0 | written for nai-bench (fictional) |
+| `Technik/homelab/backup.sh` | en | code | text | CC-BY-4.0 | written for nai-bench |
+| `Technik/homelab/docker-compose.yml` | en | code | text | CC-BY-4.0 | written for nai-bench |
+| `Technik/photo_sorter.py` | en | code | text | CC-BY-4.0 | written for nai-bench |
+| `Versicherungen/Hausrat_Police_2024.pdf` | de | contract | pdf | CC-BY-4.0 | written for nai-bench (fictional) |
+| `Versicherungen/Kfz-Versicherung_2023.pdf` | de | contract | pdf | CC-BY-4.0 | written for nai-bench (fictional) |
+| `Versicherungen/Kfz-Versicherung_2024.pdf` | de | contract | pdf, 2 pages | CC-BY-4.0 | written for nai-bench (fictional) |
+| `Wohnung/Mietvertrag_Ahornweg7.pdf` | de | contract | pdf, 3 pages | CC-BY-4.0 | written for nai-bench (fictional) |
+| `Wohnung/Nebenkostenabrechnung_2023.pdf` | de | statement | scanned PDF (OCR) | CC-BY-4.0 | written for nai-bench (fictional) |
 
 `corpus-manifest.json` is the authoritative list (with hashes); `build_corpus.py --table` prints it.
 
 ## Licensing and provenance
 
-- **License:** nai-bench (questions, source texts, rendered files, manifest) is released under
-  **CC0-1.0**, except the two statute excerpts, which are public domain as official texts. The eval code in
-  `evals/` is under the repository license (NCL).
+- **License:** the nai-bench items we write (questions, fictional source texts, rendered files, manifest)
+  are under **CC-BY-4.0** ([LICENSE-CC-BY-4.0.txt](LICENSE-CC-BY-4.0.txt); attribution: "nai-bench by
+  Nithron"). Third-party corpus files keep their own licenses as recorded per file in
+  `corpus-manifest.json` (today: the two statute excerpts, public domain as official texts). The eval code in
+  `evals/` is Apache-2.0 ([../LICENSE](../LICENSE)).
 - **Provenance:** the fictional documents and all 56 questions were written by Claude (claude-opus-5-5) on
   2026-11-22, from the source texts in this folder, and are marked `"author": "claude"`,
   `"use": "eval-only"`. Under the lab's principle 3 they must **never** be used as training data or to

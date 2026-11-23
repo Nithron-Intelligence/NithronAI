@@ -3,7 +3,7 @@ out: Arbeit/Nordlicht/Angebote/Proposta_Pastelaria_Sol.md
 format: text
 language: pt
 kind: proposal
-license: CC0-1.0
+license: CC-BY-4.0
 source: written for nai-bench (fictional company and people)
 provenance: claude-authored
 ---

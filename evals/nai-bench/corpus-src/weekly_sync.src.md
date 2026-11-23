@@ -3,7 +3,7 @@ out: Arbeit/Nordlicht/Meetings/2024-04-02_weekly_sync.md
 format: text
 language: en
 kind: meeting-notes
-license: CC0-1.0
+license: CC-BY-4.0
 source: written for nai-bench (fictional company and people)
 provenance: claude-authored
 ---

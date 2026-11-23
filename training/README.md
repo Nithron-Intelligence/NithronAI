@@ -67,3 +67,7 @@ Verified on 2026-11-22 without a training run: passages and pairs on a 3-documen
 `qwen2.5:7b` via Ollama on ROCm), both refusal guards (nai-bench input, non-approved teacher), the overlap
 check, `train.py --dry-run` (split, IR evaluator, mined negatives, trainer), and `--export-only` of the
 base model (fastembed min cosine 1.0000 against PyTorch).
+
+## License
+
+The code in `training/` is under the Apache License 2.0 ([LICENSE](LICENSE)). nai-bench items we write are CC BY 4.0, and third-party corpus files keep their own licenses; see the folder licenses in the root `NOTICE`.

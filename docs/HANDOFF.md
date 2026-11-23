@@ -7,8 +7,8 @@
 ## Status now
 
 - **Updated:** 2026-11-23, round 3, step 2a done ("Ask before re-embedding when the embedding model changes"
-  `3222ff6`, docs `2932379`), 2b done (`37381c2`), 2c done ("TrueNAS adapter step 1…"). Next: 2d (LICENSE
-  files for evals/ and training/), 2e (licensing-options.md), step 4 (NithronOS template diff), step 3 (nai-bench v1).
+  `3222ff6`, docs `2932379`), 2b done (`37381c2`), 2c done (`0f1c251`), 2d done ("License the lab code
+  Apache-2.0…"). Next: 2e (licensing-options.md), step 4 (NithronOS template diff), step 3 (nai-bench v1).
 - **Session note:** a new session (different account) took over mid-step 2 after the previous one ran out of tokens.
 - **Branch:** `lab/stage-0` (all lab work), based on local `main` (release 0.5.0). **Nothing is pushed.**
 - **Done:** rounds 1–2 (see History). Round 3 steps 0 (handoff doc, `AGENTS.md`) and 1 (LICENSE synced with
@@ -49,7 +49,7 @@
 | Date | Decision | Reason |
 |---|---|---|
 | 2026-11-23 | Second platform after NithronOS: **TrueNAS** (read-only API discovery + custom-app compose first; no permission sync yet). | Compose-native custom apps, big audience, JSON-RPC API with per-user keys, NFSv4 ACLs; Unraid's store asks for an OSI license. |
-| 2026-11-23 | Lab code (`evals/`, `training/`) Apache-2.0; nai-bench items we write CC-BY-4.0; third-party corpus files keep their own licenses. nAI's own license direction **not decided**. | Model claims must be reproducible by others; core licensing needs a lawyer. |
+| 2026-11-23 | Lab code (`evals/`, `training/`) Apache-2.0; nai-bench items we write CC-BY-4.0 (was CC0); third-party corpus files keep their own licenses. Official texts downloaded byte-exact; scope in `NOTICE`. nAI's own license direction **not decided**. | Model claims must be reproducible by others; core licensing needs a lawyer. |
 | 2026-11-23 | **Embedding-model change:** nAI detects it by model ID, keeps the old vectors, pauses semantic search and asks an admin before re-indexing (`NAI_EMBEDDINGS_AUTO_REINDEX=true` opts back into automatic re-embedding). Vane weights are never replaced under the same ID. | Silent re-embeds took hours on big NAS indexes; a same-name weight swap would mix incompatible vectors. |
 | 2026-11-23 | Version rules accepted: `.5` minor steps, `-mini`/`-max` variants, any Vane change forces a re-index. | Proposed in round 2. |
 | 2026-11-23 | **Reranker:** `NAI_RERANKER=auto|on|off` (default auto; true/false still work); default model `BAAI/bge-reranker-v2-m3-int8`; top 10 (`NAI_RERANKER_CANDIDATES`). Auto = on only with 8+ effective cores (physical, capped by cgroup quota), 8+ GB RAM, 2+ GB free, AVX2 on x86; GPU doesn't count (CPU onnxruntime). NithronOS template: off. | Budget ~1 s per question for the top 10; measured 2.1 s (2 threads), 1.1 s (4), 0.7 s (8) on Zen 4 (provisional, v0 unreviewed). |
@@ -90,7 +90,8 @@
   embedding-model change detection (`3222ff6`); 2b reranker auto policy + cgroup-aware hardware detection;
   bge int8 top-10 latency: 2 threads 2.08 s, 4 threads 1.09 s, 8 threads 0.70 s
   (`evals/results/rerankers-threads-2026-11-23.md`); 2c TrueNAS adapter step 1 (read-only discovery, 10 tests
-  with a fake JSON-RPC server, `packaging/truenas/`). Rest in progress (see Status).
+  with a fake JSON-RPC server, `packaging/truenas/`); 2d `evals/` + `training/` Apache-2.0, nai-bench items
+  CC-BY-4.0 (scope in `NOTICE`; root LICENSE unchanged). Rest in progress (see Status).
 
 ## How to resume
 

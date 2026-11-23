@@ -4,7 +4,7 @@ format: scan-png
 language: sv
 kind: receipt
 title: Kvitto Dalabutiken Leksand
-license: CC0-1.0
+license: CC-BY-4.0
 source: written for nai-bench (fictional shop)
 provenance: claude-authored
 ---

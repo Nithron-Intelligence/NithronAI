@@ -3,7 +3,7 @@ out: Handbuecher/NetHaven_AX3000_quickstart.md
 format: text
 language: en
 kind: manual
-license: CC0-1.0
+license: CC-BY-4.0
 source: written for nai-bench (fictional brand and product)
 provenance: claude-authored
 ---

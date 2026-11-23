@@ -3,7 +3,7 @@ out: Arbeit/Nordlicht/Meetings/2024-03-12_Kickoff_Kornfeld.md
 format: text
 language: de
 kind: meeting-notes
-license: CC0-1.0
+license: CC-BY-4.0
 source: written for nai-bench (fictional company and people)
 provenance: claude-authored
 ---

@@ -4,7 +4,7 @@ format: docx
 language: sv
 kind: meeting-notes
 title: Protokoll styrelsemöte Björkuddens vägsamfällighet
-license: CC0-1.0
+license: CC-BY-4.0
 source: written for nai-bench (fictional association and people)
 provenance: claude-authored
 ---

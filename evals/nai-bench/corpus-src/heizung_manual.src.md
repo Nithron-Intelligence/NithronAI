@@ -4,7 +4,7 @@ format: pdf
 language: de
 kind: manual
 title: ThermaComfort TC20 Bedienungsanleitung
-license: CC0-1.0
+license: CC-BY-4.0
 source: written for nai-bench (fictional brand and product)
 provenance: claude-authored
 ---

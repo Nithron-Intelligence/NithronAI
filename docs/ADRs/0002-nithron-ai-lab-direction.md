@@ -29,7 +29,7 @@ and handle private, multilingual files. Large labs don't optimize for that.
    explicit opt-in; every model, dataset and tool license is checked and recorded before use; no training
    data from services whose terms forbid it (including Claude), with a `provenance` field on every item;
    every model claim is backed by a nai-bench number.
-4. nai-bench lives in this repo (`evals/nai-bench/`), is released under CC0-1.0 and is never used as
+4. nai-bench lives in this repo (`evals/nai-bench/`), is released under CC-BY-4.0 (amended 2026-11-23, was CC0-1.0; third-party files keep their licenses) and is never used as
    training data.
 5. Training code lives in `training/` and is not a dependency of nai-core: the nAI image keeps its
    "no PyTorch" property.

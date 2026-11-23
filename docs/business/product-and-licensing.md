@@ -52,7 +52,9 @@ What the current documents say (summary, not legal interpretation):
 - **`BINARIES-EULA.md`**: Official Build Artifacts (images, packages) are licensed per node to subscribers;
   no redistribution or mirroring.
 
-Questions this raises for selling on other platforms:
+Questions this raises for selling on other platforms (status 2026-11-23: the lab parts now have their own
+open licenses, see below; nAI's own license direction is undecided, options in
+[licensing-options.md](licensing-options.md)):
 
 1. **NCL is not an open-source license.** Some app stores require one: the Unraid Community Applications
    submission rules ask for a public repository with an **OSI-approved license**
@@ -98,18 +100,19 @@ image), and decide on a dual license once one store listing or one vendor deal d
 | Part | Recommendation | Why |
 |---|---|---|
 | **Nithron models** (Vane, Loupe, Tern, Nox) | **Open weights**, Apache-2.0 (as base licenses allow), on Hugging Face | The lab's reputation and adoption depend on it; models are the proof of the research |
-| **nai-bench** (corpus, questions, results) | **Open**, CC0-1.0 (statute excerpts public domain) | A benchmark only matters if others can run it and check our claims (principle 4) |
-| **Training and eval code** (`training/`, `evals/`) | **Open** under a permissive license (proposal: Apache-2.0) | Reproducibility of model claims; low commercial risk |
+| **nai-bench** (corpus, questions, results) | **Open**, CC-BY-4.0 for what we write; third-party files keep their licenses (statute excerpts public domain) | A benchmark only matters if others can run it and check our claims (principle 4) |
+| **Training and eval code** (`training/`, `evals/`) | **Open**, Apache-2.0 (decided 2026-11-23) | Reproducibility of model claims; low commercial risk |
 | **Lab reports, datasets we generate** | Open (CC-BY-4.0 or CC0) | Same as models |
 | **nai-core** | Source-available (NCL) or open core (see above) | Product revenue |
 | **NAS integrations for business** (permission sync, NAS sign-in, management agent, audit) | Paid tier | Clear business value |
 | **Official images, signed updates, support** | Paid for business; free personal tier | As in `COMMERCIAL.md` |
 
-⚖ **needs review by a lawyer**: today the repository's `LICENSE` (NCL) covers "the source code, build
-scripts and documentation in the repository", while `evals/nai-bench/README.md` declares nai-bench CC0.
-To make the open parts actually open, those folders need their own license files (e.g. `LICENSE` in
-`evals/nai-bench/`, `evals/` and `training/`) and a sentence in `NOTICE` that they take precedence for
-those folders. Not done yet, pending this review.
+⚖ **needs review by a lawyer**: **done 2026-11-23, pending legal review.** `evals/LICENSE` and
+`training/LICENSE` (Apache-2.0) and `evals/nai-bench/LICENSE-CC-BY-4.0.txt` hold the official texts, and
+`NOTICE` says which paths they cover; the root `LICENSE` (NCL, byte-identical with NithronOS) is unchanged
+and covers everything else. Still to check with the lawyer: that the folder licenses validly override the
+NCL's "everything in the repository" wording, and that NCL § 4 contributions to those folders can be
+offered under Apache-2.0 / CC-BY-4.0.
 
 ## Open questions for the owner
 

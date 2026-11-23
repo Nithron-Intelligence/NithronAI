@@ -12,3 +12,10 @@ product references changed, the terms are the same.
 Versions of this repository published before the NCL was adopted (up to and including commit 66fa142) were released under AGPL-3.0-only; copies obtained under those terms remain under them.
 
 Trademarks: “Nithron”, “NithronOS”, “nOS”, “NithronAI”, “nAI”, “Niro” and associated logos are trademarks of Nithron. All other marks are the property of their respective owners.
+
+Folder licenses: the root LICENSE (Nithron Community License) covers this repository except:
+- evals/ and training/: source code under the Apache License 2.0 (evals/LICENSE, training/LICENSE);
+- nai-bench items written for the benchmark (questions, fictional corpus source texts, rendered corpus
+  files, manifest in evals/nai-bench/): CC BY 4.0 (evals/nai-bench/LICENSE-CC-BY-4.0.txt);
+- third-party files in evals/nai-bench/corpus/ keep their own licenses, recorded per file in
+  evals/nai-bench/corpus-manifest.json (they are excluded from the Apache-2.0 and CC BY 4.0 grants).

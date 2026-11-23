@@ -4,7 +4,7 @@ format: scan-pdf
 language: de
 kind: statement
 title: Betriebskostenabrechnung 2023
-license: CC0-1.0
+license: CC-BY-4.0
 source: written for nai-bench (fictional company and people)
 provenance: claude-authored
 ---

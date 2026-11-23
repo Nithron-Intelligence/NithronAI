@@ -71,14 +71,14 @@ Target mix (files):
 
 | Share | Files | Kind | Source and license |
 |---|---|---|---|
-| 35 % | ~110 | Household and small-office documents: contracts, invoices, statements, manuals, letters, meeting notes, receipts, spreadsheets, config and code | Written for nai-bench (fictional); author recorded per file (Claude or an approved open-weight model), CC0-1.0, eval-only |
+| 35 % | ~110 | Household and small-office documents: contracts, invoices, statements, manuals, letters, meeting notes, receipts, spreadsheets, config and code | Written for nai-bench (fictional); author recorded per file (Claude or an approved open-weight model), CC-BY-4.0, eval-only |
 | 25 % | ~75 | Official texts in all five languages: EU regulations and directives (e.g. GDPR, consumer-rights and product-safety texts) in de/en/sv/fr/pt; German and Swedish statutes | EUR-Lex (reuse allowed with attribution under Commission Decision 2011/833/EU; check each document's notice); German statutes are public domain (§ 5 UrhG); Swedish statutes are not protected (9 § URL) |
 | 15 % | ~45 | US federal government publications (consumer guides, appliance and safety guidance) | Public domain (17 U.S.C. § 105); check that each document is a federal work with no third-party content |
 | 15 % | ~45 | Distractors: public-domain books and long texts in the five languages | Project Gutenberg texts that are public domain in the US and the EU (author died before 1956), with the Gutenberg header/licence removed |
 | 10 % | ~30 | Scans and photos: rendered from the fictional documents above, plus public-domain scanned forms | As above |
 
 Rules:
-- No CC-BY-SA or non-commercial material (keeps nai-bench CC0-compatible except for attribution-only
+- No CC-BY-SA or non-commercial material (keeps nai-bench compatible with CC-BY-4.0 except for attribution-only
   sources, which keep their attribution in the manifest).
 - No personal data: real documents are official texts or public-domain books only.
 - Every file has a manifest entry: source URL, license, retrieval date, author, SHA-256.

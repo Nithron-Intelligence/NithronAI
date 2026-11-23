@@ -3,7 +3,7 @@ out: Arbeit/Nordlicht/Finanzen/budget_2024_Q1.csv
 format: text
 language: en
 kind: spreadsheet
-license: CC0-1.0
+license: CC-BY-4.0
 source: written for nai-bench (fictional company)
 provenance: claude-authored
 ---
