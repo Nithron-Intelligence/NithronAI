@@ -7,8 +7,8 @@
 ## Status now
 
 - **Updated:** 2026-11-23, round 3, step 2a done ("Ask before re-embedding when the embedding model changes"
-  `3222ff6`, docs `2932379`), 2b done (`37381c2`), 2c done (`0f1c251`), 2d done ("License the lab code
-  Apache-2.0…"). Next: 2e (licensing-options.md), step 4 (NithronOS template diff), step 3 (nai-bench v1).
+  `3222ff6`, docs `2932379`), 2b done (`37381c2`), 2c done (`0f1c251`), 2d done (`255feea`), 2e done
+  ("Compare licensing options…"). Next: step 4 (NithronOS template diff), then step 3 (nai-bench v1).
 - **Session note:** a new session (different account) took over mid-step 2 after the previous one ran out of tokens.
 - **Branch:** `lab/stage-0` (all lab work), based on local `main` (release 0.5.0). **Nothing is pushed.**
 - **Done:** rounds 1–2 (see History). Round 3 steps 0 (handoff doc, `AGENTS.md`) and 1 (LICENSE synced with
@@ -91,7 +91,8 @@
   bge int8 top-10 latency: 2 threads 2.08 s, 4 threads 1.09 s, 8 threads 0.70 s
   (`evals/results/rerankers-threads-2026-11-23.md`); 2c TrueNAS adapter step 1 (read-only discovery, 10 tests
   with a fake JSON-RPC server, `packaging/truenas/`); 2d `evals/` + `training/` Apache-2.0, nai-bench items
-  CC-BY-4.0 (scope in `NOTICE`; root LICENSE unchanged). Rest in progress (see Status).
+  CC-BY-4.0 (scope in `NOTICE`; root LICENSE unchanged); 2e `docs/business/licensing-options.md` (NCL vs
+  AGPL dual vs open core; Unraid CA needs an OSI license). Rest in progress (see Status).
 
 ## How to resume
 
@@ -131,6 +132,7 @@ package installs.
 [MODEL_NAMING](lab/MODEL_NAMING.md) · [License register](lab/MODEL_AND_DATA_LICENSES.md) ·
 [Stage 1 plan](lab/stage1-embedding-finetune.md) · [NAS adapters](architecture/nas-adapters.md) ·
 [Business: product and licensing](business/product-and-licensing.md) ·
+[Licensing options](business/licensing-options.md) ·
 [nai-bench](../evals/nai-bench/README.md) and [v1 plan](../evals/nai-bench/V1_PLAN.md) ·
 [Evals and reproduce commands](../evals/README.md) · [Training](../training/README.md) ·
 [Releasing](RELEASING.md)
