@@ -25,6 +25,8 @@ Status values: **in use** (shipped or used by nAI today), **approved** (may be u
 
 | Model | License | Status | Checked | Notes |
 |---|---|---|---|---|
+| `ibm-granite/granite-embedding-97m-multilingual-r2` | Apache-2.0 (model card, not gated; checked 2026-11-23) | candidate (human decision 2026-11-23: new embedding base and Vane 1 base if it holds up on nai-bench) | 2026-11-23 | ModernBERT (`ModernBertModel`, built into transformers; no `.py` in the repo, **no trust_remote_code**); sentence-transformers library; 97M params, **384-d**, **CLS pooling**, **no query/passage prefix** (prompts empty), max length 32 768, 180k-token vocab; 52 enhanced languages incl. **de, en, fr, pt, sv**. Repo ships `onnx/model.onnx` (390 MB) and `onnx/model_quint8_avx2.onnx` (98 MB) under the same card. Training data: MS MARCO excluded for its non-commercial license (R2 paper, arXiv 2605.13521); audit in `vane1-base-model-audit.md`. fastembed custom model (CLS) parity vs PyTorch: fp32 1.0000, int8 0.9723. |
+| `ibm-granite/granite-embedding-311m-multilingual-r2` | Apache-2.0 (model card, checked 2026-11-23) | candidate (comparison) | 2026-11-23 | ModernBERT, 311M, 768-d (Matryoshka 768/512/384/256/128), CLS pooling, no prefix, max length 32 768, same languages and training-data statement as the 97m; ONNX in the repo. |
 | `intfloat/multilingual-e5-small` | MIT | candidate | 2026-11-22 | 118M, 384-d; needs "query:" / "passage:" prefixes. |
 | `intfloat/multilingual-e5-base` | MIT | candidate | 2026-11-22 | 278M; probably too slow for low-end NAS CPUs. |
 | `BAAI/bge-m3` | MIT | candidate (teacher / upper bound) | 2026-11-22 | 568M; too big as a NAS default, useful as a reference and for hard-negative mining. |
