@@ -376,8 +376,20 @@ def sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+# Optional front-matter keys copied into the manifest when present (v1: who wrote the file, when, and
+# that it is eval-only). v0 sources don't use them, so v0's manifest is unchanged.
+OPTIONAL_KEYS = ("author", "created", "use")
+
+
+def configure(root: Path) -> None:
+    """Build another corpus folder (e.g. v1/): ``<root>/corpus-src`` into ``<root>/corpus``."""
+    global SRC_DIR, OUT_DIR, MANIFEST
+    SRC_DIR, OUT_DIR, MANIFEST = root / "corpus-src", root / "corpus", root / "corpus-manifest.json"
+
+
 def manifest_entry(doc: SourceDoc) -> dict[str, object]:
     pages = len(doc.pages()) if doc.meta["format"] in ("pdf", "scan-pdf", "docx") else None
+    extra = {key: doc.meta[key] for key in OPTIONAL_KEYS if doc.meta.get(key)}
     return {
         "file": doc.meta["out"],
         "source_text": f"corpus-src/{doc.src.name}",
@@ -389,6 +401,7 @@ def manifest_entry(doc: SourceDoc) -> dict[str, object]:
         "source": doc.meta["source"],
         "source_url": doc.meta.get("source_url"),
         "provenance": doc.meta["provenance"],
+        **extra,
         "sha256": sha256(doc.out),
     }
 
@@ -402,17 +415,28 @@ def load_sources() -> list[SourceDoc]:
     return docs
 
 
-def build() -> None:
+def build(merge: bool = False) -> None:
+    """Render every source; with ``merge``, keep the manifest's entries that have no source text
+    (files downloaded by v1/fetch_corpus.py) and sort all entries by file."""
     docs = load_sources()
     for doc in docs:
         doc.out.parent.mkdir(parents=True, exist_ok=True)
         RENDERERS[doc.meta["format"]](doc)
         print(f"built {doc.meta['out']}")
-    expected = {d.out.resolve() for d in docs}
+    kept = []
+    if merge and MANIFEST.exists():
+        built = {d.meta["out"] for d in docs}
+        kept = [e for e in json.loads(MANIFEST.read_text(encoding="utf-8")) if not e.get("source_text")]
+        clash = sorted(built & {e["file"] for e in kept})
+        if clash:
+            raise ValueError(f"built files clash with downloaded ones: {clash}")
+    expected = {d.out.resolve() for d in docs} | {(OUT_DIR / e["file"]).resolve() for e in kept}
     stale = [p for p in OUT_DIR.rglob("*") if p.is_file() and p.resolve() not in expected]
     for path in stale:
         print(f"warning: {path.relative_to(OUT_DIR)} has no source text", file=sys.stderr)
-    entries = [manifest_entry(d) for d in docs]
+    entries = [manifest_entry(d) for d in docs] + kept
+    if merge:
+        entries.sort(key=lambda e: str(e["file"]))
     MANIFEST.write_text(json.dumps(entries, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     print(f"wrote {MANIFEST.name} ({len(entries)} files)")
 
@@ -453,13 +477,18 @@ def main() -> int:
     group = parser.add_mutually_exclusive_group()
     group.add_argument("--check", action="store_true", help="verify corpus/ against the manifest")
     group.add_argument("--table", action="store_true", help="print the README corpus table")
+    parser.add_argument(
+        "--root", type=Path, help="corpus folder to build (default: v0, this folder); e.g. evals/nai-bench/v1"
+    )
     args = parser.parse_args()
+    if args.root:
+        configure(args.root.resolve())
     if args.check:
         return check()
     if args.table:
         table()
         return 0
-    build()
+    build(merge=bool(args.root))
     return 0
 
 

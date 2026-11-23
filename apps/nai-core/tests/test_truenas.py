@@ -16,16 +16,33 @@ from app.nas.truenas import TrueNASAdapter, TrueNASClient, TrueNASError, share_p
 
 KEY = "1-SECRETKEYdoNotLeak"
 
-# Recorded shapes of TrueNAS 25.04 responses (trimmed to the fields nAI reads).
+
+class RpcError(dict[str, Any]):
+    """A JSON-RPC error object the fake server answers with instead of a result."""
+
+
+# Recorded shapes of TrueNAS 25.10.8 responses (VM test 2026-11-23; trimmed to the fields nAI reads).
 RESPONSES: dict[str, Any] = {
     "auth.login_with_api_key": True,
-    "system.info": {"version": "25.04.2", "hostname": "truenas"},
+    "system.info": {"version": "25.10.8", "hostname": "truenas"},
     "sharing.smb.query": [
         {"id": 1, "name": "documents", "path": "/mnt/tank/documents", "enabled": True},
         {"id": 2, "name": "old", "path": "/mnt/tank/old", "enabled": False},
     ],
     "sharing.nfs.query": [{"id": 1, "path": "/mnt/tank/photos", "enabled": True}],
 }
+
+# What TrueNAS 25.10.8 answers when the read-only user calls a write method (trace trimmed).
+EACCES = RpcError(
+    code=-32001,
+    message="Method call error",
+    data={
+        "error": 13,
+        "errname": "EACCES",
+        "reason": "[EACCES] Not authorized",
+        "trace": {"class": "CallError"},
+    },
+)
 
 
 class FakeConnection:
@@ -44,7 +61,9 @@ class FakeConnection:
         self.queue.append(
             json.dumps({"jsonrpc": "2.0", "method": "collection_update", "params": {}})
         )  # noise
-        if method in self.responses and self.responses[method] is not Exception:
+        if isinstance(self.responses.get(method), RpcError):
+            reply = {"jsonrpc": "2.0", "id": request["id"], "error": dict(self.responses[method])}
+        elif method in self.responses and self.responses[method] is not Exception:
             reply = {"jsonrpc": "2.0", "id": request["id"], "result": self.responses[method]}
         else:
             reply = {
@@ -75,7 +94,7 @@ def _client(responses: dict[str, Any] | None = None) -> tuple[TrueNASClient, lis
 def test_client_logs_in_and_calls_read_only_methods() -> None:
     client, made = _client()
     with client as api:
-        assert api.call("system.info")["version"] == "25.04.2"
+        assert api.call("system.info")["version"] == "25.10.8"
     assert [r["method"] for r in made[0].sent] == ["auth.login_with_api_key", "system.info"]
     assert made[0].closed
 
@@ -86,6 +105,13 @@ def test_client_refuses_insecure_urls_and_non_read_only_methods() -> None:
     client, _ = _client()
     with client as api, pytest.raises(TrueNASError, match="read-only"):
         api.call("sharing.smb.create", {"path": "/mnt/tank/x"})
+
+
+def test_api_errors_show_the_truenas_reason_not_the_generic_message() -> None:
+    client, _ = _client({**RESPONSES, "system.info": EACCES})
+    with client as api, pytest.raises(TrueNASError) as denied:
+        api.call("system.info")
+    assert str(denied.value) == "system.info failed: [EACCES] Not authorized"
 
 
 def test_rejected_key_and_errors_never_contain_the_key(caplog: pytest.LogCaptureFixture) -> None:
@@ -128,7 +154,7 @@ def test_adapter_merges_mounted_folders_and_api_shares(tmp_path, monkeypatch: py
         ("photos", "nas-api", False),
     ]
     status = adapter.platform_status()
-    assert status["connected"] is True and status["version"] == "25.04.2"
+    assert status["connected"] is True and status["version"] == "25.10.8"
 
 
 def test_adapter_without_url_or_with_failing_api_still_lists_mounted_folders(tmp_path) -> None:

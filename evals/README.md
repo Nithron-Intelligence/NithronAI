@@ -13,7 +13,9 @@
 
 Every result file records the git commit, nAI version, models, settings, dataset hashes and how many
 items are human-reviewed. Numbers from runs that include unreviewed items are marked **PROVISIONAL**;
-published numbers use `--reviewed-only`.
+published numbers use `--reviewed-only`. From v1 on, tuning uses the dev split and published numbers the
+test split with `--final-run`, which every loader refuses without the flag and records in
+[`results/test-ledger.jsonl`](results/test-ledger.jsonl) ([split rules](nai-bench/README.md#devtest-split-v1)).
 
 ## Reproduce
 
