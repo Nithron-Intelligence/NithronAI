@@ -18,6 +18,8 @@ flagged by design; use other statutes or sections.
 from __future__ import annotations
 
 import argparse
+import html
+import json
 import re
 from pathlib import Path
 
@@ -38,13 +40,49 @@ def shingles(text: str, size: int = SHINGLE) -> set[tuple[str, ...]]:
     return {tuple(tokens[i : i + size]) for i in range(len(tokens) - size + 1)}
 
 
-def bench_index() -> tuple[set[tuple[str, ...]], list[set[str]]]:
-    """Shingles of every nai-bench source text and question, and each question's word set."""
-    texts = [p.read_text(encoding="utf-8") for p in sorted((NAI_BENCH / "corpus-src").glob("*.src.md"))]
-    questions = [row["question"] for row in read_jsonl(NAI_BENCH / "questions.jsonl")]
-    index: set[tuple[str, ...]] = set()
+V1 = NAI_BENCH / "v1"
+
+
+def _corpus_file_text(path: Path) -> str:
+    """Plain text of a downloaded nai-bench corpus file (HTML tags stripped, PDF text extracted)."""
+    suffix = path.suffix.lower()
+    if suffix in (".html", ".htm", ".xml"):
+        return html.unescape(re.sub(r"<[^>]+>", " ", path.read_text(encoding="utf-8", errors="replace")))
+    if suffix == ".pdf":
+        from pypdf import PdfReader
+
+        return " ".join(page.extract_text() or "" for page in PdfReader(str(path)).pages)
+    if suffix in (".txt", ".md", ".csv"):
+        return path.read_text(encoding="utf-8", errors="replace")
+    return ""  # images, docx: their text is in the corpus-src source texts
+
+
+def bench_texts() -> tuple[list[str], list[str]]:
+    """(documents, questions) of all of nai-bench: v0 and v1 source texts, the text of v1's downloaded
+    corpus files, and every v0 and v1 question. The v1 test questions are read as raw text for this
+    contamination check only; they are never evaluated here."""
+    sources = [
+        *sorted((NAI_BENCH / "corpus-src").glob("*.src.md")),
+        *sorted((V1 / "corpus-src").glob("*.src.md")),
+    ]
+    texts = [p.read_text(encoding="utf-8") for p in sources]
+    manifest = V1 / "corpus-manifest.json"
+    if manifest.exists():
+        for entry in json.loads(manifest.read_text(encoding="utf-8")):
+            if not entry.get("source_text"):  # downloaded third-party file
+                texts.append(_corpus_file_text(V1 / "corpus" / entry["file"]))
+    question_files = [NAI_BENCH / "questions.jsonl", *sorted(V1.glob("questions-*.jsonl"))]
+    questions = [row["question"] for path in question_files if path.exists() for row in read_jsonl(path)]
+    return texts, questions
+
+
+def bench_index() -> tuple[set[int], list[set[str]]]:
+    """Hashed shingles of every nai-bench text and question (hashes keep the books in memory), and each
+    question's word set."""
+    texts, questions = bench_texts()
+    index: set[int] = set()
     for text in [*texts, *questions]:
-        index |= shingles(text)
+        index |= {hash(s) for s in shingles(text)}
     return index, [set(words(q)) for q in questions]
 
 
@@ -59,8 +97,8 @@ def closest_question(query: str, questions: list[set[str]]) -> float:
     return max((len(own & q) / len(own | q) for q in questions), default=0.0)
 
 
-def overlap(text: str, index: set[tuple[str, ...]]) -> float:
-    own = shingles(text)
+def overlap(text: str, index: set[int]) -> float:
+    own = {hash(s) for s in shingles(text)}
     return len(own & index) / len(own) if own else 0.0
 
 

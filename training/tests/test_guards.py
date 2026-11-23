@@ -146,3 +146,23 @@ def test_generate_pairs_and_train_load_through_the_guard(tmp_path: Path) -> None
     pairs.write_text(json.dumps({**_pair("q", "a", "t"), "gold_facts": ["x"]}) + "\n", encoding="utf-8")
     with pytest.raises(ValueError, match="nai-bench item"):
         train.load_pairs(pairs, None)
+
+
+def test_overlap_check_covers_nai_bench_v1_files_and_questions() -> None:
+    _, questions = check_overlap.bench_texts()
+    index, _ = check_overlap.bench_index()
+    v1 = check_overlap.V1
+    # a v1 question from the dev and from the test file, and text from a downloaded v1 file
+    rows = [
+        json.loads(line)
+        for name in ("questions-dev.jsonl", "questions-test.jsonl")
+        for line in (v1 / name).read_text(encoding="utf-8").splitlines()[:1]
+    ]
+    assert all(r["question"] in questions for r in rows)
+    eu = check_overlap._corpus_file_text(v1 / "corpus" / "Recht/EU/CELEX_32011L0083_EN_TXT.html")
+    passage = " ".join(eu.split()[3000:3200])
+    assert check_overlap.overlap(passage, index) > 0.9
+    assert (
+        check_overlap.overlap("Our cat sleeps on the warm windowsill every sunny afternoon in May.", index)
+        < 0.2
+    )
