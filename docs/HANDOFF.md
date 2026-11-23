@@ -25,7 +25,11 @@
   with `scripts/truenas-vm/` (pool `tank` mirror, `tank/documents` with sample files, `tank/photos`, SMB +
   NFS shares, user `nai-reader` in `truenas_readonly_administrators`, API key; own CA via `make-cert.sh`
   imported as the UI certificate). Secrets: `~/vms/truenas-test/secrets.env` (mode 600). Restart:
-  `scripts/truenas-vm/start-vm.sh`; API on `https://localhost:8443`.
+  `scripts/truenas-vm/start-vm.sh`; API on `https://localhost:8443`. **Adapter tested:** all 8 checks of
+  `scripts/truenas-vm/test_adapter.py` pass by host name and by IP (results table in
+  `packaging/truenas/README.md`). Fixes: errors show `error.data.reason`; no deprecated websockets `connect()`;
+  fixtures recorded from 25.10.8. Finding: the default cert names only `localhost` and 25.10 has no CA
+  creation, so real installs need an imported certificate (README section 3).
 - **Next 1: TrueNAS manual test in a VM (in progress, see above).** Requirements from the human: check disk and
   `/dev/kvm`; VM files in `~/vms/truenas-test/` (outside the repo); download the current stable TrueNAS
   Community Edition ISO from truenas.com and verify its SHA-256 against the published checksum; KVM VM with
@@ -70,7 +74,8 @@
 - **NithronOS template sync:** hand the patch in `docs/KNOWN_ISSUES.md` ("Hand-over: NithronOS template sync";
   applies cleanly to NithronOS `47def8c`) to the session that owns NithronOS.
 - **Docker disk:** ~50 GB images (ROCm PyTorch ~40 GB) + ~46 GB build cache; prune when not needed.
-- **TrueNAS manual test** on a real TrueNAS (VM) with a read-only API key: `packaging/truenas/README.md`.
+- **TrueNAS:** adapter tested on 25.10.8 in a VM (2026-11-23). Still open: nAI as a custom app inside
+  TrueNAS Apps (not tested), and the UI menu names for certificate import in `packaging/truenas/README.md`.
 - **Reranker ONNX license:** fastembed's int8 bge build comes from `onnx-community/bge-reranker-v2-m3-ONNX`,
   whose card states no license (base model Apache-2.0); fine for now, Loupe 1 ships our own export.
 - **UI checks:** CONTRIBUTING.md lists no UI test procedure; the new re-index notice was checked by rendering
