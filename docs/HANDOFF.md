@@ -12,6 +12,12 @@
 - **Push authorization:** on 2026-11-23 the human authorized this session to commit, merge and push as them
   (no force-push). The general rule in CONTRIBUTING.md (agents never push) still stands for other sessions.
 - **Done:** round 3 steps 0, 1, 2a–2e, 4; release pushed and verified (see History).
+- **TrueNAS VM session (2026-11-23):** the human authorized committing and pushing `lab/stage-0` (no push to
+  main, no tags, no branch deletion, no force-push) and user-space installs; ask before deleting anything
+  outside `~/vms/truenas-test/`. Checks done: main CI for `c9d3d05` green (run 45142725988); 437 GB free in
+  `~`; `/dev/kvm` usable by `nox`; `qemu-system-x86_64` and `qemu-img` installed, `expect` and a VNC client
+  not. The previous long conversation ran out of context here: **start the VM test in a fresh session**,
+  first command: find the current stable TrueNAS Community Edition ISO and its SHA-256 on truenas.com.
 - **Next 1: TrueNAS manual test in a VM (not started).** Requirements from the human: check disk and
   `/dev/kvm`; VM files in `~/vms/truenas-test/` (outside the repo); download the current stable TrueNAS
   Community Edition ISO from truenas.com and verify its SHA-256 against the published checksum; KVM VM with
