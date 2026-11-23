@@ -37,9 +37,10 @@
   `~/vms/truenas-test/secrets.env` (mode 600: admin password, `nai-reader` API key); CA in `pki/`. Restart:
   `scripts/truenas-vm/start-vm.sh`, API on `https://localhost:8443` after ~3 min. `lab/stage-0` has no CI
   (CI runs on main/develop and PRs only); local checks passed before every commit.
-- **Next 1: step 3, nai-bench v1 (in progress: 1, 2 done).** Do it in this order, closing out (HANDOFF + checks
-  + commit) after each bullet and every 25 files or questions. **Next command:** step 3, `review.py` progress /
-  quit / resume / summary with tests (`evals/tests/test_review.py`).
+- **Next 1: step 3, nai-bench v1 (in progress: 1–3 done).** Do it in this order, closing out (HANDOFF + checks
+  + commit) after each bullet and every 25 files or questions. **Next command:** step 4, the v1 corpus: write
+  `evals/nai-bench/v1/fetch_corpus.py` (curl downloads from a source list with license per file, SHA-256 into
+  `v1/corpus-manifest.json`), first batch of 25 files.
   1. **Split rules (done):** rules in `evals/nai-bench/README.md` ("Dev/test split"); `naibench.split_of`,
      guard in `load_items`/`load_all_items`, `--final-run` + `--label` in `eval_retrieval.py`,
      `eval_answers.py`, `run_baseline.py` (+ `--bench`), `review.py --test-split`, ledger
@@ -57,7 +58,10 @@
      Original requirement: `training/embed/check_overlap.py` already rejects nai-bench text; also make
      `training/embed/common.py` refuse any input row whose provenance says `use: eval-only` or a Claude
      author, with a test (only `train.py` checks this today).
-  3. **review.py for short sessions:** show progress ("23/100 reviewed"), `q`/Ctrl+C keep all decisions,
+  3. **review.py for short sessions (done):** progress line per item, q / Ctrl+C / Ctrl+D stop cleanly,
+     position in `~/.cache/nai-bench/review-state.json` (resume after the last item; skips come back last),
+     one-line summary, v1 excerpts from text corpus files; tests in `evals/tests/test_review.py`.
+     Original requirement: show progress ("23/100 reviewed"), `q`/Ctrl+C keep all decisions,
      resume at the first unreviewed item, one-line summary at the end; tests for save and resume.
   4. **Corpus:** first 100 v1 files per V1_PLAN.md (EUR-Lex in 5 languages, DE/SE statutes, US federal
      publications, Gutenberg distractors, fictional docs); download with `curl`, record source URL, license,
