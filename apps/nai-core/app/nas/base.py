@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
-from typing import Protocol
+from typing import Any, Protocol
 
 from ..utils.logging import get_logger
 
@@ -33,6 +33,7 @@ class ShareCandidate:
     path: str
     source: str = "mount"  # "mount": found under an allowed root; "nas-api": reported by the NAS
     already_added: bool = False
+    mounted: bool = True  # False: the NAS has this share but it isn't mounted into the nAI container
 
 
 @dataclass(frozen=True)
@@ -56,6 +57,8 @@ class NasAdapter(Protocol):
     def capabilities(self) -> Capabilities: ...
 
     def discover_shares(self, roots: list[str], existing: list[str]) -> list[ShareCandidate]: ...
+
+    def platform_status(self) -> dict[str, Any]: ...
 
 
 def _inside(path: str, root: str) -> bool:

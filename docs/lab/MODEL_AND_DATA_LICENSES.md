@@ -90,6 +90,7 @@ their terms here, flag anything non-commercial, and record the outcome in the mo
 | transformers, peft, optimum | Apache-2.0 | training, LoRA, ONNX export |
 | onnxruntime | MIT | ONNX export check, fastembed runtime |
 | fastembed | Apache-2.0 | nAI embeddings runtime |
+| websockets | BSD-3-Clause | nAI TrueNAS API client (also a uvicorn[standard] dependency) |
 | Ollama | MIT | local LLM serving, teacher model serving |
 | llama.cpp | MIT | GGUF export (Stage 2) |
 | Tesseract | Apache-2.0 | OCR in nAI |

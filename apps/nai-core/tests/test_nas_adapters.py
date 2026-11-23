@@ -13,7 +13,7 @@ def test_adapter_comes_from_setting_and_falls_back_to_generic() -> None:
     assert get_nas_adapter(Settings(nas_platform="nithronos")).name == "nithronos"
     assert get_nas_adapter(Settings(nas_platform="NithronOS ")).name == "nithronos"
     assert get_nas_adapter(Settings(nas_platform="beos")).name == "generic"
-    assert set(ADAPTERS) == {"generic", "nithronos"}
+    assert set(ADAPTERS) == {"generic", "nithronos", "truenas"}
 
 
 def test_discovery_lists_first_level_folders_and_skips_nas_internals(tmp_path) -> None:

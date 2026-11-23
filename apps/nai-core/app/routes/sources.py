@@ -55,6 +55,7 @@ def discover_shares(
         platform=adapter.name,
         platform_name=adapter.display_name,
         capabilities=vars(adapter.capabilities),
+        status=adapter.platform_status(),
         shares=[ShareCandidateInfo(**vars(s)) for s in shares],
     )
 

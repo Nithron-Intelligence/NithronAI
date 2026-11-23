@@ -24,6 +24,11 @@ All notable changes to nAI. Versions follow [semantic versioning](https://semver
 - nAI is described as a product for any NAS OS, with NithronOS as the reference platform (ADR-0004).
 
 ### Added
+- **TrueNAS adapter, step 1** (`NAI_NAS_PLATFORM=truenas`): read-only share discovery through the TrueNAS
+  JSON-RPC WebSocket API (`NAI_TRUENAS_URL`, `NAI_TRUENAS_API_KEY`, optional `NAI_TRUENAS_CA_FILE`; wss://
+  with certificate verification only, key never logged) and a custom-app compose file with install guide in
+  `packaging/truenas/`. `/sources/discover` now also reports the platform status and shares that exist on the
+  NAS but aren't mounted into nAI.
 - NAS adapter layer (`app/nas/`, `NAI_NAS_PLATFORM`: `generic` or `nithronos`) and
   `GET /sources/discover` (admin): folders under the allowed roots that could become sources.
 - `/system` reports which Nithron answering model (Tern or Nox) fits the machine; `/health/detailed`

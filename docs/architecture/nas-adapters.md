@@ -120,7 +120,10 @@ management API, and each platform's ARM/x86 coverage for the nAI image (amd64 + 
    `NAI_NAS_PLATFORM=nithronos`.
 2. **Plain Docker / OMV / Unraid packaging** (no code): a documented `docker-compose.yml`, an Unraid template
    XML, an OMV compose example. Low risk, broadens reach immediately.
-3. **TrueNAS packaging**: custom-YAML install guide, then a `truenas/apps` catalog submission.
+3. **TrueNAS** (step 1 done 2026-11-23): `app/nas/truenas.py` (read-only JSON-RPC discovery: `system.info`,
+   `sharing.smb.query`, `sharing.nfs.query`; wss + TLS verification only; key never logged) and
+   [`packaging/truenas/`](../../packaging/truenas/README.md) (custom-app YAML + install doc). Next: a
+   `truenas/apps` catalog submission, then permission sync (step 4).
 4. **Permission sync** (read-only): `share_permissions()` + `map_to_groups()` for NithronOS first, then
    TrueNAS (dataset ACLs via JSON-RPC) and Unraid (share security via the API). Synced groups are marked as
    NAS-managed; nAI never writes permissions back.

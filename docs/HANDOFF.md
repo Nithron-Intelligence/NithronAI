@@ -7,7 +7,8 @@
 ## Status now
 
 - **Updated:** 2026-11-23, round 3, step 2a done ("Ask before re-embedding when the embedding model changes"
-  `3222ff6`, docs `2932379`) and 2b done ("Reranker auto policy…", see History). Next: 2c (TrueNAS adapter).
+  `3222ff6`, docs `2932379`), 2b done (`37381c2`), 2c done ("TrueNAS adapter step 1…"). Next: 2d (LICENSE
+  files for evals/ and training/), 2e (licensing-options.md), step 4 (NithronOS template diff), step 3 (nai-bench v1).
 - **Session note:** a new session (different account) took over mid-step 2 after the previous one ran out of tokens.
 - **Branch:** `lab/stage-0` (all lab work), based on local `main` (release 0.5.0). **Nothing is pushed.**
 - **Done:** rounds 1–2 (see History). Round 3 steps 0 (handoff doc, `AGENTS.md`) and 1 (LICENSE synced with
@@ -88,7 +89,8 @@
   LICENSE with NithronOS…" `d496d16` on `main`), tag moved, branch rebased. New session from step 2: 2a
   embedding-model change detection (`3222ff6`); 2b reranker auto policy + cgroup-aware hardware detection;
   bge int8 top-10 latency: 2 threads 2.08 s, 4 threads 1.09 s, 8 threads 0.70 s
-  (`evals/results/rerankers-threads-2026-11-23.md`). Rest in progress (see Status).
+  (`evals/results/rerankers-threads-2026-11-23.md`); 2c TrueNAS adapter step 1 (read-only discovery, 10 tests
+  with a fake JSON-RPC server, `packaging/truenas/`). Rest in progress (see Status).
 
 ## How to resume
 
