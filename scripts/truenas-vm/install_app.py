@@ -110,7 +110,7 @@ def compose_text(image: str, url: str, api_key: str) -> str:
     """packaging/truenas/compose.yaml with the values a user fills in."""
     text = COMPOSE.read_text(encoding="utf-8")
     replacements = {
-        "image: ghcr.io/nithron/nithronai/nai-core:0.6.0": f"image: {image}",
+        "image: ghcr.io/nithron/nithronai/nai-core:0.7.0": f"image: {image}",
         "- NAI_TRUENAS_URL=\n": f"- NAI_TRUENAS_URL={url}\n",
         "- NAI_TRUENAS_API_KEY=\n": f"- NAI_TRUENAS_API_KEY={api_key}\n",
         "# - NAI_TRUENAS_CA_FILE=/app/data/truenas-ca.pem": "- NAI_TRUENAS_CA_FILE=/app/data/truenas-ca.pem",
