@@ -86,7 +86,8 @@ BENCH_ITEM_KEYS = ("gold_answer", "gold_facts", "gold_sources", "review_status")
 def check_training_row(row: dict[str, Any], where: str) -> None:
     """Raise if a row must not be used for training (lab principle 3): eval-only, Claude or another
     forbidden author, or a nai-bench item."""
-    provenance = row.get("provenance") if isinstance(row.get("provenance"), dict) else {}
+    raw = row.get("provenance")
+    provenance: dict[str, Any] = raw if isinstance(raw, dict) else {}
     for scope in (row, provenance):
         if str(scope.get("use") or "").lower() == "eval-only":
             raise ValueError(f"{where}: marked use: eval-only, never training data (lab principle 3)")
