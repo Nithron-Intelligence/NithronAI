@@ -6,7 +6,36 @@
 
 ## Status now
 
-- **Updated:** 2026-11-23, round 5 (publish 0.6.0, Stage 0 baselines, base-model audit, Vane 1 pilot).
+- **Updated:** 2026-11-23, round 6 (Granite R2 as embedding base, Vane 1 pilot on it, reranker audit).
+- **Round 6 permissions (2026-11-23):** commit, push, open and merge PRs as the human (merge commits; no attribution
+  trailers, no history rewrite, no force-push, never bypass branch protection); **no tags**; user-space installs,
+  Hugging Face and Ollama downloads (sudo → the human); start/stop the bench and ROCm trainer containers; unattended
+  GPU runs ≤ 3 h with command and config recorded here first; ask before deleting anything (images, volumes, Ollama
+  models, HF caches, training runs). NithronOS read-only; never load the test split; v1 dev only, PROVISIONAL.
+- **Round 6 start checks:** lab/stage-0 = `d59dfac`, in sync. Three empty untracked files `v1-dev-*.err` in the repo
+  root are stderr logs from round 5's baseline script (not deleted; ask). The "background agent" of round 5 was a
+  background **fork of the round-5 session itself**, started from the CLI at 16:04 ("Started in the background: if I
+  would choose the best model, even if my gpu …"), i.e. a side question typed into that session; no hook, cron job,
+  systemd timer or daemon worker launches agents (repo hooks are graphify guards only; `~/.claude/settings.json` has
+  no hooks; daemon 0 workers; no crontab binary; 0 user timers). Nothing changed.
+- **Round 6, section 1 done: Granite R2 vetted.** Apache-2.0, ModernBERT built into transformers (no
+  trust_remote_code), 384-d (97m) / 768-d (311m), **CLS pooling, no prefixes**, max length 32 768, de/en/fr/pt/sv in
+  the 52 enhanced languages. Audit section added to `docs/lab/vane1-base-model-audit.md`: **passes** (MS MARCO
+  excluded per the R2 paper; upstream Wikipedia/Stack Exchange CC-BY-SA recorded under decision 2). ONNX:
+  `training/embed/vet_onnx.py` (export like Vane 1 + fastembed custom-model parity, CLS): fp32 1.0000, int8 0.9723
+  (below the 0.99 bar: nAI should load fp32, 390 MB); our export equals IBM's ONNX files; fastembed loads it via
+  `add_custom_model` (CLS). `verify_fastembed` now takes pooling and model file.
+- **Round 6, section 2 done: granite 97m meets the switch criteria** (`evals/results/v1-dev-granite-2026-11-23.md`,
+  PROVISIONAL, v1 dev): hybrid MRR 0.720 → 0.834, Hit@5 0.894 → 0.915; cross-language hybrid Hit@5 0.714 → 0.714,
+  embedding-only 0.643 → 0.786; every language equal or better (sv MRR 0.58 → 0.76); offline embedding-only MRR
+  0.444 → 0.854 (311m 0.938; the old pilot 0.613). NAS 2 CPU/4 GB: search 0.30 → 0.20 s median, RAM idle 812 →
+  1 444 MiB, indexing 36 → 65 s for 27 files. nAI registers Granite as a custom fastembed model (CLS, fp32 ONNX);
+  bench compose takes `NAI_EMBEDDINGS_MODEL`, per-model volumes; nas-sim overlay `NAS_SIM_DATA`. 311m hybrid in nAI
+  stopped (CPU too slow, ~1.5 h); measured offline instead.
+- **Round 6, section 3 in progress:** default embedding model → granite 97m in `config.py`, `nithron_models.py` (Vane 1
+  base), bench compose; docs (README, ARCHITECTURE, MODEL_NAMING, register, CHANGELOG Unreleased); upgrade test
+  `test_upgrade_from_the_old_default_model_asks_before_reindexing`.
+- **Round 6 next command:** PR lab/stage-0 → main for the default change, poll CI, merge.
 - **Round 5 permissions (2026-11-23):** commit, push, open and merge PRs as the human (merge commits; no
   attribution trailers, no history rewrite, no force-push, never bypass branch protection); create and push the
   tag **v0.6.0 once** (never move/re-push a tag, no other tags); user-space installs, pulling Ollama models and
@@ -45,7 +74,10 @@
   **0.766**; cross-language MRR 0.435 → **0.676**, Hit@5 0.571 → **0.857**; every category and language improves.
   **Nothing from it can ship** until the base-model audit is decided. (The first attempt with `--release
   vane-1-pilot` was refused by the naming check before training; rerun as rc0.)
-- **Round 5 next command:** PR `lab/stage-0` → main for rounds-5 commits, merge after CI.
+- **Round 5 end state:** PR #6 merged as `bd987dc`, main CI green (run 45222520816). main = `bd987dc`; lab/stage-0 =
+  main plus this HANDOFF-only commit, both pushed. Bench stack stopped (v1 index and Ollama models kept).
+- **Round 5 next command:** none; next round starts with the human's decision on the base-model audit (then, if
+  accepted: several pilot seeds, a larger corpus, ONNX export and a hybrid run in nAI on the dev split).
 - **Round 4 permissions (2026-11-23):** the human authorized this session to commit, push, open and merge PRs as
   them (git identity, SSH key, gh auth already configured); no attribution trailers, no history rewrite, no
   force-push, never bypass branch protection; merge PRs with a merge commit (not squash/rebase). Release
@@ -259,6 +291,9 @@
 
 | Date | Decision | Reason |
 |---|---|---|
+| 2026-11-23 | **Embedding base → IBM `granite-embedding-97m-multilingual-r2`** (Apache-2.0, trained without MS MARCO) if it holds up on nai-bench v1 dev; it becomes Vane 1's base and nAI's default. | The old default's lineage has non-commercial data (audit). |
+| 2026-11-23 | **Upstream CC-BY-SA in a base model's lineage is accepted** and recorded in the audit for lawyer review before any commercial deal; data nAI trains on directly stays CC-BY-SA-free. | Most open bases use Wikipedia/StackExchange; non-commercial terms are the hard blocker. |
+| 2026-11-23 | **No release in round 6;** a default-model change goes into "Unreleased" for 0.7.0. | |
 | 2026-11-23 | **Publish 0.6.0** (tag `v0.6.0` on `06c29e0`). | Prepared and smoke-tested in round 4. |
 | 2026-11-23 | **Vane 1 teacher: `mistral-small3.1`** (corpus and query generation); license and quantization in the register. Deliberately not the bench judge (`qwen2.5:7b`). | Separate teacher and judge models avoid a model grading its own style. |
 | 2026-11-23 | **Data rule: no CC-BY-SA material in Vane 1's training data**; only public domain, CC0, CC-BY, EU reuse texts and teacher-generated text. | Keeps the model and a dataset release free of share-alike obligations. |
@@ -306,7 +341,7 @@
   - ROCm smoke: 2 training steps + ONNX export on the RX 7900 XTX in 37 s.
 - **Round 5 (2026-11-23):** permissions/decisions `0c941ad`; **v0.6.0 tagged on `06c29e0` and published** (release
   run 45207761865); NithronOS template 0.6.0 `bbd8155`; audit `4966ff0`; Stage 0 baselines `5877b1b`; pilot tooling
-  `a5970c5`; pilot dataset `e65d5c2`; pilot run + dev eval in the closing commits. Tests: 218 nai-core, 119
+  `a5970c5`; pilot dataset `e65d5c2`; pilot results `2a144c2`, PR #6 merge `bd987dc`, then this closing HANDOFF commit. Tests: 218 nai-core, 119
   evals/training.
 - **Round 4 (2026-11-23):** PR #3 (lab/stage-0 → main, merge `3163618`; CI fix `41facf4`), PR #4 (0.6.0 prep, merge
   `06c29e0`), HANDOFF `3065eda`, v1 baseline tooling `22336af`, v1 dev baseline `09f6cd1`, v1 questions 125
