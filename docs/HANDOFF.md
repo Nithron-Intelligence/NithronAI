@@ -19,8 +19,10 @@
   its first CI run failed only on mypy over `training/embed/common.py` (CI type-checks training/embed, the local
   commands didn't), fixed in `41facf4`; PR CI then green. main CI on `3163618` green incl. nai-bench evaluation
   (run 45189836839). main = lab/stage-0 = `3163618` (local and origin) before this close-out.
-- **Round 4 next command:** section 2, release 0.6.0 prep on lab/stage-0: CHANGELOG Unreleased → `## [0.6.0] –
-  2026-11-23`, `app_version`/`__version__`/README badge → 0.6.0, TrueNAS guide → `nai-core:0.6.0`, PR to main.
+- **Round 4 next command:** merge the 0.6.0 prep PR (CHANGELOG `## [0.6.0] – 2026-11-23`, version 0.6.0 in
+  config/`__init__`/README badge, TrueNAS guide → `nai-core:0.6.0`), then build the image from that main commit and
+  smoke-test it (`/health` = 0.6.0; `--user 568:568` with a throwaway data dir → semantic search). No tag
+  (release switch: STOP BEFORE TAGGING).
 - **Branches:** `main` = `lab/stage-0` (fast-forwarded after the release merge), both pushed;
   `lab/stage-0` tracks `origin/lab/stage-0`. Work continues on `lab/stage-0`; push it after each close-out.
 - **Push authorization:** on 2026-11-23 the human authorized this session to commit, merge and push as them

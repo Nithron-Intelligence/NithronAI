@@ -5,6 +5,11 @@ All notable changes to nAI. Versions follow [semantic versioning](https://semver
 
 ## [Unreleased]
 
+## [0.6.0] – 2026-11-23
+
+Lab Stage 0 continues: TrueNAS support tested on a real TrueNAS, nai-bench v1 started, and the image now works
+when it runs as another user.
+
 ### Fixed
 - **Image runs as any user:** started as another uid (TrueNAS Apps run it as `apps`, 568; also
   `docker run --user`), nAI couldn't download its embedding model (Hugging Face's cache defaulted to
@@ -35,7 +40,9 @@ All notable changes to nAI. Versions follow [semantic versioning](https://semver
   JSON-RPC WebSocket API (`NAI_TRUENAS_URL`, `NAI_TRUENAS_API_KEY`, optional `NAI_TRUENAS_CA_FILE`; wss://
   with certificate verification only, key never logged) and a custom-app compose file with install guide in
   `packaging/truenas/`. `/sources/discover` now also reports the platform status and shares that exist on the
-  NAS but aren't mounted into nAI.
+  NAS but aren't mounted into nAI. Tested against TrueNAS Community Edition 25.10.8 in a VM, both the adapter
+  (read-only key, CA file, allow-list) and nAI as a TrueNAS custom app (`scripts/truenas-vm/`); API errors now
+  show TrueNAS's reason, and the client no longer uses websockets 17's deprecated direct `connect()`.
 - NAS adapter layer (`app/nas/`, `NAI_NAS_PLATFORM`: `generic` or `nithronos`) and
   `GET /sources/discover` (admin): folders under the allowed roots that could become sources.
 - `/system` reports which Nithron answering model (Tern or Nox) fits the machine; `/health/detailed`
@@ -43,6 +50,12 @@ All notable changes to nAI. Versions follow [semantic versioning](https://semver
 - **nai-bench v0**: a multilingual NAS-style benchmark (27 files, 56 questions) with retrieval and
   answer-quality evals, a human review workflow (`evals/nai-bench/review.py`), baselines, a reranker
   comparison and simulated-NAS measurements in `evals/results/`, and CI runs with OCR.
+- **nai-bench v1, first round:** 100 corpus files (EU acts in five languages, German and Swedish statutes,
+  US federal rules, public-domain books, fictional documents and scans; license and SHA-256 per file) and
+  100 questions in `evals/nai-bench/v1/`, split into dev and test by a hash of the item id. Every loader refuses
+  the test split without `--final-run` and logs final runs to `evals/results/test-ledger.jsonl`. Training
+  inputs refuse eval-only, Claude-written and nai-bench rows; `review.py` shows progress, stops cleanly and
+  resumes. All v1 items are unreviewed.
 - `infra/compose.bench.yaml` and `evals/smoke_ollama.sh`: an nAI + Ollama end-to-end smoke test.
 - Docs: `docs/ARCHITECTURE.md`, `CONTRIBUTING.md`, `docs/KNOWN_ISSUES.md`, ADR-0003 (product scope),
   ADR-0004 (NAS adapters), lab roadmap, license register, model naming, Stage 1 plan, product and
@@ -102,6 +115,7 @@ Phase 0: foundation.
 - Relicensed from AGPL-3.0-only to the NithronOS Community License (versions up to `66fa142` remain
   AGPL-3.0-only; see `NOTICE`).
 
-[Unreleased]: https://github.com/Nithron/NithronAI/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/Nithron/NithronAI/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/Nithron/NithronAI/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/Nithron/NithronAI/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/Nithron/NithronAI/releases/tag/v0.4.0
