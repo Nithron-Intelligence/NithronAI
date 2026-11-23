@@ -6,12 +6,11 @@
 
 ## Status now
 
-- **Updated:** 2026-11-23, round 3, step 0 (this file created).
+- **Updated:** 2026-11-23, round 3, after step 1.
 - **Branch:** `lab/stage-0` (all lab work), based on local `main` (release 0.5.0). **Nothing is pushed.**
-- **Done:** rounds 1–2 (see History). Round 3 step 0 (handoff doc, `AGENTS.md`).
+- **Done:** rounds 1–2 (see History). Round 3 steps 0 (handoff doc, `AGENTS.md`) and 1 (LICENSE synced with
+  NithronOS on `main` as `d496d16`; local tag `v0.5.0` moved there; `lab/stage-0` rebased).
 - **In progress:** round 3. Steps, in order:
-  1. Fix the release on `main`: LICENSE byte-identical to NithronOS (`6c7bc57`), Niro in NOTICE, move the
-     local `v0.5.0` tag, CHANGELOG line, rebase `lab/stage-0`; check whether nai-core 0.4.0 is public on GHCR.
   2. Confirmed decisions: reranker auto-policy (bge, top 10, off on NAS-class), embedding-model-change
      detection (ask to re-index), TrueNAS adapter step 1 (read-only API discovery + custom-app compose + doc),
      LICENSE files for `evals/` and `training/` (Apache-2.0) and nai-bench items (CC-BY-4.0),
@@ -24,13 +23,22 @@
 
 ## Waiting on the human
 
-- **Pushes** (agents never push): `main`, tag `v0.5.0` (triggers the GHCR release), remote branch deletion
-  `phase1-ask-your-nas`. Commands: see the last round's final report; to be refreshed in step 1.
+- **Pushes** (agents never push). `v0.5.0` points at `d496d16` on `main`; pushing the tag runs
+  `release.yml`, which publishes `ghcr.io/nithron/nithronai/nai-core:0.5.0` (and moves `latest`, `0`):
+  ```bash
+  git switch main && git merge --ff-only lab/stage-0   # optional: brings the lab work onto main
+  git push origin main
+  git push origin v0.5.0
+  git push origin --delete phase1-ask-your-nas
+  ```
+  GHCR today (anonymous check, 2026-11-23): `nai-core` tags `0.4.0`, `0.4`, `0`, `latest`, `sha-6686b59` are
+  public.
 - **Licensing direction** for nAI itself (NCL + commercial vs dual license vs open core): not decided.
 - **nai-bench review:** all items are unreviewed (`python evals/nai-bench/review.py`).
 - **Trademark search** for Nithron Vane / Loupe / Tern / Nox before any public release.
 - **NithronOS template sync:** hand the step list (round 3 step 4) to the session that owns NithronOS.
-- **Branch `chore/ncl-add-nithro`:** obsolete (stale "Nithro" text); delete or keep?
+- **Branch `chore/ncl-add-nithro`** (local + remote): obsolete since LICENSE was synced with "Niro"; delete
+  (`git branch -D chore/ncl-add-nithro && git push origin --delete chore/ncl-add-nithro`) or keep?
 - **Docker disk:** ~50 GB images (ROCm PyTorch ~40 GB) + ~46 GB build cache; prune when not needed.
 
 ## Decisions log (newest first)
@@ -58,18 +66,21 @@
 - **Round 1 (2026-11-22):** lab direction and docs; nai-bench v0 (27 files, 56 questions); eval harness;
   Ollama smoke test; Stage 1 plan and `training/embed/` skeleton. Baseline (v0, provisional): hybrid MRR
   **0.793**, Hit@5 0.933; qwen2.5:1.5b answers correct 0.578, correct refusal 0.545; qwen2.5:7b reference
-  correct 0.822. Key commits (after rebase): `9e9a99f` nai-bench, `ee6ec73` smoke, `d4bd130` baseline,
-  `ec38d6b` lab docs, `2d8cec5` Stage 1.
-- **Round 2 (2026-11-23):** release 0.5.0 on `main` (`5534fca`, local tag); docs moved out of CLAUDE.md
-  (`dd25e00`); NAS adapter layer (`5c583f9`); reranker off by default (`9e20901`); model names (`cf0ad0a`);
-  nai-bench v1 plan (`a2ec841`) and review workflow (`3f3c184`); business draft (`0eb5e3e`); simulated NAS
-  (`f93d102`); reranker comparison (`cff67d8`); ROCm trainer (`c51226f`).
+  correct 0.822. Key commits ("subject" `hash as of the round-3 rebase`; hashes change when the branch is
+  rebased, search by subject): "Add nai-bench…" `4f71db4`, "Add an nAI + Ollama bench stack…" `b277682`,
+  "Record the nai-bench baseline…" `2306b19`, "Write down the Nithron AI lab direction" `d6f036e`,
+  "Plan the Stage 1 embedding fine-tune…" `b2dfac0`.
+- **Round 2 (2026-11-23):** release 0.5.0 on `main` ("Release 0.5.0" `5534fca`); docs moved out of CLAUDE.md
+  (`9be6c78`); NAS adapter layer (`caf55c6`); reranker off by default (`d7c266c`); model names (`12fb275`);
+  nai-bench v1 plan (`20818bf`) and review workflow (`80f588d`); business draft (`5d19696`); simulated NAS
+  (`cf687f8`); reranker comparison (`e1d252f`); ROCm trainer (`d67dcb7`); review fixes (`7f47cf9`).
   - Rerankers (top-30, 2 threads): none 0.793; old English default 0.791; mmarco 0.802; **bge-m3 int8 0.918**
     (3.7 s; top-10: 0.878 at 2.1 s); Qwen3-Reranker 0.956 (40 s).
   - Simulated NAS (2 CPUs / 4 GB each, CPU only): index 27 s; search 0.20 s; extractive answer 0.20 s;
     qwen2.5:1.5b answer 4.7 s median (p95 21 s); nai-core 1.1 GB, Ollama 1.6 GB.
   - ROCm smoke: 2 training steps + ONNX export on the RX 7900 XTX in 37 s.
-- **Round 3 (2026-11-23):** in progress (see Status).
+- **Round 3 (2026-11-23):** handoff doc; LICENSE synced with NithronOS (sha256 `62f2cf4c…c05c177`, "Sync
+  LICENSE with NithronOS…" `d496d16` on `main`), tag moved, branch rebased. Rest in progress (see Status).
 
 ## How to resume
 
