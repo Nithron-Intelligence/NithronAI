@@ -28,7 +28,11 @@
   (`evals/results/v1-dev-keyword-only-2026-11-23.md`, PROVISIONAL): **MRR 0.842, Hit@5 0.894**, cross-language
   Hit@5 0.643 (exactly the expected BM25 row). Test image `nai-core:kwonly-local` (local only); new volume
   `nai-bench_nai-nas-sim-r8-2g-data`.
-- **Next (section 3, release 0.7.0)** per `docs/RELEASING.md`: CHANGELOG date, `app_version`/`__version__`/README
+- **Round 8, section 3 (release 0.7.0): in progress.** Release PR: version 0.7.0 in `config.py`, `__init__.py`,
+  README badge and release line, CHANGELOG `[0.7.0] – 2026-11-23` + compare links. Per `docs/RELEASING.md` step 5
+  the templates (NithronOS here, TrueNAS compose + `scripts/truenas-vm/install_app.py`) move to 0.7.0 only after
+  the image is published (follow-up PR).
+- **Plan (section 3)** per `docs/RELEASING.md`: CHANGELOG date, `app_version`/`__version__`/README
   badge, TrueNAS compose + this repo's NithronOS template → 0.7.0, PR, build from that main commit, smoke tests
   (/health 0.7.0; `--user 568:568` semantic query; 2g → keyword-only answers a keyword query; 3g → Granite on), tag
   v0.7.0 once, poll release.yml, anonymous pull + repeat, hand-over patch bump.
