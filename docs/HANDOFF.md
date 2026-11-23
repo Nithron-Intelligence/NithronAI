@@ -6,22 +6,34 @@
 
 ## Status now
 
-- **Updated:** 2026-11-23, round 3, step 2a done ("Ask before re-embedding when the embedding model changes"
-  `3222ff6`, docs `2932379`), 2b done (`37381c2`), 2c done (`0f1c251`), 2d done (`255feea`), 2e done
-  (`f054402`), step 4 done ("Hand over the NithronOS template sync…"). Next: step 3 (nai-bench v1).
-- **Session note:** a new session (different account) took over mid-step 2 after the previous one ran out of tokens.
-- **Branch:** `lab/stage-0` (all lab work), based on local `main` (release 0.5.0). **Nothing is pushed.**
-- **Done:** rounds 1–2 (see History). Round 3 steps 0 (handoff doc, `AGENTS.md`) and 1 (LICENSE synced with
-  NithronOS on `main` as `d496d16`; local tag `v0.5.0` moved there; `lab/stage-0` rebased).
-- **In progress:** round 3. Steps, in order:
-  2. Confirmed decisions: reranker auto-policy (bge, top 10, off on NAS-class), embedding-model-change
-     detection (ask to re-index), TrueNAS adapter step 1 (read-only API discovery + custom-app compose + doc),
-     LICENSE files for `evals/` and `training/` (Apache-2.0) and nai-bench items (CC-BY-4.0),
-     `docs/business/licensing-options.md`.
-  3. nai-bench v1: dev/test split with a guard, first 100 corpus files, first 100 questions, review.py
-     progress/resume.
-  4. NithronOS template sync instructions in `docs/KNOWN_ISSUES.md`.
-- **Next after round 3:** human review of nai-bench items; finish v1 (to 300+ files, 625 questions);
+- **Updated:** 2026-11-23, round 3, end of the second session (it took over mid-step 2 after the first one
+  ran out of tokens). Stopped cleanly at a commit; **no uncommitted work.**
+- **Branch:** `lab/stage-0` (all lab work), on top of local `main` (release 0.5.0, tag `v0.5.0` = `d496d16`).
+  **Nothing is pushed.**
+- **Done in round 3:** steps 0, 1, 2a–2e and 4 (see History). The facts from the old CLAUDE.md are in
+  committed docs (ADR-0003, README roadmap, KNOWN_ISSUES).
+- **Next: step 3, nai-bench v1 (not started).** Do it in this order, closing out (HANDOFF + checks + commit)
+  after each bullet and every 25 files or questions:
+  1. **Split rules first.** v1 lives in `evals/nai-bench/v1/`: `questions-dev.jsonl` and
+     `questions-test.jsonl` (separate files) plus its own corpus and manifest. Split by hash, never by hand:
+     `sha256(item_id)` mod 100 < 40 → dev, else test (V1_PLAN.md: 40/60). Every loader (`naibench.load_items`
+     and the eval scripts) refuses the test file unless called with an explicit `--final-run` flag, and each
+     final run appends a line (date, commit, label, item count, dataset hash) to
+     `evals/results/test-ledger.jsonl`. Add a test that `eval_retrieval`/`eval_answers`/`run_baseline` can't
+     load test items without the flag. v0 (`evals/nai-bench/questions.jsonl`) stays as the frozen smoke set.
+  2. **Training guard:** `training/embed/check_overlap.py` already rejects nai-bench text; also make
+     `training/embed/common.py` refuse any input row whose provenance says `use: eval-only` or a Claude
+     author, with a test (only `train.py` checks this today).
+  3. **review.py for short sessions:** show progress ("23/100 reviewed"), `q`/Ctrl+C keep all decisions,
+     resume at the first unreviewed item, one-line summary at the end; tests for save and resume.
+  4. **Corpus:** first 100 v1 files per V1_PLAN.md (EUR-Lex in 5 languages, DE/SE statutes, US federal
+     publications, Gutenberg distractors, fictional docs); download with `curl`, record source URL, license,
+     retrieval date, author and SHA-256 per file in the v1 manifest; Claude-written files say so and are
+     eval-only. Close out every 25 files.
+  5. **Questions:** first 100 v1 questions spread over the 4 categories × 5 languages (+ unanswerable), all
+     `review_status: unreviewed`, `provenance.author: claude` ("Claude-written"), `use: eval-only`;
+     validate with `naibench.validate`. Close out every 25 questions.
+- **After round 3:** human review of nai-bench items; finish v1 (to 300+ files, 625 questions);
   synthetic corpus generator for Stage 1; Vane 1 / Loupe 1 pilot training on the GPU.
 
 ## Waiting on the human
@@ -44,6 +56,11 @@
 - **Branch `chore/ncl-add-nithro`** (local + remote): obsolete since LICENSE was synced with "Niro"; delete
   (`git branch -D chore/ncl-add-nithro && git push origin --delete chore/ncl-add-nithro`) or keep?
 - **Docker disk:** ~50 GB images (ROCm PyTorch ~40 GB) + ~46 GB build cache; prune when not needed.
+- **TrueNAS manual test** on a real TrueNAS (VM) with a read-only API key: `packaging/truenas/README.md`.
+- **Reranker ONNX license:** fastembed's int8 bge build comes from `onnx-community/bge-reranker-v2-m3-ONNX`,
+  whose card states no license (base model Apache-2.0); fine for now, Loupe 1 ships our own export.
+- **UI checks:** CONTRIBUTING.md lists no UI test procedure; the new re-index notice was checked by rendering
+  the function in Node only. Decide whether to add a Playwright smoke test.
 
 ## Decisions log (newest first)
 
@@ -86,6 +103,10 @@
   - Simulated NAS (2 CPUs / 4 GB each, CPU only): index 27 s; search 0.20 s; extractive answer 0.20 s;
     qwen2.5:1.5b answer 4.7 s median (p95 21 s); nai-core 1.1 GB, Ollama 1.6 GB.
   - ROCm smoke: 2 training steps + ONNX export on the RX 7900 XTX in 37 s.
+- **Round 3 (2026-11-23), session 2 commits:** `3222ff6` ask before re-embedding on model change, `2932379`
+  docs + version rules, `37381c2` reranker auto policy + cgroup-aware hardware detection, `0f1c251` TrueNAS
+  adapter step 1, `255feea` lab code Apache-2.0 / nai-bench CC-BY-4.0, `f054402` licensing options,
+  `94057f2` NithronOS template patch, then the closing HANDOFF commit. Tests: 215 nai-core, 66 evals/training.
 - **Round 3 (2026-11-23):** handoff doc; LICENSE synced with NithronOS (sha256 `62f2cf4c…c05c177`, "Sync
   LICENSE with NithronOS…" `d496d16` on `main`), tag moved, branch rebased. New session from step 2: 2a
   embedding-model change detection (`3222ff6`); 2b reranker auto policy + cgroup-aware hardware detection;
