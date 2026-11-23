@@ -4,6 +4,8 @@
 #   evals/smoke_ollama.sh                 # CPU Ollama
 #   ROCM=1 evals/smoke_ollama.sh          # AMD GPU (ROCm image + /dev/kfd, /dev/dri)
 #   KEEP=1 evals/smoke_ollama.sh          # leave the stack running afterwards
+#   CLEAN=1 evals/smoke_ollama.sh         # remove containers and volumes afterwards (models re-download next time)
+# By default the stack is stopped, not removed, so the Ollama models and the index are kept.
 #
 # Needs: docker compose, python3 with httpx (e.g. apps/nai-core/.venv). Model: $NAI_LLM_MODEL
 # (default qwen2.5:1.5b, Apache-2.0, ~1 GB download).
@@ -21,8 +23,10 @@ if [ "${ROCM:-0}" = "1" ]; then
 fi
 
 cleanup() {
-    if [ "${KEEP:-0}" != "1" ]; then
+    if [ "${CLEAN:-0}" = "1" ]; then
         docker compose "${files[@]}" down -v
+    elif [ "${KEEP:-0}" != "1" ]; then
+        docker compose "${files[@]}" stop
     fi
 }
 trap cleanup EXIT
