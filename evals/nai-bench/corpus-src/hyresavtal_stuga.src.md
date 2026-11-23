@@ -4,7 +4,7 @@ format: docx
 language: sv
 kind: contract
 title: Hyresavtal fritidshus Björkudden
-license: CC0-1.0
+license: CC-BY-4.0
 source: written for nai-bench (fictional people and place)
 provenance: claude-authored
 ---

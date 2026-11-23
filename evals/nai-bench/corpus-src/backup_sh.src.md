@@ -3,7 +3,7 @@ out: Technik/homelab/backup.sh
 format: text
 language: en
 kind: code
-license: CC0-1.0
+license: CC-BY-4.0
 source: written for nai-bench
 provenance: claude-authored
 ---

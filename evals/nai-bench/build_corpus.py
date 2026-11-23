@@ -23,7 +23,7 @@ Source format (``corpus-src/*.src.md``)::
     format: pdf            # pdf | scan-pdf | scan-png | docx | text
     language: de
     kind: contract
-    license: CC0-1.0
+    license: CC-BY-4.0
     source: written for nai-bench (fictional)
     provenance: claude-authored
     ---

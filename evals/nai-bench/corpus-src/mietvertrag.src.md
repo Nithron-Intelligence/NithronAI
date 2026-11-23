@@ -4,7 +4,7 @@ format: pdf
 language: de
 kind: contract
 title: Mietvertrag Ahornweg 7
-license: CC0-1.0
+license: CC-BY-4.0
 source: written for nai-bench (fictional company and people)
 provenance: claude-authored
 ---

@@ -4,7 +4,7 @@ format: pdf
 language: en
 kind: manual
 title: Aurora SilentWash SW600 user manual
-license: CC0-1.0
+license: CC-BY-4.0
 source: written for nai-bench (fictional brand and product)
 provenance: claude-authored
 ---

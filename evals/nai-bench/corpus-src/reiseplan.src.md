@@ -3,7 +3,7 @@ out: Reisen/Reiseplan_Schweden_Sommer2024.md
 format: text
 language: de
 kind: notes
-license: CC0-1.0
+license: CC-BY-4.0
 source: written for nai-bench (fictional people)
 provenance: claude-authored
 ---

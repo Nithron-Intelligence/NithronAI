@@ -90,3 +90,7 @@ ROCM=1 evals/smoke_ollama.sh     # stops the stack afterwards; KEEP=1 leaves it 
 
 The `nai-bench Evaluation` job (`.github/workflows/ci.yml`) runs retrieval and extractive answers with
 Tesseract (`eng+deu`, like the image) on every push to `main`, and uploads the results as an artifact.
+
+## License
+
+The code in `evals/` is under the Apache License 2.0 ([LICENSE](LICENSE)). nai-bench items we write are CC BY 4.0, and third-party corpus files keep their own licenses; see the folder licenses in the root `NOTICE`.

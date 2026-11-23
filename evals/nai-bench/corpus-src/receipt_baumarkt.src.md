@@ -4,7 +4,7 @@ format: scan-png
 language: de
 kind: receipt
 title: Kassenbon BauFix Markt
-license: CC0-1.0
+license: CC-BY-4.0
 source: written for nai-bench (fictional company)
 provenance: claude-authored
 ---

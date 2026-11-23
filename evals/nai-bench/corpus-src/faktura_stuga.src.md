@@ -4,7 +4,7 @@ format: pdf
 language: sv
 kind: invoice
 title: Faktura hyra Björkudden 2024
-license: CC0-1.0
+license: CC-BY-4.0
 source: written for nai-bench (fictional people and place)
 provenance: claude-authored
 ---

@@ -53,7 +53,7 @@ Working rules that follow from these:
 - **Pin everything.** Results record the git commit, nai-bench data hashes, model names and settings
   (`evals/run_baseline.py` does this).
 - **Licenses we release under:** models and datasets we train are released under a permissive license
-  that the base model's license allows (Apache-2.0 by default). nai-bench itself is CC0-1.0 except the
+  that the base model's license allows (Apache-2.0 by default). nai-bench items we write are CC-BY-4.0 and lab code in `evals/` and `training/` is Apache-2.0, except the
   public-domain statute excerpts, which stay public domain.
 
 ## Stages
@@ -78,7 +78,7 @@ Deliverables:
 
 Exit criteria:
 
-- nai-bench v1 is published (CC0) with a test split, and its questions are human-reviewed.
+- nai-bench v1 is published (CC-BY-4.0) with a test split, and its questions are human-reviewed.
 - A baseline on v1 exists for: BM25, current embedding model, hybrid, hybrid + reranker; extractive and
   at least two small LLMs.
 - The baseline is reproducible from one command on a clean machine (compose stack + `run_baseline.py`).

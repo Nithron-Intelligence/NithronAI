@@ -3,7 +3,7 @@ out: Handbuecher/notice_poele_granules_Flamea_P8.md
 format: text
 language: fr
 kind: manual
-license: CC0-1.0
+license: CC-BY-4.0
 source: written for nai-bench (fictional brand and product)
 provenance: claude-authored
 ---
