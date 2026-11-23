@@ -27,8 +27,14 @@
   WikiAtomicEdits, Wikipedia-derived sets, WikiMatrix) and TED2020 (TED usage policy). It applies to nAI's shipped
   default model too. Until decided: the pilot runs for learning, **nothing from it can ship**. Register updated
   (teacher `mistral-small3.1` approved, Q4_K_M; `phi4-mini` bench LLM; no-CC-BY-SA data rule; audit link).
-- **Round 5 next command:** after the Stage 0 baselines finish: `generate_corpus.py` (teacher mistral-small3.1,
-  100 docs), `make_passages.py`, `generate_pairs.py`, `check_overlap.py --write-clean`, then the pilot run.
+- **Round 5, section 2 done: Stage 0 baselines on v1 dev (62 items, PROVISIONAL):**
+  `evals/results/v1-dev-stage0-2026-11-23.md` (+ run files `v1-dev-baseline-r5`, `v1-dev-rerank`,
+  `v1-dev-phi4-mini`). Hybrid MRR 0.720 → **0.911 with the reranker** (Hit@5 0.894 → 0.936; cross-language Hit@5
+  0.714 → 0.786). Answers: phi4-mini correct 0.596 / refusal 0.533 / judge 0.790 vs qwen2.5:1.5b 0.489 / 0.267 /
+  0.629; phi4-mini's language match is lower (0.541 vs 0.627).
+- **Round 5 next command:** synthetic corpus generation running (`training/embed/generate_corpus.py`, mistral-small3.1,
+  100 docs, log `training/data/vane1-pilot/generate_corpus.log`, `timeout 3h`); then `make_passages.py`,
+  `generate_pairs.py`, `check_overlap.py --write-clean`, then the pilot run per `training/configs/vane1-pilot.json`.
 - **Round 4 permissions (2026-11-23):** the human authorized this session to commit, push, open and merge PRs as
   them (git identity, SSH key, gh auth already configured); no attribution trailers, no history rewrite, no
   force-push, never bypass branch protection; merge PRs with a merge commit (not squash/rebase). Release
