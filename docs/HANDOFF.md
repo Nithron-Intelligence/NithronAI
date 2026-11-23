@@ -19,10 +19,72 @@
   its first CI run failed only on mypy over `training/embed/common.py` (CI type-checks training/embed, the local
   commands didn't), fixed in `41facf4`; PR CI then green. main CI on `3163618` green incl. nai-bench evaluation
   (run 45189836839). main = lab/stage-0 = `3163618` (local and origin) before this close-out.
-- **Round 4 next command:** merge the 0.6.0 prep PR (CHANGELOG `## [0.6.0] – 2026-11-23`, version 0.6.0 in
-  config/`__init__`/README badge, TrueNAS guide → `nai-core:0.6.0`), then build the image from that main commit and
-  smoke-test it (`/health` = 0.6.0; `--user 568:568` with a throwaway data dir → semantic search). No tag
-  (release switch: STOP BEFORE TAGGING).
+- **Round 4, section 2 done (release 0.6.0 prepared, NOT tagged):** PR #4 merged as `06c29e0` (CHANGELOG
+  `## [0.6.0] – 2026-11-23`, version 0.6.0, TrueNAS guide → `nai-core:0.6.0`); PR CI and main CI (run 45190939370) green.
+  Image built from `06c29e0` with `git archive 06c29e0 | docker build -f apps/nai-core/Dockerfile -t
+  nai-core:0.6.0-local -`: `/health` reports 0.6.0 (default user `nai`); as `--user 568:568` with a throwaway data
+  dir (`HOME=/`) the embedding model downloaded into `/app/data/.cache/huggingface`, NLTK data readable, 0
+  permission errors, an embedding-only query with no shared keywords found the right file (the auto reranker
+  policy also turned on and loaded on this 32-core host). Test containers removed. Tag commands are under
+  "Waiting on the human".
+- **Round 4, section 3 done (v1 dev baseline, PROVISIONAL):** `evals/results/v1-dev-baseline-2026-11-23.{md,json}`
+  at `22336af` with nai-core 0.6.0 (local build), reranker off, qwen2.5:1.5b, judge qwen2.5:7b, dev split only (43
+  items, 0 reviewed). Hybrid MRR 0.714 / Hit@5 0.909; BM25 0.841 / 0.879; embedding 0.557 / 0.606. Cross-language
+  (n = 12) hybrid Hit@5 0.750 / MRR 0.596 vs same-language 1.000 / 0.782; embedding cross 0.667 / 0.613. The 0.3
+  cutoff emptied no result list on v1 (10 452 chunks); the failure is ranking (books outrank the right document).
+  LLM answers correct 0.455, correct refusal 0.30. Fixed on the way: evaluate() used v0's manifest for v1 items
+  (`22336af`). Bench stack stopped; v1 index kept in the `nai-bench_nai-bench-v1-data` volume.
+- **Round 4, section 4 done:** v1 questions 150 (v1-0101…0150 added, 10 per language, 2 per category per language):
+  difficulty now 45 easy / 60 medium / 45 hard = 30/40/30 (was 19/57/24 of 100); dev 62 / test 88; all
+  unreviewed, Claude-written, eval-only. Corpus unchanged at 100 files (the new items use files that had few or
+  no questions; max 5 per file). The v1 dev baseline above was run on the first 43 dev items, before this batch.
+- **Round 4, section 5 done: next-stage plan (written 2026-11-23; nothing started, no training run).**
+- **Next stage plan: finish Stage 0's exit criteria in parallel with Stage 1 / Vane 1.** Full design:
+  `docs/lab/stage1-embedding-finetune.md`; this is the order of work and what changed with the v1 numbers.
+  - *Why Vane 1 first:* on the v1 dev split embedding search is the weak link (Hit@5 0.606 vs BM25 0.879) and
+    cross-language questions trail (hybrid Hit@5 0.750 vs 1.000 same-language). The 0.3 cutoff is not the v1
+    failure (no empty result lists); ranking is: long distractors (books, EU acts) outrank short household
+    documents, also across languages. Vane 1 = fine-tune of `paraphrase-multilingual-MiniLM-L12-v2` (Apache-2.0,
+    same 384-d drop-in, re-embed only).
+  - *Training data and the data rules:* (1) a **synthetic NAS-like corpus** written by an approved open-weight
+    teacher (`qwen2.5:7b` Apache-2.0, register "approved"; `qwen3:14b` if quality is low): fictional household /
+    small-office documents in de/en/sv/fr/pt from a seed list of document types × countries × topics, including
+    long noisy files and rendered scans OCR'd by nAI's own extractor; no user NAS data (rule 1), no Claude text
+    (rule 3; `common.read_training_rows` refuses it). (2) **Public permissive texts not in nai-bench**: other
+    EUR-Lex acts (reuse with attribution), German/Swedish statutes, US federal texts; each source gets a register
+    row first (rule 2); `check_overlap.py` rejects anything overlapping nai-bench v0/v1 (the v1 corpus files are
+    excluded by path and by 8-gram overlap). (3) **Queries** from the same teacher, 3–4 per passage, at least one
+    cross-language, with the round-trip filter and a 200-pair spot check per language. Target 30–50k passages,
+    100–150k pairs; every row `use: training` with teacher/passage author and license.
+  - *ROCm trainer steps (AMD RX 7900 XTX):* `docker compose -f training/docker/compose.rocm.yaml build` → `run --rm
+    trainer python3 training/docker/gpu_check.py` → corpus generation via Ollama (bench stack) → `make_passages.py`
+    → `generate_pairs.py --resume` (pilot with `--limit 500` first) → `check_overlap.py --write-clean` →
+    `train.py --dry-run` → `train.py` (1 epoch, lr 2e-5, batch 64 / cached loss 256, max length 256, bf16, seed 13,
+    mined hard negatives excluding the positive's own file) → ONNX + int8 export with the fastembed parity check
+    (min cosine ≥ 0.99) → `chown` the outputs back.
+  - *Evaluation on the v1 dev split only:* small nAI change first: register a custom fastembed model behind
+    `NAI_EMBEDDINGS_MODEL` (stage-1 doc §6). Then the bench stack with a separate data volume per model and
+    `run_baseline.py --bench evals/nai-bench/v1/questions-dev.jsonl --methods bm25,embedding,hybrid` for the base
+    model and each candidate (same judge, reranker off, then on). Compare embedding-only and hybrid MRR/Hit@5
+    overall, per category, per language and cross-language vs same-language; add the planned bootstrap 95 %
+    interval to `run_baseline.py`. Overfitting guard: stop if any dev category drops > 0.02 or same-language
+    lookup drops. The release claim needs the **reviewed test split** with `--final-run`, which is the human's
+    call; until then everything is a dev number.
+  - *Stage 0 exit work alongside:* human review of v1 (150 items), v1 to ≥ 300 files / ≥ 300 questions (the
+    plan's 625 later), baselines on v1 for hybrid + reranker and a second small LLM, and a one-command
+    reproducible baseline.
+- **Decisions needed from the human for Stage 1:** (1) approve `qwen2.5:7b` as the corpus and query teacher (or
+  pick `qwen3:14b` / `mistral-small3.1`); (2) approve the public text sources for training (EUR-Lex beyond the
+  bench acts, statutes, US federal texts) and whether CC-BY-SA material (e.g. Wikipedia) may be used for
+  training at all (nai-bench excludes it); (3) accept training before the base-model training-data audit (MS
+  MARCO-style terms) or audit first; the audit is required before any public release; (4) GPU time budget
+  (pilot ~1 h, full run a few hours of generation plus < 1 h training) and permission to run the trainer and the
+  bench stack unattended; (5) when to review v1 and how many `--final-run`s on the test split a model may have
+  (each is logged in `evals/results/test-ledger.jsonl`); (6) Hugging Face org/name and license for the Vane 1
+  release (`nithron/vane-1`, Apache-2.0 proposed) and whether the training dataset is released too; (7) Loupe 1
+  in parallel or after Vane 1.
+- **Round 4 next command:** none in this session; next round starts with the human's Stage 1 decisions above
+  (and the v0.6.0 tag if wanted).
 - **Branches:** `main` = `lab/stage-0` (fast-forwarded after the release merge), both pushed;
   `lab/stage-0` tracks `origin/lab/stage-0`. Work continues on `lab/stage-0`; push it after each close-out.
 - **Push authorization:** on 2026-11-23 the human authorized this session to commit, merge and push as them
@@ -124,15 +186,22 @@
 
 ## Waiting on the human
 
-- **Pushes:** none pending (release and lab work pushed 2026-11-23; see History).
+- **Tag v0.6.0 (release switch was STOP BEFORE TAGGING):** main is at `06c29e0` with CI green. To publish:
+  `git fetch origin && git tag -a v0.6.0 06c29e0 -m "nAI 0.6.0" && git push origin v0.6.0`, then watch
+  release.yml (`gh run list --workflow release.yml --limit 1`), check an anonymous
+  `docker pull ghcr.io/nithron/nithronai/nai-core:0.6.0`, repeat the `--user 568:568` smoke test on it, and do
+  docs/RELEASING.md step 5 (NithronOS template → 0.6.0, here and in the NithronOS repo copy).
+- **Pushes:** none pending (main = lab/stage-0 pushed).
 - **Licensing direction** for nAI itself (NCL + commercial vs dual license vs open core): not decided.
-- **nai-bench review:** all items are unreviewed: v0 56 (`python evals/nai-bench/review.py`), v1 100
-  (`--file evals/nai-bench/v1/questions-dev.jsonl`; the test split needs `--test-split`).
+- **nai-bench review:** all items are unreviewed: v0 56 (`python evals/nai-bench/review.py`), v1 150 (dev 62:
+  `review.py --file evals/nai-bench/v1/questions-dev.jsonl`; test 88 needs `--test-split`).
+- **Stage 1 decisions:** the seven listed under Status ("Decisions needed from the human for Stage 1").
 - **Trademark search** for Nithron Vane / Loupe / Tern / Nox before any public release.
 - **NithronOS template sync:** hand the patch in `docs/KNOWN_ISSUES.md` ("Hand-over: NithronOS template sync";
   applies cleanly to NithronOS `47def8c`) to the session that owns NithronOS.
 - **Docker disk:** ~50 GB images (ROCm PyTorch ~40 GB) + ~46 GB build cache, plus the local
-  `nai-core:lab-stage-0` (1.3 GB, 2026-11-23); prune when not needed. Build venv for nai-bench rendering:
+  `nai-core:lab-stage-0` (1.3 GB, 2026-11-23) and `nai-core:0.6.0-local` (1.3 GB, the 0.6.0 smoke-test build),
+  and the Docker volume `nai-bench_nai-bench-v1-data` (v1 index); prune when not needed (ask first). Build venv for nai-bench rendering:
   `~/.venvs/nai-bench-build` (user space).
 - **TrueNAS:** adapter and custom app tested on 25.10.8 in a VM (2026-11-23). Still open: the UI menu names
   for certificate import in `packaging/truenas/README.md` (unverified); the guide needs a release after 0.5.0
@@ -183,6 +252,10 @@
   - Simulated NAS (2 CPUs / 4 GB each, CPU only): index 27 s; search 0.20 s; extractive answer 0.20 s;
     qwen2.5:1.5b answer 4.7 s median (p95 21 s); nai-core 1.1 GB, Ollama 1.6 GB.
   - ROCm smoke: 2 training steps + ONNX export on the RX 7900 XTX in 37 s.
+- **Round 4 (2026-11-23):** PR #3 (lab/stage-0 → main, merge `3163618`; CI fix `41facf4`), PR #4 (0.6.0 prep, merge
+  `06c29e0`), HANDOFF `3065eda`, v1 baseline tooling `22336af`, v1 dev baseline `09f6cd1`, v1 questions 125
+  `3344685` and 150 `7f146be`, then the closing plan commit. 0.6.0 smoke-tested from `06c29e0` (incl. `--user
+  568:568`), **not tagged** (release switch). Tests: 218 nai-core, 106 evals/training.
 - **nai-bench v1 + TrueNAS custom app (2026-11-23, session 3):** split guard `80378af`, training guard `ca4c908`,
   review.py `1532ba4`, v1 corpus `8a6c422` `b34437d` `71957a7` `ece720b` (100 files), v1 questions `139ad72`
   `36a7c5f` `2df48de` `408b309` (100), docs `30ceecf`, then the custom-app close-out commit (image any-user fix,

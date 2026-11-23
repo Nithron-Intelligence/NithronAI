@@ -55,6 +55,7 @@ from naibench import (
     is_cross_lingual,
     is_refusal,
     load_manifest,
+    manifest_for,
     matches_gold,
     mean,
     normalize,
@@ -241,8 +242,11 @@ def evaluate(
     use_llm: bool = True,
     judge_client: httpx.Client | None = None,
     judge_model: str | None = None,
+    manifest: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
-    manifest = load_manifest()
+    """``manifest``: the corpus manifest of the questions file (default v0's): its file names count for
+    inline citations and its languages for the cross-lingual flag."""
+    manifest = manifest if manifest is not None else load_manifest()
     corpus_files = [e["file"] for e in manifest]
     rows, errors = [], []
     models, methods = set(), set()
@@ -342,6 +346,7 @@ def main(argv: list[str] | None = None) -> int:
         use_llm=not args.extractive,
         judge_client=judge_client,
         judge_model=args.judge_model,
+        manifest=load_manifest(manifest_for(args.bench)),
     )
     print_summary(report)
     if args.output:
