@@ -37,6 +37,26 @@ python training/embed/train.py --pairs data/pairs.jsonl --output-dir runs/embed-
 python training/embed/train.py --export-only runs/embed-v1/model --output-dir runs/embed-v1/fastembed
 ```
 
+### On an AMD GPU (ROCm) in Docker
+
+PyTorch with ROCm runs in a container, the same way Ollama uses the GPU; nothing GPU-related is installed
+on the host. The base image is `rocm/pytorch` (~12.5 GB compressed).
+
+```bash
+docker compose -f training/docker/compose.rocm.yaml build
+docker compose -f training/docker/compose.rocm.yaml run --rm trainer python3 training/docker/gpu_check.py
+docker compose -f training/docker/compose.rocm.yaml run --rm trainer \
+    python3 training/embed/train.py --pairs training/data/pairs.jsonl --output-dir training/runs/vane-1-rc1 \
+    --release vane-1-rc1
+# the container runs as root: give the outputs back to your user afterwards
+docker compose -f training/docker/compose.rocm.yaml run --rm trainer chown -R "$(id -u):$(id -g)" training/runs training/.cache
+```
+
+Smoke-tested on 2026-11-23 on an RX 7900 XTX (gfx1100): `gpu_check.py` (torch 2.15.0+rocm10.2.0, bf16 on),
+then `train.py --max-steps 2` on 10 sample pairs: hard-negative mining, two training steps, save, ONNX export
+and the fastembed check (min cosine 1.0000) in 37 s. Paths for the container are inside the repo
+(`training/data`, `training/runs`, `training/.cache`), all git-ignored.
+
 `data/` and `runs/` are not committed. Every passage records its `author` (required; hosted-API authors such
 as Claude are refused) and each pair a `provenance` object (`author` = teacher and its license, prompt
 version, `passage_author`, passage license and source, `use: training`). `train.py` refuses pairs without

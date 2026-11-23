@@ -1,0 +1,32 @@
+# Run lab training on an AMD GPU (ROCm) in a container, the same way Ollama uses the GPU.
+#
+#   docker compose -f training/docker/compose.rocm.yaml build            # pulls rocm/pytorch (~12.5 GB)
+#   docker compose -f training/docker/compose.rocm.yaml run --rm trainer python3 training/docker/gpu_check.py
+#   docker compose -f training/docker/compose.rocm.yaml run --rm trainer \
+#       python3 training/embed/train.py --pairs data/pairs.jsonl --output-dir runs/vane-1-rc1 --dry-run
+#
+# The repo is mounted at /workspace, so data/ and runs/ (git-ignored) stay on the host.
+# RX 7000 series (gfx1100) is supported directly; older or unsupported GPUs may need
+# HSA_OVERRIDE_GFX_VERSION (see AMD's ROCm compatibility matrix).
+name: nai-training
+
+services:
+  trainer:
+    build:
+      context: ../..
+      dockerfile: training/docker/Dockerfile.rocm
+    image: nai-trainer:rocm
+    working_dir: /workspace
+    volumes:
+      - ../..:/workspace
+    devices:
+      - /dev/kfd
+      - /dev/dri
+    group_add:
+      - video
+    security_opt:
+      - seccomp=unconfined   # recommended by AMD for ROCm containers (HIP memory management)
+    ipc: host                # PyTorch DataLoader workers use shared memory
+    environment:
+      - HF_HOME=/workspace/training/.cache/huggingface   # model downloads stay in a git-ignored folder
+    shm_size: 8g
