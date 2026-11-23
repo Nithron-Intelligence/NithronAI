@@ -16,7 +16,7 @@ Status values: **in use** (shipped or used by nAI today), **approved** (may be u
 | Model | Role | License | Status | Checked | Notes |
 |---|---|---|---|---|---|
 | `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` | default embeddings (fastembed) | Apache-2.0 | in use | 2026-11-22 | 118M params, 384-d, 50+ languages. Stage 1 base candidate. |
-| `Xenova/ms-marco-MiniLM-L-6-v2` (ONNX of `cross-encoder/ms-marco-MiniLM-L6-v2`) | default reranker (off unless `NAI_RERANKER`) | Apache-2.0 (upstream card; the Xenova repo states none) | in use | 2026-11-22 | **English-only**, trained on MS MARCO, whose terms are non-commercial research. Fine to run, but don't fine-tune from it or reuse MS MARCO; prefer a multilingual reranker (below). |
+| `Xenova/ms-marco-MiniLM-L-6-v2` (ONNX of `cross-encoder/ms-marco-MiniLM-L6-v2`) | default reranker model (reranking is **off by default** since 2026-11-23) | Apache-2.0 (upstream card; the Xenova repo states none) | in use | 2026-11-22 | **English-only**, trained on MS MARCO, whose terms are non-commercial research. Fine to run, but don't fine-tune from it or reuse MS MARCO; prefer a multilingual reranker (below). |
 | `qwen2.5:1.5b` (`Qwen/Qwen2.5-1.5B-Instruct`) | LLM in the nai-bench stack and smoke test | Apache-2.0 | in use (bench) | 2026-11-22 | |
 | `qwen2.5:7b` (`Qwen/Qwen2.5-7B-Instruct`) | optional LLM judge in the baseline | Apache-2.0 | in use (bench) | 2026-11-22 | Judge outputs are eval data only. |
 | `llama3.2` | example model in the `infra/docker-compose.yml` comment | Llama 3.2 Community License | avoid for the lab | 2026-11-22 | Acceptable-use policy and naming rules for derivatives. Fine for a user to run; don't build Nithron models on it. |
@@ -28,7 +28,10 @@ Status values: **in use** (shipped or used by nAI today), **approved** (may be u
 | `intfloat/multilingual-e5-small` | MIT | candidate | 2026-11-22 | 118M, 384-d; needs "query:" / "passage:" prefixes. |
 | `intfloat/multilingual-e5-base` | MIT | candidate | 2026-11-22 | 278M; probably too slow for low-end NAS CPUs. |
 | `BAAI/bge-m3` | MIT | candidate (teacher / upper bound) | 2026-11-22 | 568M; too big as a NAS default, useful as a reference and for hard-negative mining. |
-| `BAAI/bge-reranker-v2-m3` | Apache-2.0 | candidate | 2026-11-22 | Multilingual reranker; nAI already mentions its int8 ONNX as an option. |
+| `BAAI/bge-reranker-v2-m3` | Apache-2.0 | **approved (Loupe 1 base)** | 2026-11-23 | Multilingual reranker; fastembed ships an int8 ONNX. Best NAS-viable result on nai-bench (MRR 0.918 vs 0.793 without reranking). |
+| `Qwen/Qwen3-Reranker-0.6B` | Apache-2.0 | approved (teacher for Loupe distillation) | 2026-11-23 | MRR 0.956 but ~40 s per question on 2 CPU threads; use for labelling, not in nAI. |
+| `cross-encoder/mmarco-mMiniLMv2-L12-H384-v1` | Apache-2.0 (model); trained on mMARCO (MS MARCO translations, non-commercial terms) | avoid | 2026-11-23 | Small gain only (MRR 0.802) and a data-lineage risk. |
+| `Alibaba-NLP/gte-multilingual-reranker-base` | Apache-2.0 | not usable as published | 2026-11-23 | Needs `trust_remote_code` (runs code from the model repo) and has no ONNX build; we don't run remote code. |
 | `jinaai/jina-reranker-v2-base-multilingual` | CC-BY-NC-4.0 | avoid | 2026-11-22 | Non-commercial. |
 
 ## Candidates for synthetic data generation (teacher models, principle 3)
@@ -62,6 +65,10 @@ The licenses above are the model licenses. What a base model was itself trained 
 question: `paraphrase-multilingual-MiniLM-L12-v2` was distilled on public parallel and paraphrase data, and
 `multilingual-e5-*` on a large web-mined mix. Their model licenses allow fine-tuning and redistribution
 under Apache-2.0/MIT; we have **not** audited their training data. Model cards we release must say so.
+
+**Open item (Vane 1 release blocker):** audit the training data of `paraphrase-multilingual-MiniLM-L12-v2`
+(Vane 1 base) and `multilingual-e5-small` (comparison), and of the Loupe 1 base: list the datasets and
+their terms here, flag anything non-commercial, and record the outcome in the model card.
 
 ## Datasets and corpora
 

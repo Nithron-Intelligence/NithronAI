@@ -1,10 +1,13 @@
-# Stage 1 plan: `nithron-embed-small`
+# Stage 1 plan: Nithron Vane 1 and Nithron Loupe 1
 
-> Status: plan, 2026-11-22. No training run has been started. Code: [`training/embed/`](../../training/embed/).
+> Status: plan, updated 2026-11-23. No training run has been started. Names: [MODEL_NAMING.md](MODEL_NAMING.md). Code: [`training/embed/`](../../training/embed/).
 > Part of the [lab roadmap](ROADMAP.md); licenses in the [register](MODEL_AND_DATA_LICENSES.md).
 
-Goal: a multilingual embedding model, the same size as today's default, that retrieves NAS files better
-in nAI, especially across languages and for OCR'd tables, and ships as an ONNX model that fastembed loads.
+Goals:
+- **Nithron Vane 1** (`nithron/vane-1`): a multilingual embedding model, the same size as today's default,
+  that retrieves NAS files better in nAI, especially across languages and for OCR'd tables, and ships as an
+  ONNX model that fastembed loads. Sections 1–9 below are about Vane 1.
+- **Nithron Loupe 1** (`nithron/loupe-1`): a multilingual reranker that fits a NAS CPU; section 11.
 
 ## Starting point (nai-bench v0 baseline, 2026-11-22)
 
@@ -23,22 +26,29 @@ file's, against 0.858 in the same language) and table/scan-OCR questions (MRR 0.
 95 % interval on MRR is roughly ±0.1 (an estimate, not a computed bootstrap), so **nai-bench v1 (≥ 300 questions, test split) is a prerequisite
 for any release claim** (principle 4).
 
-## 1. Base model
+## 1. Base model (Vane 1)
 
-| | `paraphrase-multilingual-MiniLM-L12-v2` (recommended) | `multilingual-e5-small` (alternative) |
+| | `paraphrase-multilingual-MiniLM-L12-v2` (**chosen**, 2026-11-23) | `multilingual-e5-small` (comparison candidate) |
 |---|---|---|
 | License | Apache-2.0 | MIT |
 | Size | 118M params, 384-d, 470 MB ONNX fp32 / 118 MB int8 (measured) | 118M params, 384-d, similar |
 | In nAI today | yes, the default; all existing indexes use it | no (needs `query:`/`passage:` prefixes in nAI) |
 | Max length | 128 tokens trained (we use 256) | 512 |
 
-Recommendation: fine-tune the current default first. Users then get a drop-in upgrade (same dimension,
-same pooling, re-embedding only), and the comparison on nai-bench is clean. Run e5-small through the same
-pipeline as a second candidate and keep whichever wins on the v1 test split. Not chosen: `bge-m3` (MIT, 568M,
+**Decision (2026-11-23):** Vane 1 is a fine-tune of `paraphrase-multilingual-MiniLM-L12-v2`. Users get a
+drop-in upgrade (same dimension, same pooling, re-embedding only), and the comparison on nai-bench is clean.
+`multilingual-e5-small` (MIT) goes through the same pipeline as the comparison candidate; if it wins clearly
+on the v1 test split, that becomes Vane 1.5 or Vane 2 (a different base is a major version). Not chosen: `bge-m3` (MIT, 568M,
 too slow for NAS CPUs; useful as a reference and for mining).
 
-Decision needed: confirm the base model (owner: you). Both model licenses allow releasing a fine-tune under
-Apache-2.0; their own training data has not been audited (see the register's lineage note).
+Both model licenses allow releasing a fine-tune under Apache-2.0 with attribution, and neither restricts
+naming (see MODEL_NAMING.md).
+
+**Open item: audit the base models' training data.** The model licenses are clear, but what
+`paraphrase-multilingual-MiniLM-L12-v2` (and e5-small) were trained on has not been checked: which datasets,
+under which terms (e.g. any non-commercial data such as MS MARCO), and whether that affects a commercial
+release. To do before the Vane 1 release: list the training datasets from the model cards and papers,
+record their licenses in the register, and note the result in the model card.
 
 ## 2. Training corpus (never nai-bench)
 
@@ -107,15 +117,15 @@ risk; a later step should exclude negatives from the positive's own file.
 2026-11-22 with the base model: min cosine 1.0000, fp32 470 MB, int8 118 MB.
 
 nAI change needed (small, Stage 1 deliverable): register the model with
-`TextEmbedding.add_custom_model(model="nithron/nithron-embed-small", pooling=MEAN, normalization=True,
-sources=ModelSource(hf="nithron/nithron-embed-small"), dim=384, model_file="onnx/model.onnx")` before
+`TextEmbedding.add_custom_model(model="nithron/vane-1", pooling=MEAN, normalization=True,
+sources=ModelSource(hf="nithron/vane-1"), dim=384, model_file="onnx/model.onnx")` before
 loading, behind `NAI_EMBEDDINGS_MODEL`. Switching models already triggers a re-embed.
 
 ## 7. Evaluation on nai-bench
 
-1. Build the bench stack with `NAI_EMBEDDINGS_MODEL=nithron/nithron-embed-small` (or a local path).
-2. `python evals/run_baseline.py --label nithron-embed-small-rc1 --methods bm25,embedding,hybrid`, and the
-   same with `NAI_RERANKER=true`.
+1. Build the bench stack with `NAI_EMBEDDINGS_MODEL=nithron/vane-1` (or a local path).
+2. `python evals/run_baseline.py --reviewed-only --label vane-1-rc1 --methods bm25,embedding,hybrid`, and the
+   same with the reranker on. Training runs record the target with `train.py --release vane-1-rc1`.
 3. Compare with the baseline on the v1 **test** split: overall MRR / Hit@5 / page Hit@5, by category, and by
    the derived cross-lingual flag; paired bootstrap 95 % intervals over questions.
 4. Also report: CPU latency per query and per 1000 passages on the reference NAS profiles, ONNX size,
@@ -135,7 +145,8 @@ cross-lingual and table/scan-OCR improve, no category drops by more than 0.02, s
 - [ ] Files: PyTorch weights, `onnx/model.onnx`, `onnx/model_quint8_avx2.onnx`, tokenizer, fastembed snippet.
 - [ ] The training pairs as a separate dataset (CC-BY-4.0 or CC0), with the same provenance fields.
 - [ ] Technical note (short): data, settings, results, failure cases.
-- [ ] nAI PR: custom-model registration + docs; NithronOS hardware tiers updated.
+- [ ] nAI PR: custom-model registration + docs; `app/nithron_models.py` status `released`.
+- [ ] Training-data audit of the base model done and in the model card (section 1).
 
 ## 9. Hardware and cost
 
@@ -165,6 +176,36 @@ Measured on this workstation (2026-11-22):
 - *Stage 2 outlook:* LoRA on a 1–4B model in bf16 fits 24 GB with gradient checkpointing; ROCm tooling
   (bitsandbytes/QLoRA, flash-attention) is less mature than CUDA, so budget ~$50–150 of rented H100 time
   as a fallback.
+
+## 11. Loupe 1 (reranker)
+
+Comparison of permissive multilingual rerankers on nai-bench v0
+([`evals/results/rerankers-2026-11-23.md`](../../evals/results/rerankers-2026-11-23.md)), each re-scoring
+nAI's top-30 hybrid candidates on 2 CPU threads:
+
+| Reranker | License | Params | MRR | MRR cross-lingual | Median s / question | Verdict |
+|---|---|---|---|---|---|---|
+| none (hybrid order) | – | – | 0.793 | 0.650 | – | today's default |
+| ms-marco-MiniLM-L-6 (old default) | Apache-2.0 | 22M | 0.791 | 0.483 | 0.67 | English-only: hurts cross-lingual; off by default now |
+| mmarco-mMiniLMv2-L12 | Apache-2.0 (data: translated MS MARCO, non-commercial) | 118M | 0.802 | 0.714 | 0.90 | small gain, data-lineage risk |
+| **bge-reranker-v2-m3 (int8)** | **Apache-2.0** | 568M | **0.918** | **0.917** | 3.7 (top-30), **2.1 (top-10)** | **Loupe 1 base** |
+| Qwen3-Reranker-0.6B | Apache-2.0 | 596M | 0.956 | 1.000 | 40 | best quality, ~10× too slow for a NAS: **teacher** |
+| gte-multilingual-reranker-base | Apache-2.0 | 306M | – | – | – | not run: needs `trust_remote_code`, no ONNX build |
+
+**Decision (proposed): Loupe 1 = a fine-tune of `BAAI/bge-reranker-v2-m3`**, shipped as int8 ONNX for
+fastembed (fastembed already supports this model, so nAI needs no new runtime).
+
+- Why: the only candidate that is permissive, multilingual, runnable without remote code, and inside a NAS
+  CPU budget, and it already gives +0.125 MRR (+0.27 cross-lingual) out of the box. Even reranking only the
+  top 10 keeps most of the gain (MRR 0.878) at ~2 s per question on 2 fast cores.
+- Distillation: Qwen3-Reranker-0.6B (Apache-2.0) scores best (0.956) but is far too slow for a NAS; use it
+  as the **teacher** that labels (query, passage) pairs from the synthetic corpus (scores, not text, so the
+  same open-weight teacher rules apply), and train Loupe 1 to match it.
+- Budget target for Loupe 1: top-10 candidates in ≤ 2 s on a 4-core NAS CPU, ≤ 1 GB RAM. If bge-m3 int8 stays
+  too slow on real NAS hardware (to be measured), distill into a smaller XLM-R/MiniLM student as Loupe 1 mini.
+- Until Loupe 1 ships: nAI keeps reranking off by default; admins with capable hardware can set
+  `NAI_RERANKER=true` and `NAI_RERANKER_MODEL=BAAI/bge-reranker-v2-m3-int8`.
+- Same open items as Vane: training-data audit of the base, release checklist (section 8), nai-bench v1.
 
 ## 10. Order of work
 
