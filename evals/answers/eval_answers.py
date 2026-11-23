@@ -44,15 +44,16 @@ import httpx
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from naibench import (
+    FINAL_RUN_HELP,
     QUESTIONS_FILE,
     BenchItem,
     NaiClient,
     answer_body,
+    cli_load_items,
     contains_fact,
     detect_language,
     is_cross_lingual,
     is_refusal,
-    load_items,
     load_manifest,
     matches_gold,
     mean,
@@ -310,7 +311,7 @@ def print_summary(report: dict[str, Any]) -> None:
     print(f"  latency (median total / first token): {report['latency']}")
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Evaluate nAI answer quality on nai-bench")
     parser.add_argument("--bench", type=Path, default=QUESTIONS_FILE)
     parser.add_argument("--api-url", default="http://localhost:8000")
@@ -325,9 +326,11 @@ def main() -> int:
     parser.add_argument("--judge-api-key", default=None)
     parser.add_argument("--limit", type=int, help="only the first N questions (smoke runs)")
     parser.add_argument("--output", type=Path)
-    args = parser.parse_args()
+    parser.add_argument("--final-run", action="store_true", help=FINAL_RUN_HELP)
+    parser.add_argument("--label", default="eval_answers", help="run label for the test ledger")
+    args = parser.parse_args(argv)
 
-    items = load_items(args.bench, reviewed_only=args.reviewed_only)[: args.limit]
+    items = cli_load_items(args.bench, args.reviewed_only, args.final_run, args.label)[: args.limit]
     judge_client = None
     if args.judge_url:
         headers = {"Authorization": f"Bearer {args.judge_api_key}"} if args.judge_api_key else {}

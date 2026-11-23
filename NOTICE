@@ -17,5 +17,6 @@ Folder licenses: the root LICENSE (Nithron Community License) covers this reposi
 - evals/ and training/: source code under the Apache License 2.0 (evals/LICENSE, training/LICENSE);
 - nai-bench items written for the benchmark (questions, fictional corpus source texts, rendered corpus
   files, manifest in evals/nai-bench/): CC BY 4.0 (evals/nai-bench/LICENSE-CC-BY-4.0.txt);
-- third-party files in evals/nai-bench/corpus/ keep their own licenses, recorded per file in
-  evals/nai-bench/corpus-manifest.json (they are excluded from the Apache-2.0 and CC BY 4.0 grants).
+- third-party files in evals/nai-bench/corpus/ and evals/nai-bench/v1/corpus/ keep their own licenses,
+  recorded per file in the corpus-manifest.json next to each corpus (they are excluded from the
+  Apache-2.0 and CC BY 4.0 grants). EU legal texts: © European Union, https://eur-lex.europa.eu.

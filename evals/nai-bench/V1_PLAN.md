@@ -91,9 +91,11 @@ Rules:
    are marked `"author": "claude", "use": "eval-only"`; open-weight models may draft too).
 2. **Human review is required** for every item before it counts (`evals/nai-bench/review.py`, see the
    README). An item is published only with `review_status` `accepted` or `fixed`.
-3. Split once, before any model is tuned: **dev 40 % / test 60 %**, stratified by category × language, with a
-   fixed seed. Test answers are never used for tuning or prompt changes; published numbers come from the
-   test split, reviewed items only.
+3. Split before any model is tuned: **dev 40 % / test 60 %** by hash of the item id (`sha256(id)` mod 100
+   < 40 → dev), not stratified: a per-item rule never moves an existing item when items are added, which a
+   stratified, seeded split would. Cells of 25 items get roughly 10 dev / 15 test. Test answers are never
+   used for tuning or prompt changes; published numbers come from the test split, reviewed items only. The
+   rules and the guard are in the README ("Dev/test split").
 4. Freeze v1: tag the dataset (`nai-bench-v1.0`) and record its hashes; later fixes go into v1.1 with a
    changelog.
 

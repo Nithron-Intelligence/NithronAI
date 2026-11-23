@@ -5,6 +5,13 @@ All notable changes to nAI. Versions follow [semantic versioning](https://semver
 
 ## [Unreleased]
 
+### Fixed
+- **Image runs as any user:** started as another uid (TrueNAS Apps run it as `apps`, 568; also
+  `docker run --user`), nAI couldn't download its embedding model (Hugging Face's cache defaulted to
+  `/.cache`) or read the bundled NLTK data (`/home/nai` is private), and fell back to keyword search.
+  `HF_HOME` is now `/app/data/.cache/huggingface` and the NLTK data lives in `/opt/nltk_data`. Found in the
+  TrueNAS custom-app test.
+
 ### Changed
 - **Reranker policy:** `NAI_RERANKER` now takes `auto` (default), `on` or `off` (`true`/`false` still work).
   `auto` reranks the top 10 (`NAI_RERANKER_CANDIDATES=10`, was 30) only on machines with 8+ effective cores

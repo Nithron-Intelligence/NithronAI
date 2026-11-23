@@ -1,5 +1,7 @@
 # nAI as a TrueNAS custom app (Apps > Discover Apps > menu next to "Custom App" > Install via YAML).
 # Edit the dataset paths below first: see README.md in this folder.
+# Use a release after 0.5.0: 0.5.0 has no TrueNAS API adapter and, run as the apps user, can't download its
+# embedding model (keyword search only). Tested 2026-11-23 with a local build of lab/stage-0.
 services:
   nai:
     image: ghcr.io/nithron/nithronai/nai-core:0.5.0
@@ -21,6 +23,8 @@ services:
       - NAI_NAS_PLATFORM=truenas
       # Optional: read-only share discovery through the TrueNAS API (see README.md). Leave empty to
       # only list the folders mounted above.
+      # wss://<TrueNAS IP or name>/api/current: not localhost (inside the app that is the container); the
+      # certificate must name that IP or host name.
       - NAI_TRUENAS_URL=
       - NAI_TRUENAS_API_KEY=
       # - NAI_TRUENAS_CA_FILE=/app/data/truenas-ca.pem   # only for a self-signed TrueNAS certificate

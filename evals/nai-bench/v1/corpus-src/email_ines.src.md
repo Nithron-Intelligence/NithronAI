@@ -1,0 +1,27 @@
+---
+out: Arbeit/Nordlicht/Clients/email_Ines_Carvalho_pagamento.txt
+format: text
+language: pt
+kind: letter
+license: CC-BY-4.0
+source: written for nai-bench (fictional)
+provenance: claude-authored
+author: claude (claude-opus-5-5)
+created: 2026-11-23
+use: eval-only
+---
+De: ines.carvalho@livraria-ribeira.example
+Para: elin@nordlicht-studio.example
+Data: 29 de agosto de 2025, 11:05
+Assunto: Fatura 2025-052 e cartaz
+
+Olá Elin,
+
+Hoje fizemos a transferência da fatura 2025-052 (5 200 €). Deve chegar dentro de dois dias úteis.
+
+Gostávamos também de avançar com o cartaz para a festa dos 50 anos, a 18 de outubro. Formato A2, 300
+exemplares. Pode enviar-nos um orçamento até 10 de setembro?
+
+Obrigada por tudo, os sacos novos estão a ter muito sucesso!
+
+Inês

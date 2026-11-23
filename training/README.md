@@ -60,7 +60,11 @@ and the fastembed check (min cosine 1.0000) in 37 s. Paths for the container are
 `data/` and `runs/` are not committed. Every passage records its `author` (required; hosted-API authors such
 as Claude are refused) and each pair a `provenance` object (`author` = teacher and its license, prompt
 version, `passage_author`, passage license and source, `use: training`). `train.py` refuses pairs without
-it and writes `training_plan.json` (data hash, teachers, settings) next to the model. Tests:
+it and writes `training_plan.json` (data hash, teachers, settings) next to the model. Both
+`generate_pairs.py` and `train.py` read their inputs through `common.read_training_rows`, which refuses
+files under `evals/nai-bench/` and any row that is marked `use: eval-only` (top level or `provenance`),
+names a forbidden author (Claude, GPT, … in `author`, `passage_author`, `model` or `teacher`), or has
+nai-bench item fields (`gold_answer`, `gold_facts`, `gold_sources`, `review_status`). Tests:
 `pytest training/tests` (no PyTorch needed).
 
 Verified on 2026-11-22 without a training run: passages and pairs on a 3-document sample (teacher

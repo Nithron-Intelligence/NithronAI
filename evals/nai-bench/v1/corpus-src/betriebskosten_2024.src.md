@@ -1,0 +1,22 @@
+---
+out: Wohnung/Betriebskosten_Positionen_2024.csv
+format: text
+language: de
+kind: spreadsheet
+license: CC-BY-4.0
+source: written for nai-bench (fictional)
+provenance: claude-authored
+author: claude (claude-opus-5-5)
+created: 2026-11-23
+use: eval-only
+---
+Position;Betrag_Haus_EUR;Umlageschluessel;Anteil_Wohnung_EUR;Bemerkung
+Grundsteuer;3.120,00;Wohnflaeche;198,13;
+Wasser und Abwasser;4.860,00;Personen;311,54;2 von 31 Personen
+Muellabfuhr;1.540,00;Wohnflaeche;97,80;
+Hausmeister;6.480,00;Wohnflaeche;411,51;
+Gartenpflege;1.980,00;Wohnflaeche;125,74;
+Gebaeudeversicherung;2.310,00;Wohnflaeche;146,70;
+Allgemeinstrom;690,00;Wohnflaeche;43,82;Treppenhaus und Keller
+Verwaltungskosten;2.400,00;Wohnflaeche;152,41;neu ab 2024 laut Vermieter Kramer
+Summe;23.380,00;;1.487,65;Vorauszahlungen 2024: 1.440,00
