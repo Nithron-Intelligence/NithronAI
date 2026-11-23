@@ -9,7 +9,7 @@ All VM files live outside the repo (`$VM_DIR`, default `~/vms/truenas-test/`). S
 
 Needs: `qemu-system-x86_64`, `qemu-img`, OVMF (`/usr/share/edk2/x64/`), `/dev/kvm`, `openssl`, about 8 GB free
 RAM, and a Python venv with `websockets` (the TrueNAS steps) and `pexpect`/`pyte` (only if you script the
-installer over the serial console).
+installer over the serial console). `install_app.py` imports `configure.py`, so run it from this folder.
 
 ## Steps
 
@@ -52,7 +52,20 @@ for u in localhost 127.0.0.1; do
         --secrets $VM/secrets.env --ca-file $VM/truenas-ca.pem
 done
 
-# 8. Shut down (keeps all files); start again with step 4
+# 8. nAI as a TrueNAS custom app (2026-11-23): local image, no registry. The certificate must also name the
+#    VM's own IP (10.0.2.15), which the app container uses: re-run step 5 with IP:10.0.2.15 and step 6.
+docker build -f apps/nai-core/Dockerfile -t nai-core:lab-stage-0 .
+ssh-keygen -q -t ed25519 -N "" -f $VM/ssh/id_ed25519
+(cd scripts/truenas-vm && $VM/venv/bin/python install_app.py --secrets $VM/secrets.env --ca $VM/pki/ca.pem \
+    --ssh-pubkey $VM/ssh/id_ed25519.pub --skip-app)     # SSH key + sudo docker + TCP forwarding, Apps pool, datasets, ACL, CA file
+SSH="ssh -i $VM/ssh/id_ed25519 -p 2222 -o UserKnownHostsFile=$VM/ssh/known_hosts"
+docker save nai-core:lab-stage-0 | $SSH truenas_admin@localhost sudo -n docker load
+(cd scripts/truenas-vm && $VM/venv/bin/python install_app.py --secrets $VM/secrets.env --ca $VM/pki/ca.pem)
+$SSH -M -S $VM/ssh/tunnel.sock -fN -L 18000:127.0.0.1:8000 truenas_admin@localhost
+apps/nai-core/.venv/bin/python scripts/truenas-vm/test_app.py --secrets $VM/secrets.env
+$SSH -S $VM/ssh/tunnel.sock -O exit truenas_admin@localhost
+
+# 9. Shut down (keeps all files); start again with step 4
 echo system_powerdown | python3 -c "import socket,sys; s=socket.socket(socket.AF_UNIX); s.connect(sys.argv[1]); s.sendall(sys.stdin.buffer.read())" $VM/monitor.sock
 ```
 
