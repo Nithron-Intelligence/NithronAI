@@ -17,6 +17,8 @@
   reranking off by default; TrueNAS 4g where `auto` stays off below 8 GB); texts updated (README memory note,
   NithronOS `MEMORY_LIMIT` description, TrueNAS README, KNOWN_ISSUES hand-over item 4, CHANGELOG). Minimum 3g /
   4 GB NAS, recommended 8 GB; forcing the reranker on needs 5g.
+- **Round 7 end state:** PR #8 merged as `f671c7b`, main CI green (run 45243889687); main = `f671c7b`, lab/stage-0 = main
+  plus this HANDOFF-only commit, both pushed.
 - **Round 7 stopped after section 1 (context budget).** Next, in order: section 2 (Vane 1 Granite pilot, commands
   under "Round 6 stopped here"), section 3 (reranker audit, same place), then 4 (fusion weights) and 5 (Granite
   quantization) from the round-7 prompt. The first command: re-run `check_overlap.py` on
@@ -375,7 +377,7 @@
   - Simulated NAS (2 CPUs / 4 GB each, CPU only): index 27 s; search 0.20 s; extractive answer 0.20 s;
     qwen2.5:1.5b answer 4.7 s median (p95 21 s); nai-core 1.1 GB, Ollama 1.6 GB.
   - ROCm smoke: 2 training steps + ONNX export on the RX 7900 XTX in 37 s.
-- **Round 7 (2026-11-23):** `.err` files deleted; Granite peak-RAM measurements and memory docs (PR to main);
+- **Round 7 (2026-11-23):** `.err` files deleted; Granite peak-RAM measurements and memory docs `5a982ef`, PR #8 merge `f671c7b`;
   sections 2–5 not started (context).
 - **Round 6 (2026-11-23):** permissions/decisions + Granite vetting `ef1f971`; Granite vs MiniLM on v1 dev + NAS `7dd7a0e`;
   default switch `9d0f72d`, PR #7 merge `d824cb8`; closing HANDOFF commit. Sections 4–5 not started (context).
