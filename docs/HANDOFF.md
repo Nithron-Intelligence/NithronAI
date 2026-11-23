@@ -37,13 +37,12 @@
   `~/vms/truenas-test/secrets.env` (mode 600: admin password, `nai-reader` API key); CA in `pki/`. Restart:
   `scripts/truenas-vm/start-vm.sh`, API on `https://localhost:8443` after ~3 min. `lab/stage-0` has no CI
   (CI runs on main/develop and PRs only); local checks passed before every commit.
-- **Next 1: step 3, nai-bench v1 (in progress: 1–3 done, corpus 75/100).** Do it in this order, closing out
-  (HANDOFF + checks + commit) after each bullet and every 25 files or questions. **Next command:** corpus
-  batch 4: 15 more fictional files + 10 scans/photos (`format: scan-pdf` / `scan-png`) in
-  `evals/nai-bench/v1/corpus-src/`, then `~/.venvs/nai-bench-build/bin/python evals/nai-bench/build_corpus.py
-  --root evals/nai-bench/v1` and `apps/nai-core/.venv/bin/python evals/nai-bench/v1/fetch_corpus.py --check`.
-  The build venv `~/.venvs/nai-bench-build` (reportlab 5.1.0, python-docx, Pillow 13.0.0, pypdf) rebuilds v0
-  byte-identically.
+- **Next 1: step 3, nai-bench v1 (in progress: 1–4 done; questions 0/100).** Do it in this order, closing out
+  (HANDOFF + checks + commit) after each bullet and every 25 files or questions. **Next command:** step 5,
+  questions batch 1 (25): write a generator script in scratch that emits items with ids `v1-0001…`, routes each
+  to `v1/questions-dev.jsonl` or `v1/questions-test.jsonl` by `naibench.split_of`, then
+  `apps/nai-core/.venv/bin/python -c "import sys; sys.path.insert(0,'evals'); import naibench as nb;
+  print(nb.validate_splits())"`.
   1. **Split rules (done):** rules in `evals/nai-bench/README.md` ("Dev/test split"); `naibench.split_of`,
      guard in `load_items`/`load_all_items`, `--final-run` + `--label` in `eval_retrieval.py`,
      `eval_answers.py`, `run_baseline.py` (+ `--bench`), `review.py --test-split`, ledger
@@ -66,7 +65,9 @@
      one-line summary, v1 excerpts from text corpus files; tests in `evals/tests/test_review.py`.
      Original requirement: show progress ("23/100 reviewed"), `q`/Ctrl+C keep all decisions,
      resume at the first unreviewed item, one-line summary at the end; tests for save and resume.
-  4. **Corpus (75/100):** batch 3 = 5 Gutenberg books (2 fr, 3 pt) + 20 fictional files (`v1/corpus-src/`,
+  4. **Corpus (done, 100/100):** batch 4 = 15 fictional + 10 scans/photos (all 10 OCR-checked in
+     `nai-core:lab-baseline` with eng+deu). Totals: fictional 45 (CC-BY-4.0, Claude, eval-only), EU 20,
+     DE/SE/US official texts 20, Gutenberg 15; en 30, de 21, sv 18, fr 16, pt 15; 17 MB. Batch 3 = 5 Gutenberg books (2 fr, 3 pt) + 20 fictional files (`v1/corpus-src/`,
      built by `build_corpus.py --root evals/nai-bench/v1`, which merges with the downloaded entries).
      Earlier: batch 2 = 15 FTC/CPSC rules from 16 CFR (govinfo PDFs; consumer.ftc.gov blocks
      curl) and 10 Gutenberg books (3 en, 3 de, 3 sv, 1 fr; gutenberg.org 503s, pglaf mirror works); 14 MB.

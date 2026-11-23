@@ -1,5 +1,18 @@
 # nai-bench v1 (in progress)
 
+**Corpus: 100 files (2026-11-23)**, target ≥ 300. Questions: none yet.
+
+| Group | Files | License |
+|---|---|---|
+| Fictional household/studio documents (incl. 10 scans and photos) | 45 | CC-BY-4.0, Claude-written, eval-only |
+| EU acts in en/de/sv/fr/pt | 20 | © European Union, reuse with attribution |
+| German and Swedish statutes, US federal rules (16 CFR) | 20 | public domain (official texts) |
+| Public-domain books (distractors) | 15 | public domain |
+
+Languages: en 30, de 21, sv 18, fr 16, pt 15. Formats: text 37, PDF 27, HTML 23, scanned PDF 5, photo
+(PNG) 5, DOCX 3. All 10 scans were checked with nAI's own OCR (Tesseract `eng+deu` in the nai-core image):
+every key number and id is read correctly.
+
 v1 is the first nai-bench version meant to back model claims ([V1_PLAN.md](../V1_PLAN.md)). v0 in the
 parent folder stays frozen as the smoke set.
 
