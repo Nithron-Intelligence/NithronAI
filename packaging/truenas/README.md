@@ -41,7 +41,9 @@ With this, nAI's **Sources > Discover** also lists TrueNAS shares that aren't mo
      DNS:truenas.local`), import it under **Credentials > Certificates** (Import Certificate), select it as
      the web UI certificate (**System > General Settings > GUI**), put the CA's `ca.pem` in the nAI data
      dataset and set `NAI_TRUENAS_CA_FILE=/app/data/truenas-ca.pem`. An ACME (Let's Encrypt) certificate
-     for a real host name works without a CA file. (The VM test did these steps over the API with
+     for a real host name works without a CA file. Certificates need Subject and Authority Key
+     Identifiers when nAI runs on Python 3.13+ (strict verification; the image uses 3.11), which
+     `make-cert.sh` adds. (The VM test did these steps over the API with
      `certificate.create` / `system.general.update`; the UI menu names above weren't checked.)
 4. Check: `GET /sources/discover` (admin) shows `"platform": "truenas"` and `"status": {"connected": true,
    "version": "..."}`. If not, `status.detail` says why (the key is never shown or logged).

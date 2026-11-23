@@ -5,7 +5,8 @@
 #
 #   scripts/truenas-vm/make-cert.sh <out-dir> [SAN ...]     # default SANs: DNS:localhost IP:127.0.0.1
 #
-# Keys are written with mode 600 to <out-dir> (keep it outside the repo).
+# Keys are written with mode 600 to <out-dir> (keep it outside the repo). Key identifiers are included because
+# Python 3.13+ verifies strictly by default (VERIFY_X509_STRICT) and rejects certificates without them.
 set -euo pipefail
 
 out="${1:?usage: make-cert.sh <out-dir> [SAN ...]}"
@@ -20,12 +21,13 @@ cd "$out"
 if [ ! -f ca.key ]; then
     openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:P-256 -nodes -days 3650 \
         -subj "/CN=nAI test CA" -keyout ca.key -out ca.pem \
-        -addext "basicConstraints=critical,CA:TRUE" -addext "keyUsage=critical,keyCertSign,cRLSign" 2>/dev/null
+        -addext "basicConstraints=critical,CA:TRUE" -addext "keyUsage=critical,keyCertSign,cRLSign" \
+        -addext "subjectKeyIdentifier=hash" -addext "authorityKeyIdentifier=keyid:always" 2>/dev/null
 fi
 openssl req -newkey ec -pkeyopt ec_paramgen_curve:P-256 -nodes -subj "/CN=${sans[0]#*:}" \
     -keyout server.key -out server.csr 2>/dev/null
 openssl x509 -req -in server.csr -CA ca.pem -CAkey ca.key -CAcreateserial -days 825 -out server.pem \
-    -extfile <(printf 'subjectAltName=%s\nbasicConstraints=CA:FALSE\nkeyUsage=critical,digitalSignature\nextendedKeyUsage=serverAuth\n' "$san_list") \
+    -extfile <(printf 'subjectAltName=%s\nbasicConstraints=CA:FALSE\nkeyUsage=critical,digitalSignature\nextendedKeyUsage=serverAuth\nsubjectKeyIdentifier=hash\nauthorityKeyIdentifier=keyid:always\n' "$san_list") \
     2>/dev/null
 rm -f server.csr
 chmod 644 ca.pem server.pem
