@@ -204,7 +204,7 @@ jobs:
   # Retrieval Evaluation
   # ====================
   eval:
-    name: Retrieval Evaluation
+    name: nai-bench Evaluation
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: [test, api-test]
@@ -220,7 +220,14 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -r apps/nai-core/requirements.txt
-          pip install httpx
+          pip install httpx pytesseract Pillow
+
+      # Same OCR languages as the nai-core image (Dockerfile), so CI numbers match the bench stack
+      - name: Install Tesseract OCR
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-eng tesseract-ocr-deu
+          tesseract --list-langs
       
       - name: Download NLTK data
         run: |
@@ -230,14 +237,16 @@ jobs:
         working-directory: apps/nai-core
         env:
           NAI_EMBEDDINGS_ENABLED: "true"
+          NAI_OCR_ENABLED: "true"
+          NAI_OCR_LANGUAGES: "eng+deu"
           NAI_SOURCES_ALLOWED_ROOTS: '["${{ github.workspace }}/evals/nai-bench"]'
         run: |
           uvicorn app.main:app --host 0.0.0.0 --port 8000 &
           for i in $(seq 90); do curl -sf http://localhost:8000/health && exit 0; sleep 2; done
           echo "nAI did not start" && exit 1
 
-      # No Tesseract here, so scanned files are not indexed and their questions miss:
-      # compare CI numbers only with earlier CI runs, not with evals/results/ baselines.
+      # Retrieval and extractive answers only (no LLM in CI). Compare with the retrieval and
+      # extractive rows of evals/results/baseline-*.md; scans are OCR'd like in the image.
       - name: Run nai-bench (retrieval + extractive answers)
         run: |
           python evals/run_baseline.py --no-llm --label ci --out-dir eval-results \
