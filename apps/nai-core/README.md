@@ -94,6 +94,7 @@ NAI_SOURCES_ALLOWED_ROOTS='["/shares"]'
 # Semantic search (vectors stored in SQLite, model downloaded on first start)
 NAI_EMBEDDINGS_ENABLED=true
 NAI_EMBEDDINGS_MODEL=sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
+NAI_EMBEDDINGS_AUTO_REINDEX=false   # true: re-embed automatically when the model changes
 NAI_RERANKER=auto
 
 # Authentication (secret generated into data/.secret_key when unset)

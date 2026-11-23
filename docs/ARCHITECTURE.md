@@ -87,7 +87,14 @@ model see but users don't; the embedding input is `"{context}\n{text}"`
   on real data: relevant hits scored about 0.47–0.63, noise about 0.20–0.34.
 - An `EmbeddingWorker` thread embeds pending chunks; the indexer notifies it. The model loads in the
   background: `/health` and `auto` search never block (`is_ready()`, `state`); only `method=embedding` waits
-  (`is_available()`). Switching the model re-embeds everything.
+  (`is_available()`).
+- **Changing the embedding model.** Vectors are stored with their model key (`provider:model`), and search
+  only ever uses the current model's vectors, so two models are never mixed. When nAI starts with a model
+  that differs from the stored vectors, `reindex_required` becomes true (cached per model key): embedding
+  pauses, `auto`/`hybrid` search falls back to keyword-only, an explicit embedding search returns 400, and
+  the system panel asks an admin to confirm. `POST /system/embeddings/reindex` (admin) drops the old vectors
+  and the worker re-embeds everything. `NAI_EMBEDDINGS_AUTO_REINDEX=true` skips the question and re-embeds
+  straight away.
 
 ## LLM answers
 

@@ -6,6 +6,9 @@ All notable changes to nAI. Versions follow [semantic versioning](https://semver
 ## [Unreleased]
 
 ### Changed
+- **Changing the embedding model no longer re-embeds silently.** nAI keeps the old vectors, pauses semantic
+  search (keyword search keeps working) and asks an admin to confirm in the system panel or with
+  `POST /system/embeddings/reindex`. Set `NAI_EMBEDDINGS_AUTO_REINDEX=true` for the old automatic re-embed.
 - **Reranking is off by default** in `infra/docker-compose.yml` and the NithronOS template (it was `auto`):
   the bundled reranker is English-only and didn't help on the multilingual nai-bench. Multilingual
   alternative: `NAI_RERANKER=true` with `NAI_RERANKER_MODEL=BAAI/bge-reranker-v2-m3-int8` (MRR 0.793 → 0.918

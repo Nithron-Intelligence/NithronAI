@@ -31,15 +31,25 @@ Nithron models get a **family name per role**, plus a **version number**: "Nithr
 
 ## Versions
 
+> **Accepted 2026-11-23:** `.5` minor steps, `-mini`/`-max` size variants, and any Vane change forces a
+> re-index. These rules are tied to code: `app/nithron_models.py` (IDs, variants) and nAI's
+> embedding-model change detection (`EmbeddingService.reindex_required`).
+
 | Change | Example | When |
 |---|---|---|
 | **Major** (`1` → `2`) | Vane 2 | New base model or architecture, a new tokenizer, a changed output format (e.g. a different embedding dimension, a new prompt/chat format, a new tool-call schema), or training from scratch on a new data generation. Users may need to re-index (Vane) or update prompts (Tern/Nox). |
 | **Minor** (`1` → `1.5`) | Tern 1.5 | Same base and interface, clearly better on nai-bench (new data, more training, better alignment). Drop-in replacement. We use `.5` steps for named minor releases, like "1.5"; there is no "1.1". |
-| **Fix** (no new name) | `nithron/vane-1`, revision `2027-03-02` | Bug fixes, re-exports, quantization fixes with no meaningful score change. Published as a new Hugging Face revision of the same ID and listed in the model card's changelog. |
+| **Fix** (no new name; **not for Vane**) | `nithron/tern-1`, revision `2027-03-02` | Bug fixes, re-exports, quantization fixes with no meaningful score change. Published as a new Hugging Face revision of the same ID and listed in the model card's changelog. Vane never gets same-name fixes (see below). |
 
 Notes:
 - **Every Vane version change means re-embedding**, even a minor one, because vectors from different
-  weights aren't comparable. nAI already re-embeds when the embedding model changes.
+  weights aren't comparable. nAI detects a change **by the model ID**: stored vectors carry the ID they were
+  made with, and when it differs from the configured model nAI pauses semantic search and asks the admin
+  before re-indexing (`NAI_EMBEDDINGS_AUTO_REINDEX=true` re-embeds without asking).
+- **Vane weights are never replaced in place under the same name.** Any change to Vane weights, even a
+  "fix", ships under a new ID (Vane 1 → Vane 1.5), never as a new revision of `nithron/vane-1`: a silent
+  weight swap under the same ID would go undetected and mix incompatible vectors. (Fix revisions are fine
+  for Loupe, Tern and Nox, whose outputs aren't stored.)
 - A version number goes up only with a committed nai-bench result that backs the release (principle 4).
 - Versions are per family: Vane 2 can ship while Tern is still at 1.
 

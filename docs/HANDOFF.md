@@ -6,7 +6,8 @@
 
 ## Status now
 
-- **Updated:** 2026-11-23, round 3, step 2a (embedding-model change detection committed; docs next).
+- **Updated:** 2026-11-23, round 3, step 2a done ("Ask before re-embedding when the embedding model changes"
+  `3222ff6` + docs). Next: 2b (Loupe 1 decision, reranker auto policy).
 - **Session note:** a new session (different account) took over mid-step 2 after the previous one ran out of tokens.
 - **Branch:** `lab/stage-0` (all lab work), based on local `main` (release 0.5.0). **Nothing is pushed.**
 - **Done:** rounds 1–2 (see History). Round 3 steps 0 (handoff doc, `AGENTS.md`) and 1 (LICENSE synced with
@@ -48,6 +49,8 @@
 |---|---|---|
 | 2026-11-23 | Second platform after NithronOS: **TrueNAS** (read-only API discovery + custom-app compose first; no permission sync yet). | Compose-native custom apps, big audience, JSON-RPC API with per-user keys, NFSv4 ACLs; Unraid's store asks for an OSI license. |
 | 2026-11-23 | Lab code (`evals/`, `training/`) Apache-2.0; nai-bench items we write CC-BY-4.0; third-party corpus files keep their own licenses. nAI's own license direction **not decided**. | Model claims must be reproducible by others; core licensing needs a lawyer. |
+| 2026-11-23 | **Embedding-model change:** nAI detects it by model ID, keeps the old vectors, pauses semantic search and asks an admin before re-indexing (`NAI_EMBEDDINGS_AUTO_REINDEX=true` opts back into automatic re-embedding). Vane weights are never replaced under the same ID. | Silent re-embeds took hours on big NAS indexes; a same-name weight swap would mix incompatible vectors. |
+| 2026-11-23 | Version rules accepted: `.5` minor steps, `-mini`/`-max` variants, any Vane change forces a re-index. | Proposed in round 2. |
 | 2026-11-23 | **Reranker:** off on NAS-class hardware; auto-enable `BAAI/bge-reranker-v2-m3-int8` on stronger hardware, reranking only the top 10; overridable. | bge: MRR 0.793 → 0.918 but 2–4 s per question on 2 cores. |
 | 2026-11-23 | **Loupe 1** = fine-tune of `bge-reranker-v2-m3` (int8), distilled from `Qwen3-Reranker-0.6B` as teacher. | Best permissive, multilingual, NAS-viable reranker; Qwen3 best but ~40 s/question. |
 | 2026-11-23 | **No model that needs `trust_remote_code`** (we never run code from model repos). | Security; it also rules out models without ONNX builds. |
@@ -81,7 +84,8 @@
     qwen2.5:1.5b answer 4.7 s median (p95 21 s); nai-core 1.1 GB, Ollama 1.6 GB.
   - ROCm smoke: 2 training steps + ONNX export on the RX 7900 XTX in 37 s.
 - **Round 3 (2026-11-23):** handoff doc; LICENSE synced with NithronOS (sha256 `62f2cf4c…c05c177`, "Sync
-  LICENSE with NithronOS…" `d496d16` on `main`), tag moved, branch rebased. Rest in progress (see Status).
+  LICENSE with NithronOS…" `d496d16` on `main`), tag moved, branch rebased. New session from step 2: 2a
+  embedding-model change detection (`3222ff6`). Rest in progress (see Status).
 
 ## How to resume
 
