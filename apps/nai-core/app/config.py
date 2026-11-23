@@ -144,7 +144,7 @@ class Settings(BaseSettings):
         description="auto | fastembed | ollama | sentence-transformers",
     )
     embeddings_model: str = Field(
-        default="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+        default="ibm-granite/granite-embedding-97m-multilingual-r2",
         description="Embedding model (multilingual by default). For ollama e.g. 'nomic-embed-text'",
     )
     embeddings_batch_size: int = Field(default=32, description="Chunks embedded per batch")

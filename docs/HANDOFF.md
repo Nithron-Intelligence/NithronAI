@@ -32,8 +32,10 @@
   1 444 MiB, indexing 36 → 65 s for 27 files. nAI registers Granite as a custom fastembed model (CLS, fp32 ONNX);
   bench compose takes `NAI_EMBEDDINGS_MODEL`, per-model volumes; nas-sim overlay `NAS_SIM_DATA`. 311m hybrid in nAI
   stopped (CPU too slow, ~1.5 h); measured offline instead.
-- **Round 6 next command:** section 3, make granite 97m nAI's default (config, docs, MODEL_NAMING, CHANGELOG
-  Unreleased, upgrade test for "ask before re-indexing"), PR to main.
+- **Round 6, section 3 in progress:** default embedding model → granite 97m in `config.py`, `nithron_models.py` (Vane 1
+  base), bench compose; docs (README, ARCHITECTURE, MODEL_NAMING, register, CHANGELOG Unreleased); upgrade test
+  `test_upgrade_from_the_old_default_model_asks_before_reindexing`.
+- **Round 6 next command:** PR lab/stage-0 → main for the default change, poll CI, merge.
 - **Round 5 permissions (2026-11-23):** commit, push, open and merge PRs as the human (merge commits; no
   attribution trailers, no history rewrite, no force-push, never bypass branch protection); create and push the
   tag **v0.6.0 once** (never move/re-push a tag, no other tags); user-space installs, pulling Ollama models and
