@@ -3,6 +3,20 @@
 Things we know about but haven't fixed or built yet. Newest first within each section. When an item is
 done, delete it here and mention it in `CHANGELOG.md`.
 
+## Known issues
+
+- **MCP clients that only do OAuth can't connect.** nAI's MCP server accepts API keys (bearer tokens);
+  clients that require OAuth (for example Claude Desktop custom connectors) can't use it yet.
+- **Vector search is brute force in memory.** Fine up to roughly 10^5–10^6 chunks; beyond that, move to an
+  index (e.g. sqlite-vec) before memory and latency grow too much.
+- **The Docker image is about 1.3 GB** (LiteLLM + onnxruntime). `INSTALL_FULL=false` builds a smaller
+  search-only image without LLM answers and OCR.
+- **OCR languages.** The image ships Tesseract `eng` and `deu` only. Swedish, French and Portuguese scans are
+  read with those models (nai-bench's Swedish receipt still works, but accents suffer). Adding
+  `tesseract-ocr-swe`/`-fra`/`-por` costs a few MB each.
+- **Test warning:** Starlette warns that using `httpx` for `TestClient` is deprecated in favour of `httpx2`.
+  Harmless for now.
+
 ## Backlog
 
 ### Index e-mail files (`.eml`, `.mbox`)
