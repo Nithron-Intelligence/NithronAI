@@ -6,7 +6,7 @@
 
 ## Status now
 
-- **Updated:** 2026-11-23, nai-bench v1 session (step 3 in progress). **Release 0.5.0 is pushed and published.**
+- **Updated:** 2026-11-23, session 3 end (nai-bench v1 first round and TrueNAS custom-app test done). **Release 0.5.0 is pushed and published.**
 - **Branches:** `main` = `lab/stage-0` (fast-forwarded after the release merge), both pushed;
   `lab/stage-0` tracks `origin/lab/stage-0`. Work continues on `lab/stage-0`; push it after each close-out.
 - **Push authorization:** on 2026-11-23 the human authorized this session to commit, merge and push as them
@@ -33,8 +33,9 @@
   `connect()`; fixtures recorded from 25.10.8. Findings: the default cert names only `localhost` and 25.10
   can't create CAs, so real installs import their own certificate; certificates need key identifiers for
   Python 3.13+ strict verification (`make-cert.sh` adds them). **VM is shut down, files kept** in
-  `~/vms/truenas-test/` (5.9 GB: ISO 2.2 GB, boot disk 3.5 GB, data disks 71 MB each); secrets in
-  `~/vms/truenas-test/secrets.env` (mode 600: admin password, `nai-reader` API key); CA in `pki/`. Restart:
+  `~/vms/truenas-test/` (9.6 GB after the custom-app test, was 5.9 GB); secrets in
+  `~/vms/truenas-test/secrets.env` (mode 600: TrueNAS admin password, `nai-reader` API key, nAI admin
+  password); CA in `pki/`, SSH key for the VM in `ssh/`. Restart:
   `scripts/truenas-vm/start-vm.sh`, API on `https://localhost:8443` after ~3 min. `lab/stage-0` has no CI
   (CI runs on main/develop and PRs only); local checks passed before every commit.
 - **Step 3, nai-bench v1: first round done (2026-11-23).** All five bullets below are done: split guard,
@@ -89,14 +90,19 @@
      Original requirement: first 100 v1 questions spread over the 4 categories × 5 languages (+ unanswerable), all
      `review_status: unreviewed`, `provenance.author: claude` ("Claude-written"), `use: eval-only`;
      validate with `naibench.validate`. Close out every 25 questions.
-- **Next 2: TrueNAS custom-app test (not started).** Requirements from the human: build a local nai-core image
-  from `lab/stage-0` (the published 0.5.0 predates the TrueNAS adapter) and load it into the VM without any
-  registry (e.g. `docker save | ssh … docker load`); start the VM with `scripts/truenas-vm/start-vm.sh`;
-  install nAI through TrueNAS Apps with `packaging/truenas/compose.yaml` and the guide, as a user would;
-  datasets mounted read-only, app runs as `apps` (568); check that nAI starts, discovers TrueNAS through the
-  API with the read-only key and the imported certificate, and indexes and answers a question about the
-  sample files; fix the guide/compose where reality differs; if cheap, verify the certificate-import UI menu
-  names with a headless browser; results into `packaging/truenas/README.md`; shut the VM down, keep its files.
+- **TrueNAS custom-app test: done (2026-11-23).** nAI built from `lab/stage-0` (local image
+  `nai-core:lab-stage-0`, loaded with `docker save | ssh … sudo docker load`, no registry) installed with
+  `packaging/truenas/compose.yaml` via `app.create` (`scripts/truenas-vm/install_app.py`); `test_app.py`: all 6
+  checks pass (runs as 568, datasets read-only, semantic search on, discovery connected from inside the app over
+  `wss://10.0.2.15` with the read-only key + CA file, 4 documents indexed, 2 extractive answers from the right
+  files, key not in the app log). **Fixed:** the image didn't work as another uid (HF cache in `/.cache`, NLTK
+  data in private `/home/nai` → keyword search only): `HF_HOME=/app/data/.cache/huggingface`, NLTK in
+  `/opt/nltk_data` (`tests/test_dockerfile.py`, CHANGELOG). Guide fixes in `packaging/truenas/` (Apps pool first,
+  TrueNAS IP not localhost in the URL, cert must name it, 0.5.0 too old). Not verified: the certificate-import UI
+  menu names (a headless browser would need the admin password in tool calls; left marked unverified). VM shut
+  down, files kept; the app `nai` stays installed in the VM. **Next command:** a later round: release a version
+  after 0.5.0 so the TrueNAS guide can point at a published image, then re-run step 8 of
+  `scripts/truenas-vm/README.md` with it.
 - **After round 3:** human review of nai-bench items; finish v1 (to 300+ files, 625 questions);
   synthetic corpus generator for Stage 1; Vane 1 / Loupe 1 pilot training on the GPU.
 
@@ -109,9 +115,12 @@
 - **Trademark search** for Nithron Vane / Loupe / Tern / Nox before any public release.
 - **NithronOS template sync:** hand the patch in `docs/KNOWN_ISSUES.md` ("Hand-over: NithronOS template sync";
   applies cleanly to NithronOS `47def8c`) to the session that owns NithronOS.
-- **Docker disk:** ~50 GB images (ROCm PyTorch ~40 GB) + ~46 GB build cache; prune when not needed.
-- **TrueNAS:** adapter tested on 25.10.8 in a VM (2026-11-23). Still open: nAI as a custom app inside
-  TrueNAS Apps (not tested), and the UI menu names for certificate import in `packaging/truenas/README.md`.
+- **Docker disk:** ~50 GB images (ROCm PyTorch ~40 GB) + ~46 GB build cache, plus the local
+  `nai-core:lab-stage-0` (1.3 GB, 2026-11-23); prune when not needed. Build venv for nai-bench rendering:
+  `~/.venvs/nai-bench-build` (user space).
+- **TrueNAS:** adapter and custom app tested on 25.10.8 in a VM (2026-11-23). Still open: the UI menu names
+  for certificate import in `packaging/truenas/README.md` (unverified); the guide needs a release after 0.5.0
+  (0.5.0 has no adapter and runs keyword-only as the apps user). Release decision is the human's.
 - **Reranker ONNX license:** fastembed's int8 bge build comes from `onnx-community/bge-reranker-v2-m3-ONNX`,
   whose card states no license (base model Apache-2.0); fine for now, Loupe 1 ships our own export.
 - **UI checks:** CONTRIBUTING.md lists no UI test procedure; the new re-index notice was checked by rendering
@@ -158,6 +167,10 @@
   - Simulated NAS (2 CPUs / 4 GB each, CPU only): index 27 s; search 0.20 s; extractive answer 0.20 s;
     qwen2.5:1.5b answer 4.7 s median (p95 21 s); nai-core 1.1 GB, Ollama 1.6 GB.
   - ROCm smoke: 2 training steps + ONNX export on the RX 7900 XTX in 37 s.
+- **nai-bench v1 + TrueNAS custom app (2026-11-23, session 3):** split guard `80378af`, training guard `ca4c908`,
+  review.py `1532ba4`, v1 corpus `8a6c422` `b34437d` `71957a7` `ece720b` (100 files), v1 questions `139ad72`
+  `36a7c5f` `2df48de` `408b309` (100), docs `30ceecf`, then the custom-app close-out commit (image any-user fix,
+  guide fixes, `install_app.py`, `test_app.py`). Tests: 218 nai-core, 105 evals/training.
 - **TrueNAS VM test (2026-11-23, session 2):** TrueNAS 25.10.8 in a QEMU/KVM VM; commits `e96e35d` (setup
   scripts), `19a2894` (adapter fixes, README results), then the certificate/HANDOFF close-out commit. Tests:
   216 nai-core, 66 evals/training.

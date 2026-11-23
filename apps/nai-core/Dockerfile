@@ -48,12 +48,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl \
     && useradd --create-home --shell /bin/bash --uid 1000 nai
 
 COPY --from=builder /opt/venv /opt/venv
-COPY --from=builder /root/nltk_data /home/nai/nltk_data
+# Readable by any user: TrueNAS Apps and `docker run --user` start the image as another uid (568 on
+# TrueNAS), whose HOME is "/" and who can't enter /home/nai (mode 0700).
+COPY --from=builder /root/nltk_data /opt/nltk_data
 
 ENV PATH="/opt/venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    NLTK_DATA=/home/nai/nltk_data \
+    NLTK_DATA=/opt/nltk_data \
+    HF_HOME=/app/data/.cache/huggingface \
     HF_HUB_DISABLE_TELEMETRY=1 \
     NAI_DATA_DIR=/app/data \
     NAI_WEB_DIR=/app/web \
