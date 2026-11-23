@@ -285,7 +285,8 @@ Releases: **v0.5.0** (2026-11-23) is the latest release; see [CHANGELOG.md](CHAN
 - [ ] **Phase 2 — Assistant**: done so far (0.5.0, on `main`, not tagged): API keys, OpenAI-compatible API,
       MCP server for nAI's own documents. Next: MCP server for the NithronOS API (read-only first, then
       confirmed actions), tool use, NithronOS sign-in, share permissions → nAI groups
-- [ ] **Phase 3 — Everywhere**: NithronOS desktop/mobile clients, photo search
+- [ ] **Phase 3 — Everywhere**: NithronOS desktop/mobile clients, photo search, an eval suite built from real
+      (opt-in, anonymized) user questions
 - [ ] **Lab Stage 0 — Measurement** (in progress): nai-bench v0 (56 questions, 27 files, 5 languages),
       retrieval and answer-quality evals, Ollama end-to-end test, first baseline. Next: nai-bench v1 with
       a test split, then the first Nithron models (Nithron Vane 1 and Loupe 1, see

@@ -23,6 +23,18 @@ done, delete it here and mention it in `CHANGELOG.md`.
 - **Test warning:** Starlette warns that using `httpx` for `TestClient` is deprecated in favour of `httpx2`.
   Harmless for now.
 
+## What NithronOS must fix for nAI
+
+Recorded 2026-11-21 in NithronOS's `NAI_INTEGRATION.md` (owned by the NithronOS session; on its milestones):
+
+- **Data-dir ownership:** NithronOS chowns app folders to `nos:nos`, but the nAI container runs as PUID 1000,
+  so nAI can't write its data directory.
+- **Share read access:** the shares mounted into nAI must be readable by the container user.
+- **Container-name networking:** nAI reaches Ollama and other services by container name; the NithronOS app
+  network must resolve those names.
+- **Memory cap:** NithronOS's template renderer gives apps a 1024M memory limit by default; nAI needs more
+  (the template sets an explicit limit; about 1.4 GB with the reranker loaded).
+
 ## Hand-over: NithronOS template sync (for the session that owns NithronOS)
 
 NithronOS's copy of the nAI template (`usr/share/nithronos/apps/templates/nai/`, added in NithronOS commit
