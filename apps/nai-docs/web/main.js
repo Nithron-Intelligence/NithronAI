@@ -776,6 +776,33 @@ async function addSource(event) {
   }
 }
 
+// The embedding model changed: semantic search is paused until an admin confirms the re-index.
+function reindexNotice(emb) {
+  if (!emb || !emb.reindex_required) return '';
+  const previous = Object.entries(emb.previous_models || {})
+    .map(([model, count]) => `${escapeHtml(model)} (${count} vectors)`).join(', ');
+  return `
+    <div class="reindex-notice" role="alert">
+      <strong>Semantic search is paused:</strong> the embedding model changed to
+      ${escapeHtml(emb.model || 'a new model')}. The index still holds vectors from ${previous || 'an older model'}.
+      Searches use keywords only until everything is re-embedded with the new model, which can take a while on
+      large folders.
+      <button id="reindexBtn" class="btn btn-primary">Re-index now</button>
+    </div>`;
+}
+
+async function confirmReindex() {
+  const btn = document.getElementById('reindexBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Starting…'; }
+  try {
+    const r = await apiCall('/system/embeddings/reindex', { method: 'POST' });
+    showToast(r.reindexing ? `Re-indexing ${r.pending} passages in the background` : 'Nothing to re-index', 'success');
+  } catch (e) {
+    showToast(`Could not start the re-index: ${e.message}`, 'error');
+  }
+  loadSystemInfo();
+}
+
 async function loadSystemInfo() {
   try {
     const sys = await apiCall('/system');
@@ -795,9 +822,11 @@ async function loadSystemInfo() {
       ['OCR', sys.features.ocr ? 'available' : 'not available'],
       ['Answer model', llm.enabled ? (llm.active_model ? `${llm.provider}/${llm.active_model}` : 'no model available') : 'off (extractive answers)'],
     ];
-    elements.systemInfo.innerHTML = rows.map(([k, v]) => `
+    elements.systemInfo.innerHTML = reindexNotice(emb) + rows.map(([k, v]) => `
       <div class="system-row"><span class="system-key">${k}</span><span>${escapeHtml(v)}</span></div>
     `).join('') + `<ul class="system-tips">${sys.recommendations.map(r => `<li>${escapeHtml(r)}</li>`).join('')}</ul>`;
+    const reindexBtn = document.getElementById('reindexBtn');
+    if (reindexBtn) reindexBtn.addEventListener('click', confirmReindex);
     elements.sourceRootsHint.textContent = `Must be inside: ${sys.sources.allowed_roots.join(', ')}`;
   } catch (e) {
     elements.systemInfo.textContent = `Could not load system info: ${e.message}`;

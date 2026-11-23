@@ -1,0 +1,7 @@
+# Overlay for AMD GPUs (ROCm): passes the GPU device nodes to Ollama.
+# Use with OLLAMA_IMAGE=ollama/ollama:0.40.17-rocm (see compose.bench.yaml).
+services:
+  ollama:
+    devices:
+      - /dev/kfd
+      - /dev/dri

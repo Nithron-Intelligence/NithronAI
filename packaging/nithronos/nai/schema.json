@@ -69,12 +69,12 @@
     "RERANKER": {
       "type": "string",
       "title": "Reranking",
-      "description": "Sharper result ordering at some CPU cost. 'auto' enables it on capable hardware.",
-      "default": "auto",
+      "description": "Re-scores the top 10 results with a multilingual reranker. Off by default on NithronOS (NAS CPUs: about 2 s per question). 'auto' turns it on only on fast machines (8+ cores, 8+ GB RAM); 'on' forces it.",
+      "default": "off",
       "enum": [
+        "off",
         "auto",
-        "true",
-        "false"
+        "on"
       ]
     },
     "OCR_ENABLED": {

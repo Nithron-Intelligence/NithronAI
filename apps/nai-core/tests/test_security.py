@@ -76,6 +76,7 @@ def test_admin_can_create_users_and_users_are_not_admin(auth_client):
     assert auth_client.get("/auth/me", headers=alice).json()["username"] == "alice"
     assert auth_client.get("/auth/users", headers=alice).status_code == 403
     assert auth_client.get("/health/detailed", headers=alice).status_code == 403
+    assert auth_client.post("/system/embeddings/reindex", headers=alice).status_code == 403
     assert auth_client.get("/health/detailed", headers=admin).status_code == 200
 
 

@@ -1,0 +1,21 @@
+# Training image for AMD GPUs: ROCm PyTorch from AMD + the lab's training dependencies.
+# PyTorch and ROCm come from the base image, so nothing GPU-related is installed on the host.
+# Base image: ~12.5 GB compressed (rocm/pytorch on Docker Hub).
+ARG ROCM_PYTORCH_TAG=rocm10.2.0_ubuntu24.04_py3.12_pytorch_release_2.15.0
+FROM rocm/pytorch:${ROCM_PYTORCH_TAG}
+
+WORKDIR /workspace
+# torch is already in the base image; keep it (the ROCm build) and add the rest.
+COPY training/requirements.txt /tmp/training-requirements.txt
+COPY apps/nai-core/requirements.txt /tmp/nai-core-requirements.txt
+# uv resolves this set in seconds where pip backtracks for many minutes. torch is pinned to the
+# installed ROCm build so nothing replaces it with a CUDA/CPU wheel.
+RUN pip install --no-cache-dir uv \
+    && grep -v '^torch' /tmp/training-requirements.txt > /tmp/req.txt \
+    && python3 -c "import torch; print('torch==' + torch.__version__)" > /tmp/constraints.txt \
+    && uv pip install --python /usr/bin/python3 --system --break-system-packages --no-cache -c /tmp/constraints.txt \
+       -r /tmp/req.txt -r /tmp/nai-core-requirements.txt \
+    && python3 -c "import nltk; nltk.download('punkt', quiet=True); nltk.download('punkt_tab', quiet=True)"
+
+ENV HF_HOME=/workspace/.cache/huggingface \
+    PYTHONUNBUFFERED=1

@@ -5,7 +5,44 @@ All notable changes to nAI. Versions follow [semantic versioning](https://semver
 
 ## [Unreleased]
 
-Nothing yet.
+### Changed
+- **Reranker policy:** `NAI_RERANKER` now takes `auto` (default), `on` or `off` (`true`/`false` still work).
+  `auto` reranks the top 10 (`NAI_RERANKER_CANDIDATES=10`, was 30) only on machines with 8+ effective cores
+  and 8+ GB RAM (~0.7 s per question on 8 cores) and stays off on NAS-class CPUs (~2 s on 2 cores). The
+  default model is now the multilingual `BAAI/bge-reranker-v2-m3-int8` (0.57 GB download, ~1-1.5 GB RAM),
+  replacing the English-only `Xenova/ms-marco-MiniLM-L-6-v2`. `/system` shows the effective state and the
+  reason. `infra/docker-compose.yml` uses `auto`; the NithronOS template uses `off`.
+- Hardware detection honours container limits (cgroup CPU quota and memory limit, CPU affinity) and counts
+  physical cores, so a `docker --cpus=2 --memory=4g` container is no longer reported as the whole host.
+- **Changing the embedding model no longer re-embeds silently.** nAI keeps the old vectors, pauses semantic
+  search (keyword search keeps working) and asks an admin to confirm in the system panel or with
+  `POST /system/embeddings/reindex`. Set `NAI_EMBEDDINGS_AUTO_REINDEX=true` for the old automatic re-embed.
+- **Reranking is off by default** in `infra/docker-compose.yml` and the NithronOS template (it was `auto`):
+  the bundled reranker is English-only and didn't help on the multilingual nai-bench. Multilingual
+  alternative: `NAI_RERANKER=true` with `NAI_RERANKER_MODEL=BAAI/bge-reranker-v2-m3-int8` (MRR 0.793 → 0.918
+  on nai-bench v0, but about 2–4 s per question on a 2-core CPU).
+- nAI is described as a product for any NAS OS, with NithronOS as the reference platform (ADR-0004).
+
+### Added
+- **TrueNAS adapter, step 1** (`NAI_NAS_PLATFORM=truenas`): read-only share discovery through the TrueNAS
+  JSON-RPC WebSocket API (`NAI_TRUENAS_URL`, `NAI_TRUENAS_API_KEY`, optional `NAI_TRUENAS_CA_FILE`; wss://
+  with certificate verification only, key never logged) and a custom-app compose file with install guide in
+  `packaging/truenas/`. `/sources/discover` now also reports the platform status and shares that exist on the
+  NAS but aren't mounted into nAI.
+- NAS adapter layer (`app/nas/`, `NAI_NAS_PLATFORM`: `generic` or `nithronos`) and
+  `GET /sources/discover` (admin): folders under the allowed roots that could become sources.
+- `/system` reports which Nithron answering model (Tern or Nox) fits the machine; `/health/detailed`
+  reports the reranker model. Model names and IDs live in `app/nithron_models.py`.
+- **nai-bench v0**: a multilingual NAS-style benchmark (27 files, 56 questions) with retrieval and
+  answer-quality evals, a human review workflow (`evals/nai-bench/review.py`), baselines, a reranker
+  comparison and simulated-NAS measurements in `evals/results/`, and CI runs with OCR.
+- `infra/compose.bench.yaml` and `evals/smoke_ollama.sh`: an nAI + Ollama end-to-end smoke test.
+- Docs: `docs/ARCHITECTURE.md`, `CONTRIBUTING.md`, `docs/KNOWN_ISSUES.md`, ADR-0003 (product scope),
+  ADR-0004 (NAS adapters), lab roadmap, license register, model naming, Stage 1 plan, product and
+  licensing draft; `training/` (Stage 1 skeleton, ROCm training container).
+
+### Removed
+- `packages/rag-kit`, `packages/toolpacks`, `packages/model-router` (unused by nai-core).
 
 ## [0.5.0] – 2026-11-23
 

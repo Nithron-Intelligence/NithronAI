@@ -144,6 +144,7 @@ class EmbeddingService:
         self._embed_lock = threading.Lock()
         self._cache: _VectorCache | None = None
         self._cache_lock = threading.Lock()
+        self._reindex_state: tuple[str, bool] | None = None  # (model key, re-index pending)
 
     # -- provider ----------------------------------------------------------
 
@@ -216,6 +217,49 @@ class EmbeddingService:
     def chunk_input(context: str, text: str) -> str:
         return f"{context}\n{text}" if context else text
 
+    def other_model_vectors(self) -> dict[str, int]:
+        """Stored vectors that belong to a different model than the current one (model -> count)."""
+        key = self.model_key
+        if key is None:
+            return {}
+        with self.db.connect() as conn:
+            rows = conn.execute(
+                "SELECT model, COUNT(*) AS n FROM chunk_embeddings WHERE model != ? GROUP BY model", (key,)
+            ).fetchall()
+        return {r["model"]: r["n"] for r in rows}
+
+    @property
+    def reindex_required(self) -> bool:
+        """The model changed and an admin hasn't confirmed re-embedding yet (vectors are never mixed:
+        search only uses the current model's vectors, so semantic search is paused until then).
+
+        Never blocks on a model download (False until the provider is loaded) and is cached per model
+        key: the database is checked once after start, after confirm_reindex() and when the model
+        changes, not on every embed_pending() call (a full index scan on a big NAS index).
+        """
+        if self.settings.embeddings_auto_reindex or self._provider is None:
+            return False
+        key = f"{self._provider.name}:{self._provider.model}"
+        cached = self._reindex_state
+        if cached is not None and cached[0] == key:
+            return cached[1]
+        with self.db.connect() as conn:
+            other = conn.execute("SELECT 1 FROM chunk_embeddings WHERE model != ? LIMIT 1", (key,)).fetchone()
+        self._reindex_state = (key, other is not None)
+        return other is not None
+
+    def confirm_reindex(self) -> int:
+        """Drop the old model's vectors so the worker re-embeds everything with the current model."""
+        key = self.model_key
+        if key is None:
+            return 0
+        with self.db.connect() as conn:
+            removed = conn.execute("DELETE FROM chunk_embeddings WHERE model != ?", (key,)).rowcount
+            Database.bump_counter(conn, "embedding_revision")
+        self._reindex_state = (key, False)
+        logger.info(f"Re-index confirmed: dropped {removed} vectors of older embedding models")
+        return int(removed)
+
     def pending_count(self) -> int:
         key = self.model_key
         if key is None:
@@ -230,7 +274,7 @@ class EmbeddingService:
     def embed_pending(self, max_batches: int | None = None) -> int:
         """Embed chunks lacking a vector for the current model. Returns the number embedded."""
         provider = self._load_provider()
-        if provider is None:
+        if provider is None or self.reindex_required:  # wait for the admin to confirm a model change
             return 0
         key = f"{provider.name}:{provider.model}"
         done = 0
@@ -337,6 +381,9 @@ class EmbeddingService:
             "error": self._provider_error,
             "vectors": stored,
             "pending": self.pending_count() if provider else None,
+            "reindex_required": self.reindex_required,
+            # per-model counts only while a re-index is pending (a GROUP BY over all vectors)
+            "previous_models": self.other_model_vectors() if self.reindex_required else {},
         }
 
 

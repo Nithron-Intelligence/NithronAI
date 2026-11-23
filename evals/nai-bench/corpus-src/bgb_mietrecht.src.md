@@ -1,0 +1,39 @@
+---
+out: Gesetze/BGB_Mietrecht_Auszug.txt
+format: text
+language: de
+kind: statute
+title: BGB Mietrecht (Auszug §§ 535, 551, 573c)
+license: public-domain (amtliches Werk, § 5 Abs. 1 UrhG)
+source: Bürgerliches Gesetzbuch, gesetze-im-internet.de (Bundesministerium der Justiz), retrieved 2026-11-22
+source_url: https://www.gesetze-im-internet.de/bgb/
+provenance: public-domain-official-text
+---
+Bürgerliches Gesetzbuch (BGB) – Auszug Mietrecht
+Quelle: gesetze-im-internet.de, abgerufen am 22.11.2026. Amtliches Werk (§ 5 Abs. 1 UrhG), gemeinfrei.
+
+§ 535 Inhalt und Hauptpflichten des Mietvertrags
+
+(1) Durch den Mietvertrag wird der Vermieter verpflichtet, dem Mieter den Gebrauch der Mietsache während der Mietzeit zu gewähren. Der Vermieter hat die Mietsache dem Mieter in einem zum vertragsgemäßen Gebrauch geeigneten Zustand zu überlassen und sie während der Mietzeit in diesem Zustand zu erhalten. Er hat die auf der Mietsache ruhenden Lasten zu tragen.
+
+(2) Der Mieter ist verpflichtet, dem Vermieter die vereinbarte Miete zu entrichten.
+
+§ 551 Begrenzung und Anlage von Mietsicherheiten
+
+(1) Hat der Mieter dem Vermieter für die Erfüllung seiner Pflichten Sicherheit zu leisten, so darf diese vorbehaltlich des Absatzes 3 Satz 4 höchstens das Dreifache der auf einen Monat entfallenden Miete ohne die als Pauschale oder als Vorauszahlung ausgewiesenen Betriebskosten betragen.
+
+(2) Ist als Sicherheit eine Geldsumme bereitzustellen, so ist der Mieter zu drei gleichen monatlichen Teilzahlungen berechtigt. Die erste Teilzahlung ist zu Beginn des Mietverhältnisses fällig. Die weiteren Teilzahlungen werden zusammen mit den unmittelbar folgenden Mietzahlungen fällig.
+
+(3) Der Vermieter hat eine ihm als Sicherheit überlassene Geldsumme bei einem Kreditinstitut zu dem für Spareinlagen mit dreimonatiger Kündigungsfrist üblichen Zinssatz anzulegen. Die Vertragsparteien können eine andere Anlageform vereinbaren. In beiden Fällen muss die Anlage vom Vermögen des Vermieters getrennt erfolgen und stehen die Erträge dem Mieter zu. Sie erhöhen die Sicherheit. Bei Wohnraum in einem Studenten- oder Jugendwohnheim besteht für den Vermieter keine Pflicht, die Sicherheitsleistung zu verzinsen.
+
+(4) Eine zum Nachteil des Mieters abweichende Vereinbarung ist unwirksam.
+
+§ 573c Fristen der ordentlichen Kündigung
+
+(1) Die Kündigung ist spätestens am dritten Werktag eines Kalendermonats zum Ablauf des übernächsten Monats zulässig. Die Kündigungsfrist für den Vermieter verlängert sich nach fünf und acht Jahren seit der Überlassung des Wohnraums um jeweils drei Monate.
+
+(2) Bei Wohnraum, der nur zum vorübergehenden Gebrauch vermietet worden ist, kann eine kürzere Kündigungsfrist vereinbart werden.
+
+(3) Bei Wohnraum nach § 549 Abs. 2 Nr. 2 ist die Kündigung spätestens am 15. eines Monats zum Ablauf dieses Monats zulässig.
+
+(4) Eine zum Nachteil des Mieters von Absatz 1 oder 3 abweichende Vereinbarung ist unwirksam.

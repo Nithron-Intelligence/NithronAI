@@ -1,0 +1,5 @@
+# Generated training data, runs and local environments are never committed.
+data/
+runs/
+.venv-train/
+.cache/
