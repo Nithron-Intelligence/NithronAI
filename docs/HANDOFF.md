@@ -7,7 +7,7 @@
 ## Status now
 
 - **Updated:** 2026-11-23, round 8 session 2 (keyword-only mode for small NAS boxes, then release 0.7.0). In
-  progress: keyword-only mode implemented and measured, PR to main next; then release 0.7.0.
+  progress: section 2 (keyword-only mode) done and merged; section 3 (release 0.7.0) next.
 - **Round 8 permissions (2026-11-23, restated for session 2 the same day):** commit, push, open and merge PRs as the human (merge commits; no attribution,
   no history rewrite, no force-push, never bypass branch protection); create and push **v0.7.0 once** (never move or
   re-push a tag, no other tags); user-space installs; start/stop bench and ROCm trainer containers (GPU runs ≤ 3 h,
@@ -15,7 +15,8 @@
   sudo asks for a password, print the command for the human and wait.
 - **Round 8 state:** session 2 started at lab/stage-0 = `622de73`, main = `f671c7b`, both pushed, clean.
   HANDOFF split into this page + [HANDOFF-history.md](HANDOFF-history.md) (`730e70e`).
-- **Round 8, section 2 (keyword-only mode): implemented.** `NAI_EMBEDDINGS=auto|on|off` (default auto;
+- **Round 8, section 2 done: keyword-only mode.** PR #9 merged as `1f6d5ba`; PR CI and main CI (run 45260344370,
+  incl. nai-bench) green. `NAI_EMBEDDINGS=auto|on|off` (default auto;
   `NAI_EMBEDDINGS_ENABLED=false` = off); `hardware.embeddings_auto_decision` (threshold **2.5 GB** effective memory,
   inclusive); `EmbeddingService.decision()/wanted()` cached per process and used by the service, worker, retriever,
   `/health`, `/system` (`features.embeddings.mode` on/off/auto-on/auto-off + `reason`), startup log; web UI notice for
