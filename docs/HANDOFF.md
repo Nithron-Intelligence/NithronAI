@@ -37,12 +37,11 @@
   `~/vms/truenas-test/secrets.env` (mode 600: admin password, `nai-reader` API key); CA in `pki/`. Restart:
   `scripts/truenas-vm/start-vm.sh`, API on `https://localhost:8443` after ~3 min. `lab/stage-0` has no CI
   (CI runs on main/develop and PRs only); local checks passed before every commit.
-- **Next 1: step 3, nai-bench v1 (in progress: 1–4 done; questions 100/100).** Do it in this order, closing out
-  (HANDOFF + checks + commit) after each bullet and every 25 files or questions. **Next command:** questions
-  batch 5: append items v1-0101…v1-0125 (generator kept outside the repo at
-  `/tmp/claude-1000/-mnt-vault-Dev-Nithron-NithronAI/b95c3deb-bdc3-4ad9-9402-00329d95690f/scratchpad/questions/gen_v1_questions.py`;
-  if it is gone, write the next items by hand from `v1/corpus-src/` following the plan below), then
-  `nb.validate_splits()`.
+- **Step 3, nai-bench v1: first round done (2026-11-23).** All five bullets below are done: split guard,
+  training guard, review.py for short sessions, 100 corpus files, 100 questions (dev 43 / test 57, all
+  unreviewed). **Next command:** part 2 of this session, the TrueNAS custom-app test ("Next 2" below), or, in a
+  later round, v1 to 300+ files / 625 questions (more easy and hard items; ≥ 5 questions per cross-lingual
+  language pair).
   1. **Split rules (done):** rules in `evals/nai-bench/README.md` ("Dev/test split"); `naibench.split_of`,
      guard in `load_items`/`load_all_items`, `--final-run` + `--label` in `eval_retrieval.py`,
      `eval_answers.py`, `run_baseline.py` (+ `--bench`), `review.py --test-split`, ledger
@@ -79,7 +78,7 @@
      publications, Gutenberg distractors, fictional docs); download with `curl`, record source URL, license,
      retrieval date, author and SHA-256 per file in the v1 manifest; Claude-written files say so and are
      eval-only. Close out every 25 files.
-  5. **Questions (100/100):** plan for the first 100 = per language 4 lookup, 4 cross-lingual (each question
+  5. **Questions (done, 100/100):** plan for the first 100 = per language 4 lookup, 4 cross-lingual (each question
      language paired once with each other document language), 4 table/scan-OCR, 4 multi-hop, 4 unanswerable
      (near misses); ids `v1-0001…`, split by `naibench.split_of` into `v1/questions-dev.jsonl` /
      `v1/questions-test.jsonl`; all `unreviewed`, `provenance.author: claude`, `written_by: Claude-written`,
@@ -90,6 +89,14 @@
      Original requirement: first 100 v1 questions spread over the 4 categories × 5 languages (+ unanswerable), all
      `review_status: unreviewed`, `provenance.author: claude` ("Claude-written"), `use: eval-only`;
      validate with `naibench.validate`. Close out every 25 questions.
+- **Next 2: TrueNAS custom-app test (not started).** Requirements from the human: build a local nai-core image
+  from `lab/stage-0` (the published 0.5.0 predates the TrueNAS adapter) and load it into the VM without any
+  registry (e.g. `docker save | ssh … docker load`); start the VM with `scripts/truenas-vm/start-vm.sh`;
+  install nAI through TrueNAS Apps with `packaging/truenas/compose.yaml` and the guide, as a user would;
+  datasets mounted read-only, app runs as `apps` (568); check that nAI starts, discovers TrueNAS through the
+  API with the read-only key and the imported certificate, and indexes and answers a question about the
+  sample files; fix the guide/compose where reality differs; if cheap, verify the certificate-import UI menu
+  names with a headless browser; results into `packaging/truenas/README.md`; shut the VM down, keep its files.
 - **After round 3:** human review of nai-bench items; finish v1 (to 300+ files, 625 questions);
   synthetic corpus generator for Stage 1; Vane 1 / Loupe 1 pilot training on the GPU.
 
@@ -97,7 +104,8 @@
 
 - **Pushes:** none pending (release and lab work pushed 2026-11-23; see History).
 - **Licensing direction** for nAI itself (NCL + commercial vs dual license vs open core): not decided.
-- **nai-bench review:** all items are unreviewed (`python evals/nai-bench/review.py`).
+- **nai-bench review:** all items are unreviewed: v0 56 (`python evals/nai-bench/review.py`), v1 100
+  (`--file evals/nai-bench/v1/questions-dev.jsonl`; the test split needs `--test-split`).
 - **Trademark search** for Nithron Vane / Loupe / Tern / Nox before any public release.
 - **NithronOS template sync:** hand the patch in `docs/KNOWN_ISSUES.md` ("Hand-over: NithronOS template sync";
   applies cleanly to NithronOS `47def8c`) to the session that owns NithronOS.
