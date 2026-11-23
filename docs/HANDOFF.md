@@ -37,10 +37,11 @@
   `~/vms/truenas-test/secrets.env` (mode 600: admin password, `nai-reader` API key); CA in `pki/`. Restart:
   `scripts/truenas-vm/start-vm.sh`, API on `https://localhost:8443` after ~3 min. `lab/stage-0` has no CI
   (CI runs on main/develop and PRs only); local checks passed before every commit.
-- **Next 1: step 3, nai-bench v1 (in progress: 1–3 done).** Do it in this order, closing out (HANDOFF + checks
-  + commit) after each bullet and every 25 files or questions. **Next command:** step 4, the v1 corpus: write
-  `evals/nai-bench/v1/fetch_corpus.py` (curl downloads from a source list with license per file, SHA-256 into
-  `v1/corpus-manifest.json`), first batch of 25 files.
+- **Next 1: step 3, nai-bench v1 (in progress: 1–3 done, corpus 25/100).** Do it in this order, closing out
+  (HANDOFF + checks + commit) after each bullet and every 25 files or questions. **Next command:** corpus
+  batch 2: add 15 US federal works and 10 Gutenberg books (pglaf mirror, `"transform": "gutenberg-strip"`)
+  to `evals/nai-bench/v1/sources.json`, then `apps/nai-core/.venv/bin/python
+  evals/nai-bench/v1/fetch_corpus.py` and `--check`.
   1. **Split rules (done):** rules in `evals/nai-bench/README.md` ("Dev/test split"); `naibench.split_of`,
      guard in `load_items`/`load_all_items`, `--final-run` + `--label` in `eval_retrieval.py`,
      `eval_answers.py`, `run_baseline.py` (+ `--bench`), `review.py --test-split`, ledger
@@ -63,7 +64,11 @@
      one-line summary, v1 excerpts from text corpus files; tests in `evals/tests/test_review.py`.
      Original requirement: show progress ("23/100 reviewed"), `q`/Ctrl+C keep all decisions,
      resume at the first unreviewed item, one-line summary at the end; tests for save and resume.
-  4. **Corpus:** first 100 v1 files per V1_PLAN.md (EUR-Lex in 5 languages, DE/SE statutes, US federal
+  4. **Corpus (25/100):** `v1/fetch_corpus.py` + `v1/sources.json` + `v1/corpus-manifest.json`; batch 1 =
+     4 EU acts × 5 languages (2011/83, 2019/771, 2023/988, 2017/1369; XHTML from the Publications Office
+     CELLAR API because EUR-Lex blocks curl), 3 German regulations (HeizkostenV, BetrKV, WoFlV), 2 Swedish
+     statutes (konsumentköplag, konsumenttjänstlag); 6.2 MB. Tests: `evals/tests/test_v1_corpus.py`.
+     Original requirement: first 100 v1 files per V1_PLAN.md (EUR-Lex in 5 languages, DE/SE statutes, US federal
      publications, Gutenberg distractors, fictional docs); download with `curl`, record source URL, license,
      retrieval date, author and SHA-256 per file in the v1 manifest; Claude-written files say so and are
      eval-only. Close out every 25 files.

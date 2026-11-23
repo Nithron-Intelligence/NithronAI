@@ -1,0 +1,36 @@
+# nai-bench v1 (in progress)
+
+v1 is the first nai-bench version meant to back model claims ([V1_PLAN.md](../V1_PLAN.md)). v0 in the
+parent folder stays frozen as the smoke set.
+
+| Path | What |
+|---|---|
+| `corpus/` | The files nAI indexes (index this folder). |
+| `corpus-manifest.json` | Every corpus file: language, kind, license, source, source URL, author, retrieval date, SHA-256. |
+| `sources.json` | The third-party downloads (URL, headers, license, author) that `fetch_corpus.py` fetches. |
+| `fetch_corpus.py` | Downloads `sources.json` with curl into `corpus/` and updates the manifest; `--check` verifies the corpus. |
+| `questions-dev.jsonl`, `questions-test.jsonl` | The questions, split by hash of the id ([split rules](../README.md#devtest-split-v1)). The test file is only read in final runs. |
+
+```bash
+apps/nai-core/.venv/bin/python evals/nai-bench/v1/fetch_corpus.py --check   # verify (also a test)
+apps/nai-core/.venv/bin/python evals/nai-bench/v1/fetch_corpus.py           # fetch missing sources
+```
+
+## Sources and licenses
+
+Only openly reusable material; no personal data, no CC-BY-SA or non-commercial material.
+
+| Corpus folder | Source | License |
+|---|---|---|
+| `Recht/EU/` | EU acts as published in the Official Journal, fetched from the EU Publications Office (CELLAR, same texts as EUR-Lex) in en/de/sv/fr/pt | Reuse authorised with attribution: **© European Union, https://eur-lex.europa.eu** (Commission Decision 2011/833/EU, EUR-Lex legal notice). Only the Official Journal version is authentic. |
+| `Recht/Deutschland/` | Federal regulations from gesetze-im-internet.de | Public domain as official works (§ 5 Abs. 1 UrhG) |
+| `Juridik/Sverige/` | Swedish statutes from data.riksdagen.se | Not protected (9 § upphovsrättslagen) |
+
+Files are stored byte-exact as downloaded (the manifest's `sha256`). Project Gutenberg books (planned) are
+the one exception: their Gutenberg header and licence are removed (`"transform": "gutenberg-strip"`; the
+download's hash is kept as `download_sha256`). Every v1 item, including these files, is `use: eval-only`:
+nothing from nai-bench is ever used for training.
+
+Retrieved 2026-11-23. EUR-Lex itself answers curl with a JavaScript challenge, which is why the EU texts
+come from the Publications Office's content API (`http://publications.europa.eu/resource/celex/<CELEX>`
+with `Accept-Language`).
