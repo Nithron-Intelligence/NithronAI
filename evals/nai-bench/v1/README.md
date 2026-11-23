@@ -25,12 +25,16 @@ Only openly reusable material; no personal data, no CC-BY-SA or non-commercial m
 | `Recht/EU/` | EU acts as published in the Official Journal, fetched from the EU Publications Office (CELLAR, same texts as EUR-Lex) in en/de/sv/fr/pt | Reuse authorised with attribution: **© European Union, https://eur-lex.europa.eu** (Commission Decision 2011/833/EU, EUR-Lex legal notice). Only the Official Journal version is authentic. |
 | `Recht/Deutschland/` | Federal regulations from gesetze-im-internet.de | Public domain as official works (§ 5 Abs. 1 UrhG) |
 | `Juridik/Sverige/` | Swedish statutes from data.riksdagen.se | Not protected (9 § upphovsrättslagen) |
+| `Docs/US/CFR/` | FTC and CPSC consumer rules, 16 CFR (2024 edition), PDFs from govinfo.gov | Public domain, work of the US Government (17 U.S.C. § 105); regulatory text only |
+| `Buecher/<lang>/` | Distractors: novels and stories in their original language from Project Gutenberg (pglaf.org mirror), authors who died before 1956 | Public domain in the US and the EU; Gutenberg header/licence removed |
 
-Files are stored byte-exact as downloaded (the manifest's `sha256`). Project Gutenberg books (planned) are
-the one exception: their Gutenberg header and licence are removed (`"transform": "gutenberg-strip"`; the
+Files are stored byte-exact as downloaded (the manifest's `sha256`). Project Gutenberg books are the one
+exception: their Gutenberg header and licence are removed (`"transform": "gutenberg-strip"`; the
 download's hash is kept as `download_sha256`). Every v1 item, including these files, is `use: eval-only`:
 nothing from nai-bench is ever used for training.
 
 Retrieved 2026-11-23. EUR-Lex itself answers curl with a JavaScript challenge, which is why the EU texts
 come from the Publications Office's content API (`http://publications.europa.eu/resource/celex/<CELEX>`
-with `Accept-Language`).
+with `Accept-Language`); gutenberg.org answers 503 and consumer.ftc.gov 403, hence the pglaf.org mirror and
+the CFR texts on govinfo.gov. US federal consumer *guides* (V1_PLAN.md) are still to come from a source that
+allows curl.

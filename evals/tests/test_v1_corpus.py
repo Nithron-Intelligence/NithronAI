@@ -62,3 +62,8 @@ def test_gutenberg_strip_removes_header_and_licence() -> None:
     assert _fetcher().gutenberg_strip(raw) == b"Chapter 1\r\nIt was a dark night.\n"
     with pytest.raises(ValueError):
         _fetcher().gutenberg_strip(b"no markers here")
+
+
+def test_gutenberg_strip_also_drops_the_old_end_of_ebook_line() -> None:
+    raw = b"*** START OF X ***\r\nBody line\r\n\r\nEnd of Project Gutenberg's X, by Y\r\n\r\n*** END OF X ***\r\n"
+    assert _fetcher().gutenberg_strip(raw) == b"Body line\n"
