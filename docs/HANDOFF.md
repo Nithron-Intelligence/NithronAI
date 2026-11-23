@@ -38,23 +38,31 @@
 
 ## Waiting on the human
 
-- **Pushes** (agents never push). `v0.5.0` points at `d496d16` on `main`; pushing the tag runs
-  `release.yml`, which publishes `ghcr.io/nithron/nithronai/nai-core:0.5.0` (and moves `latest`, `0`):
+- **Pushes** (agents never push). Checked 2026-11-23 with `git ls-remote` + `git fetch`: **`origin/main`
+  moved** to `c7d20d4` (PRs #1 and #2 merged on GitHub: the same Nithro→Niro LICENSE/NOTICE sync, LICENSE
+  hash identical). Local `main` (release commits, tag `v0.5.0` = `d496d16`) has **diverged**, so a plain push
+  is rejected. Merging is clean and changes no files (verified with `git merge-tree`); the tag can stay:
   ```bash
-  git switch main && git merge --ff-only lab/stage-0   # optional: brings the lab work onto main
+  git switch main
+  git merge origin/main -m "Merge origin/main (Niro license sync, PRs #1 and #2)"   # no file changes
   git push origin main
-  git push origin v0.5.0
-  git push origin --delete phase1-ask-your-nas
+  git push origin v0.5.0      # runs release.yml: publishes nai-core:0.5.0, moves latest and 0
+  git merge lab/stage-0       # optional: bring the lab work onto main (clean in this order; not ff)
+  git push origin main
+  git push origin lab/stage-0 # optional backup of the branch
+  git push origin --delete phase1-ask-your-nas chore/ncl-add-nithro license-niro   # all merged
+  git branch -D chore/ncl-add-nithro                                               # local copy
   ```
-  GHCR today (anonymous check, 2026-11-23): `nai-core` tags `0.4.0`, `0.4`, `0`, `latest`, `sha-6686b59` are
-  public.
+  Don't merge `lab/stage-0` straight into `origin/main` first: NOTICE conflicts in that order.
+  GHCR (anonymous check, 2026-11-23): `nai-core` tags `0.4.0`, `0.4`, `0`, `latest`, `sha-6686b59` are
+  public; manifest 0.4.0 → 200.
 - **Licensing direction** for nAI itself (NCL + commercial vs dual license vs open core): not decided.
 - **nai-bench review:** all items are unreviewed (`python evals/nai-bench/review.py`).
 - **Trademark search** for Nithron Vane / Loupe / Tern / Nox before any public release.
 - **NithronOS template sync:** hand the patch in `docs/KNOWN_ISSUES.md` ("Hand-over: NithronOS template sync";
   applies cleanly to NithronOS `47def8c`) to the session that owns NithronOS.
-- **Branch `chore/ncl-add-nithro`** (local + remote): obsolete since LICENSE was synced with "Niro"; delete
-  (`git branch -D chore/ncl-add-nithro && git push origin --delete chore/ncl-add-nithro`) or keep?
+- **Branch `chore/ncl-add-nithro`** (local + remote) and remote `license-niro`: both already merged into
+  `origin/main` (PRs #1, #2); deletion commands are in the push block above.
 - **Docker disk:** ~50 GB images (ROCm PyTorch ~40 GB) + ~46 GB build cache; prune when not needed.
 - **TrueNAS manual test** on a real TrueNAS (VM) with a read-only API key: `packaging/truenas/README.md`.
 - **Reranker ONNX license:** fastembed's int8 bge build comes from `onnx-community/bge-reranker-v2-m3-ONNX`,
