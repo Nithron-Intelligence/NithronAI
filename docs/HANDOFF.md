@@ -13,8 +13,15 @@
   Docker images (sudo → the human); start/stop the bench containers, the ROCm trainer container and the TrueNAS
   VM; ask before deleting anything (images, volumes, build cache, VM files, venvs). NithronOS read-only. Never
   load the nai-bench test split; no `--final-run` this round.
-- **Round 5 next command:** `git tag -a v0.6.0 06c29e0 -m "nAI 0.6.0" && git push origin v0.6.0`, then poll
-  release.yml (section 1).
+- **Round 5, section 1 done: 0.6.0 published.** Tag `v0.6.0` (annotated) on `06c29e0`, pushed once; release.yml
+  run 45207761865 succeeded; GitHub Release v0.6.0 published; GHCR tags `0.6.0`, `0.6`, `sha-06c29e0` (plus the
+  floating tags). Anonymous pull (empty Docker config) of `ghcr.io/nithron/nithronai/nai-core:0.6.0`: `/health`
+  0.6.0; as `--user 568:568` with a throwaway data dir the embedding model downloaded, NLTK readable, 0
+  permission errors, semantic-only query found the right file; test containers and data removed. NithronOS
+  template here bumped to 0.6.0 (default + enum + catalog); the NithronOS-repo change is item 3 of the hand-over
+  in `docs/KNOWN_ISSUES.md`.
+- **Round 5 next command:** Stage 0 baselines running (`scratchpad/run_stage0_baselines.sh`: default done,
+  reranker, phi4-mini); then audit close-out and the Vane 1 pilot data.
 - **Round 4 permissions (2026-11-23):** the human authorized this session to commit, push, open and merge PRs as
   them (git identity, SSH key, gh auth already configured); no attribution trailers, no history rewrite, no
   force-push, never bypass branch protection; merge PRs with a merge commit (not squash/rebase). Release
@@ -196,11 +203,8 @@
 
 ## Waiting on the human
 
-- **Tag v0.6.0 (release switch was STOP BEFORE TAGGING):** main is at `06c29e0` with CI green. To publish:
-  `git fetch origin && git tag -a v0.6.0 06c29e0 -m "nAI 0.6.0" && git push origin v0.6.0`, then watch
-  release.yml (`gh run list --workflow release.yml --limit 1`), check an anonymous
-  `docker pull ghcr.io/nithron/nithronai/nai-core:0.6.0`, repeat the `--user 568:568` smoke test on it, and do
-  docs/RELEASING.md step 5 (NithronOS template → 0.6.0, here and in the NithronOS repo copy).
+- **NithronOS template → 0.6.0:** hand the patch in `docs/KNOWN_ISSUES.md` (now incl. item 3, the 0.6.0 version
+  bump) to the session that owns NithronOS.
 - **Pushes:** none pending (main = lab/stage-0 pushed).
 - **Licensing direction** for nAI itself (NCL + commercial vs dual license vs open core): not decided.
 - **nai-bench review:** all items are unreviewed: v0 56 (`python evals/nai-bench/review.py`), v1 150 (dev 62:
