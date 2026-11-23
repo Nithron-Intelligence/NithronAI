@@ -6,8 +6,15 @@
 
 ## Status now
 
-- **Updated:** 2026-11-23, round 4 (lab work → main, release 0.6.0 prep, v1 dev baseline, difficulty rebalance,
-  next-stage plan). **Release 0.5.0 is published; 0.6.0 is being prepared (not tagged).**
+- **Updated:** 2026-11-23, round 5 (publish 0.6.0, Stage 0 baselines, base-model audit, Vane 1 pilot).
+- **Round 5 permissions (2026-11-23):** commit, push, open and merge PRs as the human (merge commits; no
+  attribution trailers, no history rewrite, no force-push, never bypass branch protection); create and push the
+  tag **v0.6.0 once** (never move/re-push a tag, no other tags); user-space installs, pulling Ollama models and
+  Docker images (sudo → the human); start/stop the bench containers, the ROCm trainer container and the TrueNAS
+  VM; ask before deleting anything (images, volumes, build cache, VM files, venvs). NithronOS read-only. Never
+  load the nai-bench test split; no `--final-run` this round.
+- **Round 5 next command:** `git tag -a v0.6.0 06c29e0 -m "nAI 0.6.0" && git push origin v0.6.0`, then poll
+  release.yml (section 1).
 - **Round 4 permissions (2026-11-23):** the human authorized this session to commit, push, open and merge PRs as
   them (git identity, SSH key, gh auth already configured); no attribution trailers, no history rewrite, no
   force-push, never bypass branch protection; merge PRs with a merge commit (not squash/rebase). Release
@@ -218,6 +225,14 @@
 
 | Date | Decision | Reason |
 |---|---|---|
+| 2026-11-23 | **Publish 0.6.0** (tag `v0.6.0` on `06c29e0`). | Prepared and smoke-tested in round 4. |
+| 2026-11-23 | **Vane 1 teacher: `mistral-small3.1`** (corpus and query generation); license and quantization in the register. Deliberately not the bench judge (`qwen2.5:7b`). | Separate teacher and judge models avoid a model grading its own style. |
+| 2026-11-23 | **Data rule: no CC-BY-SA material in Vane 1's training data**; only public domain, CC0, CC-BY, EU reuse texts and teacher-generated text. | Keeps the model and a dataset release free of share-alike obligations. |
+| 2026-11-23 | **Vane 1: pilot now, base-model training-data audit alongside;** no full training run and no public release until the audit passes. | The base model's own training data could restrict commercial use. |
+| 2026-11-23 | **Unattended GPU work** allowed in the ROCm container: each run ≤ 3 h, logs to a file, command and config recorded in HANDOFF first. | Lets long runs proceed without supervision, traceably. |
+| 2026-11-23 | **No `--final-run` on the v1 test split this round;** dev split only. | Test split stays untouched until items are reviewed. |
+| 2026-11-23 | **No Hugging Face publication.** `nithron/vane-1` under Apache-2.0 is a proposal waiting on the human; releasing the training dataset is open. | Release needs the audit, review and a decision. |
+| 2026-11-23 | **Loupe 1 after Vane 1.** | One model at a time. |
 | 2026-11-23 | Second platform after NithronOS: **TrueNAS** (read-only API discovery + custom-app compose first; no permission sync yet). | Compose-native custom apps, big audience, JSON-RPC API with per-user keys, NFSv4 ACLs; Unraid's store asks for an OSI license. |
 | 2026-11-23 | Lab code (`evals/`, `training/`) Apache-2.0; nai-bench items we write CC-BY-4.0 (was CC0); third-party corpus files keep their own licenses. Official texts downloaded byte-exact; scope in `NOTICE`. nAI's own license direction **not decided**. | Model claims must be reproducible by others; core licensing needs a lawyer. |
 | 2026-11-23 | **Embedding-model change:** nAI detects it by model ID, keeps the old vectors, pauses semantic search and asks an admin before re-indexing (`NAI_EMBEDDINGS_AUTO_REINDEX=true` opts back into automatic re-embedding). Vane weights are never replaced under the same ID. | Silent re-embeds took hours on big NAS indexes; a same-name weight swap would mix incompatible vectors. |
