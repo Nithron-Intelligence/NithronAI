@@ -83,6 +83,9 @@
   (each is logged in `evals/results/test-ledger.jsonl`); (6) Hugging Face org/name and license for the Vane 1
   release (`nithron/vane-1`, Apache-2.0 proposed) and whether the training dataset is released too; (7) Loupe 1
   in parallel or after Vane 1.
+- **Round 4 end state:** PR #5 (sections 3–5) merged as `7a2d6d1`, main CI green (run 45193463920). main = `7a2d6d1`;
+  lab/stage-0 = main plus this HANDOFF-only commit, both pushed. v0.6.0 is **not tagged**: the tag goes on
+  `06c29e0` (the commit that was built and smoke-tested; see "Waiting on the human").
 - **Round 4 next command:** none in this session; next round starts with the human's Stage 1 decisions above
   (and the v0.6.0 tag if wanted).
 - **Branches:** `main` = `lab/stage-0` (fast-forwarded after the release merge), both pushed;
@@ -254,7 +257,7 @@
   - ROCm smoke: 2 training steps + ONNX export on the RX 7900 XTX in 37 s.
 - **Round 4 (2026-11-23):** PR #3 (lab/stage-0 → main, merge `3163618`; CI fix `41facf4`), PR #4 (0.6.0 prep, merge
   `06c29e0`), HANDOFF `3065eda`, v1 baseline tooling `22336af`, v1 dev baseline `09f6cd1`, v1 questions 125
-  `3344685` and 150 `7f146be`, then the closing plan commit. 0.6.0 smoke-tested from `06c29e0` (incl. `--user
+  `3344685` and 150 `7f146be`, plan `b560d2b`, PR #5 merge `7a2d6d1`, then this closing HANDOFF commit. 0.6.0 smoke-tested from `06c29e0` (incl. `--user
   568:568`), **not tagged** (release switch). Tests: 218 nai-core, 106 evals/training.
 - **nai-bench v1 + TrueNAS custom app (2026-11-23, session 3):** split guard `80378af`, training guard `ca4c908`,
   review.py `1532ba4`, v1 corpus `8a6c422` `b34437d` `71957a7` `ece720b` (100 files), v1 questions `139ad72`
