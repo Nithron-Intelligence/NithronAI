@@ -7,7 +7,7 @@
 ## Status now
 
 - **Updated:** 2026-11-23, round 8 session 2 (keyword-only mode for small NAS boxes, then release 0.7.0). In
-  progress: section 2 (keyword-only mode) done and merged; section 3 (release 0.7.0) next.
+  progress: sections 2 (keyword-only mode) and 3 (release 0.7.0) done; the template bump PR (0.7.0) closes the round.
 - **Round 8 permissions (2026-11-23, restated for session 2 the same day):** commit, push, open and merge PRs as the human (merge commits; no attribution,
   no history rewrite, no force-push, never bypass branch protection); create and push **v0.7.0 once** (never move or
   re-push a tag, no other tags); user-space installs; start/stop bench and ROCm trainer containers (GPU runs ≤ 3 h,
@@ -28,14 +28,21 @@
   (`evals/results/v1-dev-keyword-only-2026-11-23.md`, PROVISIONAL): **MRR 0.842, Hit@5 0.894**, cross-language
   Hit@5 0.643 (exactly the expected BM25 row). Test image `nai-core:kwonly-local` (local only); new volume
   `nai-bench_nai-nas-sim-r8-2g-data`.
-- **Round 8, section 3 (release 0.7.0): in progress.** Release PR: version 0.7.0 in `config.py`, `__init__.py`,
-  README badge and release line, CHANGELOG `[0.7.0] – 2026-11-23` + compare links. Per `docs/RELEASING.md` step 5
-  the templates (NithronOS here, TrueNAS compose + `scripts/truenas-vm/install_app.py`) move to 0.7.0 only after
-  the image is published (follow-up PR).
-- **Plan (section 3)** per `docs/RELEASING.md`: CHANGELOG date, `app_version`/`__version__`/README
-  badge, TrueNAS compose + this repo's NithronOS template → 0.7.0, PR, build from that main commit, smoke tests
-  (/health 0.7.0; `--user 568:568` semantic query; 2g → keyword-only answers a keyword query; 3g → Granite on), tag
-  v0.7.0 once, poll release.yml, anonymous pull + repeat, hand-over patch bump.
+- **Round 8, section 3 done: 0.7.0 published.** Release PR #10 merged as `6a85f52` (version 0.7.0, CHANGELOG
+  `[0.7.0] – 2026-11-23`); main CI run 45261589923 green (incl. nai-bench). Local build `nai-core:0.7.0-local` from
+  `6a85f52` smoke-tested, then tag **`v0.7.0`** (annotated) on `6a85f52`, pushed once; release.yml run 45263561632
+  succeeded; GitHub Release v0.7.0 published; GHCR tags `0.7.0`, `0.7`, `sha-6a85f52`, `latest` (amd64 + arm64).
+  Anonymous pull (empty Docker config) of `ghcr.io/nithron/nithronai/nai-core:0.7.0` OK. Smoke tests (2 CPUs,
+  auth off, no LLM, two uploaded text files; same script on the local build and the published image, all PASS):
+  2g → `auto-off`, keyword question answered (`/ask`, extractive, cites car.txt), search method bm25, ~88 MiB;
+  3g → `auto-on` (Granite), semantic-only query (`method=embedding`, "automobile coverage") finds car.txt, ~1.18 GiB;
+  `--user 568:568` (no limit) → model downloaded, `auto-on`, semantic-only query OK, 0 permission errors. Test
+  containers and data dirs removed. Follow-up PR: NithronOS template here, TrueNAS compose and
+  `scripts/truenas-vm/install_app.py` → 0.7.0; hand-over item 3 now says 0.7.0.
+- **Next (not started; needs the human's go for GPU runs, this session allowed bench containers only):** Vane 1
+  Granite pilot (`vane-1-rc1`). First command: `apps/nai-core/.venv/bin/python training/embed/check_overlap.py
+  training/data/vane1-pilot/pairs-clean.jsonl` (must report no nai-bench overlap); the rest of the steps are under
+  "Round 6 stopped here" in [HANDOFF-history.md](HANDOFF-history.md).
 - **Earlier rounds (1–7):** full status notes and History moved to [HANDOFF-history.md](HANDOFF-history.md)
   (2026-11-23). Round 7 ended with PR #8 merged as `f671c7b` (Granite memory: peak 1 759 MiB reranker off, 3 340 MiB
   forced on). Open lab work, in order: Vane 1 Granite pilot (`vane-1-rc1`), reranker lineage audit, fusion weights,
@@ -43,20 +50,21 @@
 
 ## Waiting on the human
 
-- **NithronOS template → 0.6.0:** hand the patch in `docs/KNOWN_ISSUES.md` (now incl. item 3, the 0.6.0 version
-  bump) to the session that owns NithronOS.
+- **NithronOS template → 0.7.0:** hand the patch in `docs/KNOWN_ISSUES.md` (items 1–4; item 3 is now the 0.7.0
+  version bump, item 4 the memory text with keyword-only below 2.5g) to the session that owns NithronOS.
 - **Pushes:** none pending (main = lab/stage-0 pushed).
 - **Licensing direction** for nAI itself (NCL + commercial vs dual license vs open core): not decided.
 - **nai-bench review:** all items are unreviewed: v0 56 (`python evals/nai-bench/review.py`), v1 150 (dev 62:
   `review.py --file evals/nai-bench/v1/questions-dev.jsonl`; test 88 needs `--test-split`).
-- **Embedding base:** decided in round 6 (Granite R2 97m, now the default in Unreleased). The old MiniLM base is
+- **Embedding base:** decided in round 6 (Granite R2 97m, the default since 0.7.0). The old MiniLM base is
   replaced; its pilot `vane-1-rc0` stays a learning run. Upstream CC-BY-SA in Granite's lineage (Wikipedia, Stack
   Exchange) is recorded for lawyer review before any commercial deal (decision 2).
-- **Release 0.7.0:** decided 2026-11-23 (keyword-only mode on small boxes, then publish); in progress this round.
 - **Hugging Face:** `nithron/vane-1` under Apache-2.0 is a proposal waiting on the human; dataset release open.
 - **Trademark search** for Nithron Vane / Loupe / Tern / Nox before any public release.
 - **NithronOS template sync:** hand the patch in `docs/KNOWN_ISSUES.md` ("Hand-over: NithronOS template sync";
   applies cleanly to NithronOS `47def8c`) to the session that owns NithronOS.
+- **Docker disk (round 8 additions):** images `nai-core:kwonly-local` and `nai-core:0.7.0-local` (local builds,
+  ~1.3 GB each), the pulled `ghcr.io/nithron/nithronai/nai-core:0.7.0`, volume `nai-bench_nai-nas-sim-r8-2g-data`.
 - **Docker disk:** ~50 GB images (ROCm PyTorch ~40 GB) + ~46 GB build cache, plus the local
   `nai-core:lab-stage-0` (1.3 GB, 2026-11-23) and `nai-core:0.6.0-local` (1.3 GB, the 0.6.0 smoke-test build),
   and the Docker volume `nai-bench_nai-bench-v1-data` (v1 index); prune when not needed (ask first). Added in
