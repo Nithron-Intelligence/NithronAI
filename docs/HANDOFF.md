@@ -20,8 +20,15 @@
   permission errors, semantic-only query found the right file; test containers and data removed. NithronOS
   template here bumped to 0.6.0 (default + enum + catalog); the NithronOS-repo change is item 3 of the hand-over
   in `docs/KNOWN_ISSUES.md`.
-- **Round 5 next command:** Stage 0 baselines running (`scratchpad/run_stage0_baselines.sh`: default done,
-  reranker, phi4-mini); then audit close-out and the Vane 1 pilot data.
+- **Round 5, section 3 done: base-model audit** in `docs/lab/vane1-base-model-audit.md`. Verdict **needs the
+  human's decision**: the base model is Apache-2.0, but its teacher (`paraphrase-MiniLM-L12-v2`) was trained on MS
+  MARCO ("non-commercial research purposes only") and Flickr30k captions ("non-commercial research and/or
+  educational purposes"), both verified on their primary pages, plus CC-BY-SA data (SNLI, Stack Exchange,
+  WikiAtomicEdits, Wikipedia-derived sets, WikiMatrix) and TED2020 (TED usage policy). It applies to nAI's shipped
+  default model too. Until decided: the pilot runs for learning, **nothing from it can ship**. Register updated
+  (teacher `mistral-small3.1` approved, Q4_K_M; `phi4-mini` bench LLM; no-CC-BY-SA data rule; audit link).
+- **Round 5 next command:** after the Stage 0 baselines finish: `generate_corpus.py` (teacher mistral-small3.1,
+  100 docs), `make_passages.py`, `generate_pairs.py`, `check_overlap.py --write-clean`, then the pilot run.
 - **Round 4 permissions (2026-11-23):** the human authorized this session to commit, push, open and merge PRs as
   them (git identity, SSH key, gh auth already configured); no attribution trailers, no history rewrite, no
   force-push, never bypass branch protection; merge PRs with a merge commit (not squash/rebase). Release
@@ -209,7 +216,10 @@
 - **Licensing direction** for nAI itself (NCL + commercial vs dual license vs open core): not decided.
 - **nai-bench review:** all items are unreviewed: v0 56 (`python evals/nai-bench/review.py`), v1 150 (dev 62:
   `review.py --file evals/nai-bench/v1/questions-dev.jsonl`; test 88 needs `--test-split`).
-- **Stage 1 decisions:** the seven listed under Status ("Decisions needed from the human for Stage 1").
+- **Vane 1 base-model audit decision:** accept the base model's training-data lineage (MS MARCO / Flickr30k
+  non-commercial terms, CC-BY-SA data) or reject it (then a different base or our own student; affects nAI's
+  current default model too). See `docs/lab/vane1-base-model-audit.md`. Until then nothing from Vane 1 ships.
+- **Hugging Face:** `nithron/vane-1` under Apache-2.0 is a proposal waiting on the human; dataset release open.
 - **Trademark search** for Nithron Vane / Loupe / Tern / Nox before any public release.
 - **NithronOS template sync:** hand the patch in `docs/KNOWN_ISSUES.md` ("Hand-over: NithronOS template sync";
   applies cleanly to NithronOS `47def8c`) to the session that owns NithronOS.
