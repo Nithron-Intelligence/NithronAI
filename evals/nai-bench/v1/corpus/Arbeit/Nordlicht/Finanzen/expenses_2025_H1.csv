@@ -1,0 +1,9 @@
+date,payee,category,amount_eur,reference,paid
+2025-01-15,Cloudberry Hosting,hosting,238.00,INV-2025-0091,yes
+2025-02-03,Adobe-like Suite (subscription),software,71.39,monthly,yes
+2025-03-20,Druckerei Kessler & Söhne,printing,1180.00,K-2025-0213,yes
+2025-04-02,Font foundry licence,software,149.00,FL-8821,yes
+2025-05-11,Hotel Miradouro Lisboa,travel,196.00,booking 2 nights,yes
+2025-05-16,Casa do Rio Porto,travel,480.00,CR-88412 incl. tourist tax,yes
+2025-06-02,Camille Durand,freelance,2520.00,facture 2025-007,yes
+2025-06-20,Druckerei Kessler & Söhne,printing,1200.00,test print Fromagerie,no

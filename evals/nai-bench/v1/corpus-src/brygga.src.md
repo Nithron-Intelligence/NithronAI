@@ -1,0 +1,27 @@
+---
+out: Sverige/mejl_grannen_brygga.txt
+format: text
+language: sv
+kind: letter
+license: CC-BY-4.0
+source: written for nai-bench (fictional)
+provenance: claude-authored
+author: claude (claude-opus-5-5)
+created: 2026-11-23
+use: eval-only
+---
+Från: per.nyberg@mail.example
+Till: elin.berg@mail.example
+Datum: 2025-08-24 19:31
+Ämne: Bryggan
+
+Hej Elin!
+
+Nu är bryggan lagad. Det blev dyrare än vi trodde: totalt 14 200 kr (virke 6 900 kr, arbete 7 300 kr).
+Som vi sa i juni delar vi lika, alltså 7 100 kr var. Kan du swisha din del senast den 30 september?
+Mitt nummer är 070-555 18 22.
+
+Nästa sommar borde vi olja den, det klarar vi själva.
+
+Hälsningar
+Per
