@@ -192,3 +192,17 @@ def recommendations(hw: HardwareInfo) -> list[str]:
             "(NAI_RERANKER=true) only with a multilingual NAI_RERANKER_MODEL."
         )
     return tips
+
+
+def nithron_answering_model(hw: HardwareInfo) -> dict[str, Any]:
+    """Which Nithron answering model (Tern or Nox) fits this machine, for the model picker."""
+    from .nithron_models import FAMILIES, PLANNED, answering_family, answering_variant, model_ref
+
+    family = answering_family(hw.gpu_memory_gb, hw.memory_gb, hw.cpu_count)
+    ref = model_ref(family, "1", answering_variant(family, hw.memory_gb))
+    return {
+        "family": FAMILIES[family].name,
+        "model_id": ref.hf_id,
+        "display_name": ref.display_name,
+        "status": PLANNED.get(f"{family}-1", {}).get("status", "planned"),
+    }

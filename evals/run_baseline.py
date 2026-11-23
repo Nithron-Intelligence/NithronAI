@@ -27,11 +27,14 @@ from typing import Any
 import httpx
 
 EVALS = Path(__file__).resolve().parent
-sys.path[:0] = [str(EVALS), str(EVALS / "retrieval"), str(EVALS / "answers")]
+NAI_CORE = EVALS.parent / "apps" / "nai-core"
+sys.path[:0] = [str(EVALS), str(EVALS / "retrieval"), str(EVALS / "answers"), str(NAI_CORE)]
 
 import eval_answers  # noqa: E402
 import eval_retrieval  # noqa: E402
 from naibench import MANIFEST_FILE, QUESTIONS_FILE, NaiClient, load_items  # noqa: E402
+
+from app.nithron_models import FAMILIES, parse_model_id  # noqa: E402
 
 RESULTS_DIR = EVALS / "results"
 
@@ -57,6 +60,19 @@ def git_commit() -> str | None:
     return out.stdout.strip() + ("+dirty" if dirty.stdout.strip() else "") if out.returncode == 0 else None
 
 
+def nithron_models_in(model_ids: dict[str, str | None]) -> list[dict[str, str]]:
+    """Nithron models (docs/lab/MODEL_NAMING.md) among the models a run used, with display names."""
+    found = []
+    for role, model_id in model_ids.items():
+        ref = parse_model_id(model_id)
+        if ref:
+            family = FAMILIES[ref.family]
+            found.append(
+                {"role": role, "id": ref.hf_id, "display_name": ref.display_name, "family": family.name}
+            )
+    return found
+
+
 def metadata(client: NaiClient, label: str) -> dict[str, Any]:
     health = client.detailed_health()
     return {
@@ -72,6 +88,12 @@ def metadata(client: NaiClient, label: str) -> dict[str, Any]:
             "corpus_manifest_sha256": sha256_file(MANIFEST_FILE),
         },
         "client_host": {"platform": platform.platform(), "python": platform.python_version()},
+        "nithron_models": nithron_models_in(
+            {
+                "embeddings": (health.get("embeddings") or {}).get("model"),
+                "reranker": (health.get("config") or {}).get("reranker_model"),
+            }
+        ),
     }
 
 
@@ -92,6 +114,15 @@ def markdown(report: dict[str, Any]) -> str:
         f"{retrieval['questions']} answerable + {retrieval['skipped_unanswerable']} unanswerable questions over "
         f"{(meta.get('index') or {}).get('total_documents')} files.",
         "",
+        *(
+            [
+                "Nithron models: "
+                + ", ".join(f"{m['display_name']} ({m['role']})" for m in meta["nithron_models"]),
+                "",
+            ]
+            if meta.get("nithron_models")
+            else []
+        ),
         "## Retrieval (document level)",
         "",
         "| Method | MRR | Hit@1 | Hit@5 | Recall@5 | Precision@5 | nDCG@5 | Page Hit@5 |",
@@ -181,6 +212,7 @@ def main() -> int:
             client, items, use_llm=True, judge_client=judge_client, judge_model=args.judge_model
         )
         report["answers"]["llm: " + ", ".join(llm["models"] or ["?"])] = llm
+        meta["nithron_models"] += nithron_models_in({f"answers ({m})": m for m in llm["models"]})
 
     args.out_dir.mkdir(parents=True, exist_ok=True)
     stem = f"{args.label}-{meta['date']}"
