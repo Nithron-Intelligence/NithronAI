@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends
 from fastapi.concurrency import run_in_threadpool
 
 from ..config import Settings, get_config
-from ..hardware import detect_hardware, ollama_models, recommendations
+from ..hardware import detect_hardware, nithron_answering_model, ollama_models, recommendations
 from ..security import require_admin
 from ..services.embeddings import EmbeddingService, get_embedding_service
 from ..services.llm import LLMService, get_llm_service
@@ -50,4 +50,6 @@ async def system_info(
             "scan_interval_seconds": settings.sources_scan_interval_seconds,
         },
         "recommendations": recommendations(hw),
+        # Which Nithron model nAI would pick here once released (docs/lab/MODEL_NAMING.md)
+        "nithron_model": nithron_answering_model(hw),
     }
