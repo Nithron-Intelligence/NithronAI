@@ -32,12 +32,16 @@
   `v1-dev-phi4-mini`). Hybrid MRR 0.720 → **0.911 with the reranker** (Hit@5 0.894 → 0.936; cross-language Hit@5
   0.714 → 0.786). Answers: phi4-mini correct 0.596 / refusal 0.533 / judge 0.790 vs qwen2.5:1.5b 0.489 / 0.267 /
   0.629; phi4-mini's language match is lower (0.541 vs 0.627).
-- **Round 5 pilot data so far:** 16 public files (7.0 MB, `training/data/vane1-pilot/public`, manifest
-  `training/manifests/vane1-pilot-public.json`) → 4 462 passages; 100 synthetic documents by mistral-small3.1 (27 min)
-  → 575 passages; pilot selection 581 → overlap check removed 11 → 570 clean passages.
-- **Round 5 running (unattended GPU run, decision 5):** `timeout 3h apps/nai-core/.venv/bin/python training/embed/generate_pairs.py --passages training/data/vane1-pilot/passages-pilot-clean.jsonl --output training/data/vane1-pilot/pairs.jsonl --model mistral-small3.1 --api-base http://localhost:11434/v1 --languages en,de,sv,fr,pt --languages-per-passage 2 --per-passage 3 --seed 13 --resume > training/data/vane1-pilot/generate_pairs.log 2>&1` (started 17:27).
-- **Round 5 next command:** when it finishes: `check_overlap.py training/data/vane1-pilot/pairs.jsonl --write-clean
-  training/data/vane1-pilot/pairs-clean.jsonl`, then the pilot run per `training/configs/vane1-pilot.json`.
+- **Round 5, section 4.1 done: Vane 1 pilot dataset** (`training/data/vane1-pilot`, git-ignored, 18.9 MB, 126 files;
+  manifest with checksums `training/manifests/vane1-pilot.json`): 16 public files (EU acts 2016/679 + 2019/770 in
+  five languages, ProdHaftG, PAngV, two Swedish statutes, 16 CFR 303 and 1201; licenses EU reuse / public domain) and
+  100 synthetic documents by mistral-small3.1 (CC0). 581 selected passages → overlap check → 570; 1 878 pairs (27 min
+  of teacher time; 39 language-mismatched queries dropped) → overlap check → **1 875 pairs**, 46 % cross-language,
+  queries en 506 / de 362 / sv 339 / pt 350 / fr 318. Training guard passes on passages and pairs. No CC-BY-SA.
+- **Round 5 running (unattended GPU run, decision 5, ≤ 3 h, log `training/runs/vane1-pilot/train.log`):**
+  `docker compose -f training/docker/compose.rocm.yaml run --rm trainer sh -c 'timeout 3h python3 training/embed/train.py --pairs training/data/vane1-pilot/pairs-clean.jsonl --output-dir training/runs/vane1-pilot --release vane-1-pilot --epochs 1 --batch-size 64 --learning-rate 2e-5 --max-seq-length 256 --hard-negatives 1 --eval-steps 100 --seed 13 --no-export > training/runs/vane1-pilot/train.log 2>&1'` (config `training/configs/vane1-pilot.json`, started 17:52).
+- **Round 5 next command:** when it finishes: `chown` the outputs, then `dense_eval.py rank --model
+  training/runs/vane1-pilot/model --name pilot` in the trainer and `dense_eval.py score --names base,pilot`.
 - **Round 4 permissions (2026-11-23):** the human authorized this session to commit, push, open and merge PRs as
   them (git identity, SSH key, gh auth already configured); no attribution trailers, no history rewrite, no
   force-push, never bypass branch protection; merge PRs with a merge commit (not squash/rebase). Release
