@@ -187,5 +187,8 @@ def recommendations(hw: HardwareInfo) -> list[str]:
     if hw.tier == "low":
         tips.append("Reranking is best left off on this machine (NAI_RERANKER=false).")
     else:
-        tips.append("This machine can afford reranking: set NAI_RERANKER=true (or auto).")
+        tips.append(
+            "This machine can afford reranking, but the default reranker is English-only: enable it "
+            "(NAI_RERANKER=true) only with a multilingual NAI_RERANKER_MODEL."
+        )
     return tips

@@ -28,7 +28,7 @@ services:
       - NAI_NAS_PLATFORM=nithronos
       - NAI_SOURCES_ALLOWED_ROOTS=["/shares"]
       - NAI_EMBEDDINGS_ENABLED=true
-      - NAI_RERANKER=${RERANKER:-auto}
+      - NAI_RERANKER=${RERANKER:-false}
       - NAI_OCR_ENABLED=${OCR_ENABLED:-true}
       - NAI_OCR_LANGUAGES=${OCR_LANGUAGES:-eng+deu}
       # Generated answers (optional). Without a model, nAI answers with exact quotes.

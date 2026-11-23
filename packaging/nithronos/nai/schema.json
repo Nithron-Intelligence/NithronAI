@@ -69,8 +69,8 @@
     "RERANKER": {
       "type": "string",
       "title": "Reranking",
-      "description": "Sharper result ordering at some CPU cost. 'auto' enables it on capable hardware.",
-      "default": "auto",
+      "description": "Re-scores the top results at some CPU cost. Off by default: the bundled reranker is English-only. 'auto' enables it on capable hardware.",
+      "default": "false",
       "enum": [
         "auto",
         "true",

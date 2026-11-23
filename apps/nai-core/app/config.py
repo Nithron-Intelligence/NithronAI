@@ -158,7 +158,12 @@ class Settings(BaseSettings):
     # Retrieval
     rrf_k: int = Field(default=60, description="Reciprocal Rank Fusion constant")
     retrieval_candidates: int = Field(default=50, description="Candidates per retriever before fusion")
-    reranker: str = Field(default="false", description="Cross-encoder reranking: true | false | auto")
+    # Off by default: the default model below is English-only (trained on MS MARCO) and did not improve
+    # the multilingual nai-bench (evals/results/rerankers-*.md). Turn it on only with a multilingual model.
+    reranker: str = Field(
+        default="false",
+        description="Cross-encoder reranking: true | false | auto (off by default; the default model is English-only)",
+    )
     reranker_model: str = Field(
         default="Xenova/ms-marco-MiniLM-L-6-v2",
         description="fastembed cross-encoder (multilingual option: BAAI/bge-reranker-v2-m3-int8)",

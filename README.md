@@ -78,7 +78,7 @@ NAI_SOURCES_SCAN_INTERVAL_SECONDS=900     # full incremental rescan (catches wha
 NAI_EMBEDDINGS_ENABLED=true
 NAI_EMBEDDINGS_PROVIDER=auto              # fastembed (ONNX, CPU) | ollama | sentence-transformers
 NAI_EMBEDDINGS_MODEL=sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
-NAI_RERANKER=false                        # true | false | auto (on when the hardware can afford it)
+NAI_RERANKER=false                        # off by default: the bundled reranker is English-only
 
 # OCR for scanned PDFs and images (needs pytesseract + tesseract)
 NAI_OCR_ENABLED=true

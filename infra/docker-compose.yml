@@ -40,8 +40,9 @@ services:
 
       # Semantic search (multilingual model, downloaded once into the data volume)
       - NAI_EMBEDDINGS_ENABLED=true
-      # Cross-encoder reranking: "auto" enables it on machines with enough CPU/RAM or a GPU
-      - NAI_RERANKER=auto
+      # Cross-encoder reranking: off by default. The bundled reranker is English-only and didn't
+      # help on the multilingual nai-bench; see docs/KNOWN_ISSUES.md before turning it on.
+      - NAI_RERANKER=false
 
       - NAI_RATE_LIMIT_ENABLED=true
       - NAI_RATE_LIMIT_REQUESTS=100

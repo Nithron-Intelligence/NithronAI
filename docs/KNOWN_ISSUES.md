@@ -5,6 +5,10 @@ done, delete it here and mention it in `CHANGELOG.md`.
 
 ## Known issues
 
+- **No multilingual reranker by default.** The bundled cross-encoder (`Xenova/ms-marco-MiniLM-L-6-v2`) is
+  English-only and trained on MS MARCO (non-commercial data terms), and it didn't improve nai-bench, so
+  reranking is off by default everywhere (`config.py`, `infra/docker-compose.yml`, the NithronOS template).
+  Candidates are compared in `evals/results/rerankers-*.md`; Nithron Loupe 1 is meant to replace it.
 - **MCP clients that only do OAuth can't connect.** nAI's MCP server accepts API keys (bearer tokens);
   clients that require OAuth (for example Claude Desktop custom connectors) can't use it yet.
 - **Vector search is brute force in memory.** Fine up to roughly 10^5–10^6 chunks; beyond that, move to an
