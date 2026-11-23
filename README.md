@@ -211,11 +211,16 @@ nAI/
 │   ├── rag-kit/           # Chunkers, rerankers, evaluators
 │   └── toolpacks/         # PDF OCR, web, email, code extractors
 ├── evals/
-│   └── retrieval/         # Evaluation framework
+│   ├── nai-bench/         # Benchmark: corpus, questions, corpus builder
+│   ├── retrieval/         # Retrieval eval (Recall, MRR, nDCG, Hit, page Hit)
+│   ├── answers/           # Answer-quality eval (facts, citations, refusals, language)
+│   └── results/           # Baseline and model results
 ├── infra/
-│   └── docker-compose.yml # Full stack deployment
+│   ├── docker-compose.yml # Full stack deployment
+│   └── compose.bench.yaml # nai-bench / smoke-test stack
 └── docs/
-    └── ADRs/              # Architecture decisions
+    ├── ADRs/              # Architecture decisions
+    └── lab/               # Lab roadmap, license register, stage plans
 ```
 
 ---
@@ -285,33 +290,48 @@ ruff check app tests && ruff format --check app tests && mypy app
 
 ## 📊 Evaluation
 
-Run retrieval evaluation:
+nAI is measured on **nai-bench**, a public benchmark of NAS-style questions over a multilingual corpus of
+contracts, invoices, scans, manuals, notes and code ([`evals/nai-bench/`](evals/nai-bench/README.md)).
+Retrieval and answer quality are scored separately; results with their exact settings go in
+[`evals/results/`](evals/results/).
 
 ```bash
-python evals/retrieval/eval_retrieval.py \
-  --test-file evals/retrieval/test_cases.json \
-  --api-url http://localhost:8000 \
-  --output results.json
+# nAI + Ollama with the nai-bench corpus mounted (auth off, localhost only)
+docker compose -f infra/compose.bench.yaml up -d --build
+docker compose -f infra/compose.bench.yaml exec ollama ollama pull qwen2.5:1.5b
+python evals/run_baseline.py --index-corpus /shares/nai-bench    # retrieval + answers
+evals/smoke_ollama.sh                                            # end-to-end smoke test
 ```
+
+Latest baseline: [`evals/results/baseline-2026-11-22.md`](evals/results/baseline-2026-11-22.md).
 
 ---
 
 ## 🛣️ Roadmap
 
-The goal: nAI as **the AI that knows your NAS**, shipped as a NithronOS app.
+The goal: nAI as **the AI that knows your NAS**, shipped as a NithronOS app. Alongside it, Nithron AI is
+becoming a small lab that builds private, local models for NAS-class hardware, starting with the models nAI
+uses: see the **[lab roadmap](docs/lab/ROADMAP.md)** and [ADR-0002](docs/ADRs/0002-nithron-ai-lab-direction.md).
+
+Releases: **v0.4.0** is the latest tagged release (image `ghcr.io/nithron/nithronai/nai-core:0.4.0`).
+`main` is **0.5.0**, not tagged yet; see [CHANGELOG.md](CHANGELOG.md).
 
 - [x] **Phase 0 — Foundation** (v0.3): auth on every endpoint, SQLite storage, persistent chat,
       SSRF-safe URL ingestion, green CI
-- [x] **Phase 1 — "Ask your NAS" MVP** (v0.4): NAS folders indexed in place with a file watcher and
+- [x] **Phase 1 — "Ask your NAS" MVP** (v0.4.0): NAS folders indexed in place with a file watcher and
       incremental rescans; per-group access; page/heading-aware parsing for PDF, DOCX, Markdown, HTML,
       plus OCR; hybrid search (BM25 + multilingual vectors in SQLite, RRF, optional reranker) with
-      contextual chunk headers; streaming answers; hardware-aware model choice; NithronOS catalog template
-  - Still open: publish the v0.4.0 image and add the template to the NithronOS catalog; map NithronOS
-    share permissions to nAI groups automatically; Docling for complex layouts (tables in PDFs)
-- [ ] **Phase 2 — Assistant**: done so far (v0.5): API keys, OpenAI-compatible API, MCP server for nAI's
-      own documents. Next: MCP server for the NithronOS API (read-only first, then confirmed actions),
-      tool use, NithronOS sign-in, share permissions → nAI groups
-- [ ] **Phase 3 — Everywhere**: NithronOS desktop/mobile clients, photo search, eval suite from real questions
+      contextual chunk headers; streaming answers; hardware-aware model choice; NithronOS catalog template.
+      The 0.4.0 image is published; the template is in the NithronOS repo, waiting to be merged there.
+  - Still open: map NithronOS share permissions to nAI groups automatically; Docling for complex layouts
+    (tables in PDFs)
+- [ ] **Phase 2 — Assistant**: done so far (0.5.0, on `main`, not tagged): API keys, OpenAI-compatible API,
+      MCP server for nAI's own documents. Next: MCP server for the NithronOS API (read-only first, then
+      confirmed actions), tool use, NithronOS sign-in, share permissions → nAI groups
+- [ ] **Phase 3 — Everywhere**: NithronOS desktop/mobile clients, photo search
+- [ ] **Lab Stage 0 — Measurement** (in progress): nai-bench v0 (56 questions, 27 files, 5 languages),
+      retrieval and answer-quality evals, Ollama end-to-end test, first baseline. Next: nai-bench v1 with
+      a test split, then the first Nithron model (`nithron-embed-small`)
 
 ---
 

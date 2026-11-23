@@ -5,7 +5,13 @@ All notable changes to nAI. Versions follow [semantic versioning](https://semver
 
 ## [Unreleased]
 
-Nothing yet.
+Lab Stage 0 (see the [lab roadmap](docs/lab/ROADMAP.md)); no change to the nAI service itself.
+
+### Added
+- **nai-bench v0**: a multilingual NAS-style benchmark (27 files, 56 questions) with retrieval and
+  answer-quality evals, a first baseline in `evals/results/`, and CI runs.
+- `infra/compose.bench.yaml` and `evals/smoke_ollama.sh`: an nAI + Ollama end-to-end smoke test.
+- Lab docs: roadmap, ADR-0002, model/data license register, Stage 1 plan; `training/embed/` skeleton.
 
 ## [0.5.0] – 2026-11-23
 
