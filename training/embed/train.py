@@ -253,6 +253,11 @@ def train_main(args: argparse.Namespace) -> int:
     from sentence_transformers import SentenceTransformer
 
     refuse_bench_path(args.pairs)
+    release = parse_model_id(args.release)
+    if release is None or release.family != "vane":
+        raise ValueError(
+            f"--release must be a Vane model ID like 'vane-1-rc1' or 'vane-1', got {args.release!r}"
+        )
     pairs = load_pairs(args.pairs, args.limit)
     train, held_out = split_by_passage(pairs, args.eval_fraction, args.seed)
     corpus = eval_corpus(train, held_out, args.eval_distractors, args.seed)
@@ -269,11 +274,6 @@ def train_main(args: argparse.Namespace) -> int:
     dataset = build_train_dataset(train, model, args)
     print(f"train dataset: {len(dataset)} rows, columns {dataset.column_names}")
     trainer = build_trainer(model, dataset, evaluator, args)
-    release = parse_model_id(args.release)
-    if release is None or release.family != "vane":
-        raise ValueError(
-            f"--release must be a Vane model ID like 'vane-1-rc1' or 'vane-1', got {args.release!r}"
-        )
     plan = {
         "release": {"id": release.hf_id, "display_name": release.display_name, "label": args.release},
         "base_model": args.base_model,
@@ -342,6 +342,8 @@ def main() -> int:
     )
     args = parser.parse_args()
 
+    if args.max_steps is not None and args.max_steps <= 0:
+        parser.error("--max-steps must be positive")
     if args.export_only:
         out = export_onnx(args.export_only, args.output_dir, quantize=True)
         print(

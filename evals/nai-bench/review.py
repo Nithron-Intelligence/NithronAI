@@ -26,6 +26,7 @@ import argparse
 import json
 import os
 import re
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -37,7 +38,7 @@ from typing import Any
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent))
 
-from naibench import QUESTIONS_FILE, REVIEW_STATUSES, review_summary  # noqa: E402
+from naibench import QUESTIONS_FILE, REVIEW_STATUSES, _item_from_json, review_summary, validate  # noqa: E402
 
 SRC_DIR = HERE / "corpus-src"
 MANIFEST = HERE / "corpus-manifest.json"
@@ -129,7 +130,7 @@ def edit_with_editor(row: dict[str, Any]) -> dict[str, Any]:
         json.dump(editable, handle, ensure_ascii=False, indent=2)
         name = handle.name
     try:
-        subprocess.run([*editor.split(), name], check=True)
+        subprocess.run([*shlex.split(editor), name], check=True)
         changed = json.loads(Path(name).read_text(encoding="utf-8"))
     finally:
         os.unlink(name)
@@ -147,6 +148,15 @@ def edit_by_prompt(row: dict[str, Any], ask: Callable[[str], str]) -> dict[str, 
                 json.loads(answer) if answer[:1] in "[{" or answer in ("null", "true", "false") else answer
             )
     return updated
+
+
+def check_item(row: dict[str, Any]) -> list[str]:
+    """Validate one (edited) item the same way the loaders do; returns the problems."""
+    try:
+        item = _item_from_json(row)
+    except (KeyError, TypeError) as e:
+        return [f"missing or malformed field: {e}"]
+    return validate([item], check_counts=False)
 
 
 def decide(
@@ -168,6 +178,13 @@ def decide(
                 fixed = edit_with_editor(row) if use_editor else edit_by_prompt(row, ask)
             except RuntimeError:
                 fixed = edit_by_prompt(row, ask)
+            except (subprocess.CalledProcessError, json.JSONDecodeError, OSError) as e:
+                out(f"edit failed ({e}); the item is unchanged")
+                continue
+            problems = check_item(fixed)
+            if problems:
+                out("the edited item is not valid, nothing saved:\n  " + "\n  ".join(problems))
+                continue
             note = ask("what did you fix? ").strip() or "fixed in review"
             return {**fixed, "review_status": "fixed", "review_note": note, **stamp}
         if choice == "r":
@@ -239,9 +256,17 @@ def main() -> int:
         )
         return 0
     reviewer = args.reviewer or default_reviewer()
-    if re.search(r"claude|gpt|gemini", reviewer, re.I):
-        parser.error("reviews must be done by a person")
-    done = run(args.file, reviewer, args.id, use_editor=not args.no_editor)
+    if re.search(r"claude|gpt|gemini", reviewer, re.I) or reviewer.strip().lower() in ("", "unknown", "root"):
+        parser.error("reviews must be done by a named person: pass --reviewer 'Your Name'")
+    if args.id:
+        known = {r["id"] for r in read_rows(args.file)}
+        for missing in sorted(set(args.id) - known):
+            print(f"warning: no item with id {missing!r}", file=sys.stderr)
+    try:
+        done = run(args.file, reviewer, args.id, use_editor=not args.no_editor)
+    except (EOFError, KeyboardInterrupt):
+        print("\nstopped; decisions made so far are saved")
+        return 0
     print(f"\ndone: {done}")
     counts = review_summary(args.file)
     print(f"reviewed so far: {counts['reviewed']} of {counts['total']}")

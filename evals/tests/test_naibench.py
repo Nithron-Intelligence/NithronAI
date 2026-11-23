@@ -322,3 +322,39 @@ def test_review_fields_are_validated(tmp_path: Path) -> None:
     path.write_text("\n".join(json.dumps(r, ensure_ascii=False) for r in rows) + "\n", encoding="utf-8")
     with pytest.raises(ValueError, match="needs reviewed_by"):
         nb.load_items(path)
+
+
+def test_review_tool_refuses_invalid_fixes(tmp_path: Path) -> None:
+    review = _review_module()
+    path = _copy_questions(tmp_path)
+    answers = iter(
+        [
+            "f",
+            "",
+            "",
+            "",
+            "",
+            "",
+            '"trivia"',
+            "",
+            "",  # nb-001: set category to an unknown value -> refused
+            "f",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "ok now",  # second try: keep everything -> saved as fixed
+            "q",
+        ]
+    )
+    messages: list[str] = []
+    done = review.run(
+        path, "Test Reviewer", ["nb-001"], ask=lambda _: next(answers), out=messages.append, use_editor=False
+    )
+    assert done["fixed"] == 1
+    assert any("not valid" in m for m in messages)
+    assert {r["id"]: r for r in review.read_rows(path)}["nb-001"]["category"] == "lookup"

@@ -148,8 +148,13 @@ def load_manifest(path: Path = MANIFEST_FILE) -> list[dict[str, Any]]:
     return data
 
 
-def validate(items: list[BenchItem], manifest: list[dict[str, Any]] | None = None) -> list[str]:
-    """Schema and consistency checks; returns a list of problems (empty when valid)."""
+def validate(
+    items: list[BenchItem], manifest: list[dict[str, Any]] | None = None, check_counts: bool = True
+) -> list[str]:
+    """Schema and consistency checks; returns a list of problems (empty when valid).
+
+    ``check_counts=False`` checks items one by one (e.g. a single edited item in the review tool).
+    """
     files = {e["file"]: e for e in (manifest if manifest is not None else load_manifest())}
     errors: list[str] = []
     seen: set[str] = set()
@@ -181,7 +186,7 @@ def validate(items: list[BenchItem], manifest: list[dict[str, Any]] | None = Non
             langs = {files[s.file]["language"] for s in item.gold_sources if s.file in files}
             if item.language in langs:
                 errors.append(f"{where}: cross-lingual question has the same language as its source")
-    if items and sum(1 for i in items if not i.answerable) < MIN_UNANSWERABLE:
+    if check_counts and items and sum(1 for i in items if not i.answerable) < MIN_UNANSWERABLE:
         errors.append(f"need at least {MIN_UNANSWERABLE} unanswerable items")
     return errors
 

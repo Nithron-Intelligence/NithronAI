@@ -243,7 +243,9 @@ def main() -> int:
             client, items, use_llm=True, judge_client=judge_client, judge_model=args.judge_model
         )
         report["answers"]["llm: " + ", ".join(llm["models"] or ["?"])] = llm
-        meta["nithron_models"] += nithron_models_in({f"answers ({m})": m for m in llm["models"]})
+        known = {m["id"] for m in meta["nithron_models"]}
+        found = nithron_models_in({f"answers ({m})": m for m in llm["models"]})
+        meta["nithron_models"] += [m for m in found if m["id"] not in known]
 
     args.out_dir.mkdir(parents=True, exist_ok=True)
     stem = f"{args.label}-{meta['date']}"

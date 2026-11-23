@@ -6,6 +6,9 @@
 #       python3 training/embed/train.py --pairs data/pairs.jsonl --output-dir runs/vane-1-rc1 --dry-run
 #
 # The repo is mounted at /workspace, so data/ and runs/ (git-ignored) stay on the host.
+# LAB USE ONLY: the container runs as root with GPU devices, seccomp off (AMD's recommendation for
+# ROCm) and the repo mounted read-write. Only run code and models you trust in it, and chown the
+# outputs back afterwards (see training/README.md).
 # RX 7000 series (gfx1100) is supported directly; older or unsupported GPUs may need
 # HSA_OVERRIDE_GFX_VERSION (see AMD's ROCm compatibility matrix).
 name: nai-training
@@ -26,7 +29,6 @@ services:
       - video
     security_opt:
       - seccomp=unconfined   # recommended by AMD for ROCm containers (HIP memory management)
-    ipc: host                # PyTorch DataLoader workers use shared memory
     environment:
       - HF_HOME=/workspace/training/.cache/huggingface   # model downloads stay in a git-ignored folder
-    shm_size: 8g
+    shm_size: 8g             # PyTorch DataLoader workers use shared memory
