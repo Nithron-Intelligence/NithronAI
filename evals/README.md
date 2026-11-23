@@ -44,6 +44,18 @@ apps/nai-core/.venv/bin/python evals/run_baseline.py --index-corpus /shares/nai-
 # published numbers: add --reviewed-only (needs reviewed items: evals/nai-bench/review.py)
 ```
 
+v1 dev split (its own corpus mount and data volume; never the test split without the maintainer's decision):
+
+```bash
+export NAI_BENCH_CORPUS=../evals/nai-bench/v1/corpus NAI_BENCH_DATA=nai-bench-v1-data
+docker compose -f infra/compose.bench.yaml -f infra/compose.bench.rocm.yaml up -d --wait
+apps/nai-core/.venv/bin/python evals/run_baseline.py --bench evals/nai-bench/v1/questions-dev.jsonl \
+    --index-corpus /shares/nai-bench --judge-url http://localhost:11434/v1 --judge-model qwen2.5:7b \
+    --label v1-dev-baseline --notes "describe the hardware here"
+```
+
+First v1 dev numbers (PROVISIONAL, unreviewed): [`results/v1-dev-baseline-2026-11-23.md`](results/v1-dev-baseline-2026-11-23.md).
+
 Variants used for the committed results:
 
 ```bash

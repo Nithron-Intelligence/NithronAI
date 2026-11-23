@@ -27,8 +27,15 @@
   permission errors, an embedding-only query with no shared keywords found the right file (the auto reranker
   policy also turned on and loaded on this 32-core host). Test containers removed. Tag commands are under
   "Waiting on the human".
-- **Round 4 next command:** section 3, v1 dev baseline: `NAI_IMAGE=nai-core:0.6.0-local` bench stack with the v1
-  corpus and its own data volume, then `run_baseline.py --bench evals/nai-bench/v1/questions-dev.jsonl` (dev only).
+- **Round 4, section 3 done (v1 dev baseline, PROVISIONAL):** `evals/results/v1-dev-baseline-2026-11-23.{md,json}`
+  at `22336af` with nai-core 0.6.0 (local build), reranker off, qwen2.5:1.5b, judge qwen2.5:7b, dev split only (43
+  items, 0 reviewed). Hybrid MRR 0.714 / Hit@5 0.909; BM25 0.841 / 0.879; embedding 0.557 / 0.606. Cross-language
+  (n = 12) hybrid Hit@5 0.750 / MRR 0.596 vs same-language 1.000 / 0.782; embedding cross 0.667 / 0.613. The 0.3
+  cutoff emptied no result list on v1 (10 452 chunks); the failure is ranking (books outrank the right document).
+  LLM answers correct 0.455, correct refusal 0.30. Fixed on the way: evaluate() used v0's manifest for v1 items
+  (`22336af`). Bench stack stopped; v1 index kept in the `nai-bench_nai-bench-v1-data` volume.
+- **Round 4 next command:** section 4, 50 more v1 questions (v1-0101…0150: 26 easy, 3 medium, 21 hard → 45/60/45
+  of 150), generator in the scratchpad (`…/scratchpad/questions/gen_v1_questions.py 125`, then 150).
 - **Branches:** `main` = `lab/stage-0` (fast-forwarded after the release merge), both pushed;
   `lab/stage-0` tracks `origin/lab/stage-0`. Work continues on `lab/stage-0`; push it after each close-out.
 - **Push authorization:** on 2026-11-23 the human authorized this session to commit, merge and push as them
