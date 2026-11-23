@@ -7,7 +7,7 @@
 ## Status now
 
 - **Updated:** 2026-11-23, round 8 session 2 (keyword-only mode for small NAS boxes, then release 0.7.0). In
-  progress: sections 2 (keyword-only mode) and 3 (release 0.7.0) done; the template bump PR (0.7.0) closes the round.
+  **Round 8 finished:** sections 2 (keyword-only mode) and 3 (release 0.7.0) done; nothing else started.
 - **Round 8 permissions (2026-11-23, restated for session 2 the same day):** commit, push, open and merge PRs as the human (merge commits; no attribution,
   no history rewrite, no force-push, never bypass branch protection); create and push **v0.7.0 once** (never move or
   re-push a tag, no other tags); user-space installs; start/stop bench and ROCm trainer containers (GPU runs ≤ 3 h,
@@ -15,6 +15,9 @@
   sudo asks for a password, print the command for the human and wait.
 - **Round 8 state:** session 2 started at lab/stage-0 = `622de73`, main = `f671c7b`, both pushed, clean.
   HANDOFF split into this page + [HANDOFF-history.md](HANDOFF-history.md) (`730e70e`).
+- **Round 8 end state:** PR #11 (templates → 0.7.0) merged as `38c5ddd`, PR CI and main CI (run 45266117359) green.
+  main = `38c5ddd`; lab/stage-0 = main plus this HANDOFF-only commit; both pushed. Tag `v0.7.0` → `6a85f52`.
+  Merged this round: PR #9 (`1f6d5ba`), #10 (`6a85f52`), #11 (`38c5ddd`).
 - **Round 8, section 2 done: keyword-only mode.** PR #9 merged as `1f6d5ba`; PR CI and main CI (run 45260344370,
   incl. nai-bench) green. `NAI_EMBEDDINGS=auto|on|off` (default auto;
   `NAI_EMBEDDINGS_ENABLED=false` = off); `hardware.embeddings_auto_decision` (threshold **2.5 GB** effective memory,
@@ -52,7 +55,7 @@
 
 - **NithronOS template → 0.7.0:** hand the patch in `docs/KNOWN_ISSUES.md` (items 1–4; item 3 is now the 0.7.0
   version bump, item 4 the memory text with keyword-only below 2.5g) to the session that owns NithronOS.
-- **Pushes:** none pending (main = lab/stage-0 pushed).
+- **Pushes:** none pending (main and lab/stage-0 pushed; lab/stage-0 is one HANDOFF commit ahead).
 - **Licensing direction** for nAI itself (NCL + commercial vs dual license vs open core): not decided.
 - **nai-bench review:** all items are unreviewed: v0 56 (`python evals/nai-bench/review.py`), v1 150 (dev 62:
   `review.py --file evals/nai-bench/v1/questions-dev.jsonl`; test 88 needs `--test-split`).
