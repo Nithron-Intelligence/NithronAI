@@ -791,6 +791,17 @@ function reindexNotice(emb) {
     </div>`;
 }
 
+// NAI_EMBEDDINGS=auto turned semantic search off: the box has too little memory for the embedding model.
+function keywordOnlyNotice(emb) {
+  if (!emb || emb.mode !== 'auto-off') return '';
+  return `
+    <div class="reindex-notice" role="status">
+      <strong>Keyword-only mode:</strong> this box has too little memory for semantic search
+      (${escapeHtml(emb.reason || '')}). Searches match the words in your files. To turn semantic search on,
+      give nAI at least 2.5 GB of memory (3 GB recommended) or set <code>NAI_EMBEDDINGS=on</code>.
+    </div>`;
+}
+
 async function confirmReindex() {
   const btn = document.getElementById('reindexBtn');
   if (btn) { btn.disabled = true; btn.textContent = 'Starting…'; }
@@ -814,7 +825,8 @@ async function loadSystemInfo() {
       : 'none detected';
     const semantic = emb.state === 'ready'
       ? `ready${emb.pending ? ` · ${emb.pending} passages still being processed` : ''}`
-      : emb.state === 'loading' ? 'downloading/loading model…' : emb.state;
+      : emb.state === 'loading' ? 'downloading/loading model…'
+      : emb.mode === 'auto-off' ? 'off (keyword-only: not enough memory)' : emb.state;
     const rows = [
       ['Hardware', `${hw.cpu_count} CPUs · ${hw.memory_gb} GB RAM · GPU: ${gpu} · tier: ${hw.tier}`],
       ['Semantic search', `${semantic}${emb.error ? ` (${emb.error})` : ''}`],
@@ -822,7 +834,7 @@ async function loadSystemInfo() {
       ['OCR', sys.features.ocr ? 'available' : 'not available'],
       ['Answer model', llm.enabled ? (llm.active_model ? `${llm.provider}/${llm.active_model}` : 'no model available') : 'off (extractive answers)'],
     ];
-    elements.systemInfo.innerHTML = reindexNotice(emb) + rows.map(([k, v]) => `
+    elements.systemInfo.innerHTML = keywordOnlyNotice(emb) + reindexNotice(emb) + rows.map(([k, v]) => `
       <div class="system-row"><span class="system-key">${k}</span><span>${escapeHtml(v)}</span></div>
     `).join('') + `<ul class="system-tips">${sys.recommendations.map(r => `<li>${escapeHtml(r)}</li>`).join('')}</ul>`;
     const reindexBtn = document.getElementById('reindexBtn');

@@ -184,11 +184,36 @@ class EmbeddingService:
         self._cache: _VectorCache | None = None
         self._cache_lock = threading.Lock()
         self._reindex_state: tuple[str, bool] | None = None  # (model key, re-index pending)
+        self._decision: tuple[str, str] | None = None  # (mode, reason), resolved once
+
+    # -- mode (keyword-only on small boxes) -------------------------------
+
+    def decision(self) -> tuple[str, str]:
+        """(mode, reason): mode is on | off | auto-on | auto-off. Resolved once per process (cached), so
+        the model is never loaded on a box where auto said no, and the mode can't flip while running."""
+        if self._decision is None:
+            mode = self.settings.embeddings  # normalized to auto | on | off by Settings
+            if not self.settings.embeddings_enabled:
+                self._decision = ("off", "off (set by NAI_EMBEDDINGS_ENABLED=false)")
+            elif mode == "on":
+                self._decision = ("on", "on (set by NAI_EMBEDDINGS)")
+            elif mode == "off":
+                self._decision = ("off", "off (set by NAI_EMBEDDINGS)")
+            else:
+                from ..hardware import detect_hardware, embeddings_auto_decision
+
+                on, why = embeddings_auto_decision(detect_hardware())
+                self._decision = ("auto-on" if on else "auto-off", f"auto, {'on' if on else 'off'}: {why}")
+        return self._decision
+
+    def wanted(self) -> bool:
+        """Semantic search is switched on (by setting or by the auto policy); keyword-only otherwise."""
+        return self.decision()[0] in ("on", "auto-on")
 
     # -- provider ----------------------------------------------------------
 
     def _load_provider(self) -> EmbeddingProvider | None:
-        if not self.settings.embeddings_enabled:
+        if not self.wanted():
             return None
         if self._provider is not None or self._provider_error is not None:
             return self._provider
@@ -226,7 +251,7 @@ class EmbeddingService:
 
     def ensure_loading(self) -> None:
         """Load the provider in a background thread (first start downloads the model)."""
-        if not self.settings.embeddings_enabled or self._loading_started:
+        if not self.wanted() or self._loading_started:
             return
         with self._provider_lock:
             if self._loading_started:
@@ -237,7 +262,7 @@ class EmbeddingService:
     @property
     def state(self) -> str:
         """disabled | loading | ready | error (never blocks)."""
-        if not self.settings.embeddings_enabled:
+        if not self.wanted():
             return "disabled"
         if self._provider is not None:
             return "ready"
@@ -412,7 +437,9 @@ class EmbeddingService:
         with self.db.connect() as conn:
             stored = conn.execute("SELECT COUNT(*) FROM chunk_embeddings").fetchone()[0]
         return {
-            "enabled": self.settings.embeddings_enabled,
+            "enabled": self.wanted(),
+            "mode": self.decision()[0],
+            "reason": self.decision()[1],
             "state": self.state,
             "available": provider is not None,
             "provider": provider.name if provider else None,
@@ -444,7 +471,7 @@ class EmbeddingWorker:
 
     def start(self) -> None:
         settings = self.service.settings
-        if self._thread is None and settings.embeddings_enabled and settings.embeddings_background:
+        if self._thread is None and self.service.wanted() and settings.embeddings_background:
             self._thread = threading.Thread(target=self._run, name="nai-embeddings", daemon=True)
             self._thread.start()
 

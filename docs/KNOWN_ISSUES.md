@@ -53,7 +53,9 @@ NithronOS's copy of the nAI template (`usr/share/nithronos/apps/templates/nai/`,
    copy (`packaging/nithronos/`) has these values since round 5.
 4. **Memory text (0.7.0):** in `schema.json` set the `MEMORY_LIMIT` description to "Container memory limit. nAI
    0.7.0 peaks around 1.8 GB (reranking off, the default here) and 3.3 GB with reranking on: keep at least 3g, use
-   5g if you turn reranking on." (default stays `3g`).
+   5g if you turn reranking on. Below 2.5g nAI runs keyword-only (no semantic search)." (default stays `3g`;
+   the second sentence is 0.7.0's keyword-only mode, `NAI_EMBEDDINGS=auto`, the image default, so
+   `compose.yaml` needs no new variable).
 5. Nothing else differs in `compose.yaml` or `schema.json` (the template README is NithronOS's own catalog
    text and isn't synced).
 
