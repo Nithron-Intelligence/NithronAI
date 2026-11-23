@@ -26,8 +26,10 @@ Nithron models get a **family name per role**, plus a **version number**: "Nithr
 3. **IDs.** Hugging Face: `nithron/<family>-<version>[-<variant>]`, all lower case: `nithron/vane-1`,
    `nithron/loupe-1`, `nithron/tern-1`, `nithron/nox-1`, `nithron/tern-1-mini`. Ollama: the same name
    (`nithron/tern-1-mini:q4_K_M`). `nithron_models.parse_model_id` understands both.
-4. **First versions:** Vane 1 (base: `paraphrase-multilingual-MiniLM-L12-v2`), Loupe 1 (base: the winner of
-   the reranker comparison, see the Stage 1 plan), Tern 1, Nox 1 (bases chosen in Stage 2).
+4. **First versions:** Vane 1 (base: `paraphrase-multilingual-MiniLM-L12-v2`); **Loupe 1 (decided 2026-11-23):
+   a fine-tune of `BAAI/bge-reranker-v2-m3` (Apache-2.0), shipped as int8 ONNX, distilled from
+   `Qwen/Qwen3-Reranker-0.6B` (Apache-2.0) as the teacher**; Tern 1, Nox 1 (bases chosen in Stage 2).
+   No base or teacher may need `trust_remote_code`.
 
 ## Versions
 

@@ -6,7 +6,9 @@ local LLM to use) and tell the admin what the box can handle.
 """
 
 import json
+import math
 import os
+import platform
 import shutil
 import subprocess
 import time
@@ -31,9 +33,20 @@ class GPUInfo:
 
 @dataclass
 class HardwareInfo:
-    cpu_count: int
-    memory_gb: float
+    cpu_count: int  # CPUs this process may use (cgroup quota and affinity applied)
+    memory_gb: float  # RAM this process may use (cgroup limit applied)
     gpus: list[GPUInfo] = field(default_factory=list)
+    physical_cores: int | None = None  # None: unknown (then cpu_count is used)
+    memory_available_gb: float | None = None
+    arch: str = ""
+    avx2: bool | None = None  # x86 only; None: unknown or not x86
+
+    @property
+    def effective_cores(self) -> int:
+        """Cores that do real work: physical cores (no SMT siblings), capped by the CPU quota."""
+        if self.physical_cores:
+            return max(1, min(self.physical_cores, self.cpu_count))
+        return self.cpu_count
 
     @property
     def gpu_memory_gb(self) -> float | None:
@@ -61,6 +74,78 @@ def _memory_gb() -> float:
         return round(os.sysconf("SC_PAGE_SIZE") * os.sysconf("SC_PHYS_PAGES") / GB, 1)
     except (ValueError, OSError, AttributeError):
         return 0.0
+
+
+def _read(path: str) -> str | None:
+    try:
+        with open(path, encoding="utf-8") as handle:
+            return handle.read().strip()
+    except OSError:
+        return None
+
+
+def _cgroup_cpu_limit() -> float | None:
+    """CPU quota of this container (docker --cpus), from cgroup v2 or v1; None if unlimited."""
+    v2 = _read("/sys/fs/cgroup/cpu.max")
+    if v2:
+        quota, _, period = v2.partition(" ")
+        if quota != "max" and period:
+            return int(quota) / int(period)
+        return None
+    quota_v1, period_v1 = (
+        _read("/sys/fs/cgroup/cpu/cpu.cfs_quota_us"),
+        _read("/sys/fs/cgroup/cpu/cpu.cfs_period_us"),
+    )
+    if quota_v1 and period_v1 and int(quota_v1) > 0:
+        return int(quota_v1) / int(period_v1)
+    return None
+
+
+def _cgroup_memory_gb() -> tuple[float | None, float | None]:
+    """(limit, available) from the cgroup (docker --memory); (None, None) if unlimited."""
+    limit = _read("/sys/fs/cgroup/memory.max") or _read("/sys/fs/cgroup/memory/memory.limit_in_bytes")
+    used = _read("/sys/fs/cgroup/memory.current") or _read("/sys/fs/cgroup/memory/memory.usage_in_bytes")
+    if not limit or limit == "max" or int(limit) >= 1 << 60:  # v1 reports a huge number when unlimited
+        return None, None
+    limit_gb = int(limit) / GB
+    available = limit_gb - int(used) / GB if used else None
+    return round(limit_gb, 1), (round(available, 1) if available is not None else None)
+
+
+def _mem_available_gb() -> float | None:
+    for line in (_read("/proc/meminfo") or "").splitlines():
+        if line.startswith("MemAvailable:"):
+            return round(int(line.split()[1]) * 1024 / GB, 1)
+    return None
+
+
+def _cpuinfo() -> tuple[int | None, bool | None]:
+    """(physical cores, AVX2 available) from /proc/cpuinfo; None where unknown."""
+    text = _read("/proc/cpuinfo") or ""
+    cores: set[tuple[str, str]] = set()
+    physical_id = core_id = ""
+    avx2: bool | None = None
+    for line in text.splitlines():
+        key, _, value = line.partition(":")
+        key, value = key.strip(), value.strip()
+        if key == "physical id":
+            physical_id = value
+        elif key == "core id":
+            core_id = value
+            cores.add((physical_id, core_id))
+        elif key == "flags" and avx2 is None:
+            avx2 = "avx2" in value.split()
+    return (len(cores) or None), avx2
+
+
+def _usable_cpus() -> int:
+    """Logical CPUs this process may run on: affinity, then the cgroup quota (rounded up)."""
+    try:
+        count = len(os.sched_getaffinity(0))
+    except (AttributeError, OSError):
+        count = os.cpu_count() or 1
+    limit = _cgroup_cpu_limit()
+    return max(1, min(count, math.ceil(limit))) if limit else count
 
 
 def _nvidia_gpus() -> list[GPUInfo]:
@@ -116,11 +201,56 @@ def _drm_gpus() -> list[GPUInfo]:
 
 @lru_cache(maxsize=1)
 def detect_hardware() -> HardwareInfo:
+    """What this process can use. Inside a container the cgroup CPU quota and memory limit count,
+    not the host's totals (docker --cpus=2 --memory=4g looks like a 2-CPU, 4 GB machine)."""
+    physical, avx2 = _cpuinfo()
+    limit_gb, cgroup_available = _cgroup_memory_gb()
+    memory = min(_memory_gb(), limit_gb) if limit_gb else _memory_gb()
+    available = [a for a in (_mem_available_gb(), cgroup_available) if a is not None]
+    arch = platform.machine().lower()
     info = HardwareInfo(
-        cpu_count=os.cpu_count() or 1, memory_gb=_memory_gb(), gpus=_nvidia_gpus() + _drm_gpus()
+        cpu_count=_usable_cpus(),
+        memory_gb=memory,
+        gpus=_nvidia_gpus() + _drm_gpus(),
+        physical_cores=physical,
+        memory_available_gb=min(available) if available else None,
+        arch=arch,
+        avx2=avx2 if arch in ("x86_64", "amd64") else None,
     )
-    logger.info(f"Hardware: {info.cpu_count} CPUs, {info.memory_gb} GB RAM, tier={info.tier}")
+    logger.info(
+        f"Hardware: {info.cpu_count} usable CPUs ({info.effective_cores} effective cores), "
+        f"{info.memory_gb} GB RAM, tier={info.tier}"
+    )
     return info
+
+
+# ---------------------------------------------------------------------------
+# Reranker auto policy
+# ---------------------------------------------------------------------------
+
+# Budget: reranking the top 10 should add at most about 1 s per question (median). Measured (provisional,
+# nai-bench v0, evals/results/rerankers-threads-2026-11-23.md): bge-reranker-v2-m3 int8, 10 passages on a
+# Ryzen 9 7950X takes 2.1 s with 2 threads, 1.1 s with 4 and 0.7 s with 8. NAS cores are slower than Zen 4
+# cores, so auto needs 8 effective cores; 2-4 core NAS boxes stay off. A GPU doesn't count: nAI runs the
+# reranker with the CPU build of onnxruntime.
+RERANKER_MIN_CORES = 8
+RERANKER_MIN_MEMORY_GB = 8.0
+RERANKER_MIN_AVAILABLE_GB = 2.0  # int8 model (0.57 GB download) needs ~1-1.5 GB while running
+
+
+def reranker_auto_decision(hw: HardwareInfo) -> tuple[bool, str]:
+    """Whether NAI_RERANKER=auto turns the reranker on for this machine, with a short reason."""
+    cores = hw.effective_cores
+    facts = f"{cores} cores, {hw.memory_gb:g} GB RAM"
+    if hw.avx2 is False:
+        return False, f"{facts}, no AVX2 (int8 inference would be too slow)"
+    if cores < RERANKER_MIN_CORES:
+        return False, f"{facts}: needs {RERANKER_MIN_CORES}+ cores (NAS-class CPU)"
+    if hw.memory_gb < RERANKER_MIN_MEMORY_GB:
+        return False, f"{facts}: needs {RERANKER_MIN_MEMORY_GB:g}+ GB RAM"
+    if hw.memory_available_gb is not None and hw.memory_available_gb < RERANKER_MIN_AVAILABLE_GB:
+        return False, f"{facts}: only {hw.memory_available_gb:g} GB free"
+    return True, facts
 
 
 # ---------------------------------------------------------------------------
@@ -184,12 +314,13 @@ def recommendations(hw: HardwareInfo) -> list[str]:
             "Limited hardware: search and extractive answers work well; use a remote Ollama "
             "(NAI_LLM_BASE_URL) for generated answers."
         )
-    if hw.tier == "low":
-        tips.append("Reranking is best left off on this machine (NAI_RERANKER=false).")
+    rerank_on, reason = reranker_auto_decision(hw)
+    if rerank_on:
+        tips.append(f"Reranking runs automatically here ({reason}); NAI_RERANKER=off turns it off.")
     else:
         tips.append(
-            "This machine can afford reranking, but the default reranker is English-only: enable it "
-            "(NAI_RERANKER=true) only with a multilingual NAI_RERANKER_MODEL."
+            f"Reranking stays off on this machine ({reason}); NAI_RERANKER=false keeps it off, "
+            "NAI_RERANKER=on forces it (about 2 s or more per question on small CPUs)."
         )
     return tips
 

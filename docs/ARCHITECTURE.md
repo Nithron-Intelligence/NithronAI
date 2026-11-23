@@ -72,8 +72,12 @@ model see but users don't; the embedding input is `"{context}\n{text}"`
    (`car_insurance_2024` also yields its parts).
 2. **Vectors** (below).
 3. **Reciprocal Rank Fusion** (k = 60) of both lists.
-4. Optional **reranker** (fastembed cross-encoder over the top `reranker_candidates`; off by default, see
-   `config.py` for why).
+4. Optional **reranker**: fastembed cross-encoder (`BAAI/bge-reranker-v2-m3-int8`, multilingual) over the top
+   `reranker_candidates` (10). `NAI_RERANKER=auto` (default) turns it on only when
+   `hardware.reranker_auto_decision` says the machine fits the ~1 s budget: 8+ effective cores (physical
+   cores, capped by the container's CPU quota), 8+ GB RAM, 2+ GB free, AVX2 on x86. A GPU doesn't count
+   (CPU onnxruntime). `/system` shows the effective state and reason. Hardware detection reads the cgroup CPU
+   quota and memory limit, so `docker --cpus=2 --memory=4g` is seen as a 2-CPU, 4 GB machine.
 
 `method_used` is `bm25`, `embedding` or `hybrid` (+ `+rerank`); returned scores are RRF scores.
 

@@ -6,7 +6,7 @@ Environment-based configuration using pydantic-settings
 import os
 from functools import lru_cache
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
 
 DEFAULT_OLLAMA_BASE_URL = "http://localhost:11434"
@@ -166,17 +166,36 @@ class Settings(BaseSettings):
     # Retrieval
     rrf_k: int = Field(default=60, description="Reciprocal Rank Fusion constant")
     retrieval_candidates: int = Field(default=50, description="Candidates per retriever before fusion")
-    # Off by default: the default model below is English-only (trained on MS MARCO) and did not improve
-    # the multilingual nai-bench (evals/results/rerankers-*.md). Turn it on only with a multilingual model.
+    # auto: on only when the hardware fits the latency budget (hardware.reranker_auto_decision: 8+ effective
+    # cores, 8+ GB RAM); off on NAS-class CPUs. bge-reranker-v2-m3 int8 lifts nai-bench MRR 0.793 -> 0.878
+    # with the top 10 but costs ~2 s per question on 2 cores (evals/results/rerankers-*.md, provisional).
     reranker: str = Field(
-        default="false",
-        description="Cross-encoder reranking: true | false | auto (off by default; the default model is English-only)",
+        default="auto",
+        description="Cross-encoder reranking: auto (on when the hardware is fast enough) | on | off "
+        "(true/false/1/0/yes/no also work)",
     )
     reranker_model: str = Field(
-        default="Xenova/ms-marco-MiniLM-L-6-v2",
-        description="fastembed cross-encoder (multilingual option: BAAI/bge-reranker-v2-m3-int8)",
+        default="BAAI/bge-reranker-v2-m3-int8",
+        description="fastembed cross-encoder; multilingual default (0.57 GB download, ~1-1.5 GB RAM while "
+        "running). English-only alternative: Xenova/ms-marco-MiniLM-L-6-v2",
     )
-    reranker_candidates: int = Field(default=30, description="Fused candidates passed to the reranker")
+    reranker_candidates: int = Field(
+        default=10,
+        ge=1,
+        description="Top-k fused candidates the reranker re-scores (NAI_RERANKER_CANDIDATES)",
+    )
+
+    @field_validator("reranker")
+    @classmethod
+    def normalize_reranker_mode(cls, value: str) -> str:
+        mode = str(value).strip().lower()
+        if mode in ("true", "1", "yes", "on"):
+            return "on"
+        if mode in ("false", "0", "no", "off"):
+            return "off"
+        if mode == "auto":
+            return "auto"
+        raise ValueError(f"NAI_RERANKER must be auto, on or off (or true/false), not {value!r}")
 
     # LLM
     llm_enabled: bool = Field(default=False, description="Enable LLM for answer generation")

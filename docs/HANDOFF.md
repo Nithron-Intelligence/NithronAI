@@ -7,7 +7,7 @@
 ## Status now
 
 - **Updated:** 2026-11-23, round 3, step 2a done ("Ask before re-embedding when the embedding model changes"
-  `3222ff6` + docs). Next: 2b (Loupe 1 decision, reranker auto policy).
+  `3222ff6`, docs `2932379`) and 2b done ("Reranker auto policy…", see History). Next: 2c (TrueNAS adapter).
 - **Session note:** a new session (different account) took over mid-step 2 after the previous one ran out of tokens.
 - **Branch:** `lab/stage-0` (all lab work), based on local `main` (release 0.5.0). **Nothing is pushed.**
 - **Done:** rounds 1–2 (see History). Round 3 steps 0 (handoff doc, `AGENTS.md`) and 1 (LICENSE synced with
@@ -51,7 +51,8 @@
 | 2026-11-23 | Lab code (`evals/`, `training/`) Apache-2.0; nai-bench items we write CC-BY-4.0; third-party corpus files keep their own licenses. nAI's own license direction **not decided**. | Model claims must be reproducible by others; core licensing needs a lawyer. |
 | 2026-11-23 | **Embedding-model change:** nAI detects it by model ID, keeps the old vectors, pauses semantic search and asks an admin before re-indexing (`NAI_EMBEDDINGS_AUTO_REINDEX=true` opts back into automatic re-embedding). Vane weights are never replaced under the same ID. | Silent re-embeds took hours on big NAS indexes; a same-name weight swap would mix incompatible vectors. |
 | 2026-11-23 | Version rules accepted: `.5` minor steps, `-mini`/`-max` variants, any Vane change forces a re-index. | Proposed in round 2. |
-| 2026-11-23 | **Reranker:** off on NAS-class hardware; auto-enable `BAAI/bge-reranker-v2-m3-int8` on stronger hardware, reranking only the top 10; overridable. | bge: MRR 0.793 → 0.918 but 2–4 s per question on 2 cores. |
+| 2026-11-23 | **Reranker:** `NAI_RERANKER=auto|on|off` (default auto; true/false still work); default model `BAAI/bge-reranker-v2-m3-int8`; top 10 (`NAI_RERANKER_CANDIDATES`). Auto = on only with 8+ effective cores (physical, capped by cgroup quota), 8+ GB RAM, 2+ GB free, AVX2 on x86; GPU doesn't count (CPU onnxruntime). NithronOS template: off. | Budget ~1 s per question for the top 10; measured 2.1 s (2 threads), 1.1 s (4), 0.7 s (8) on Zen 4 (provisional, v0 unreviewed). |
+| 2026-11-23 | Hardware detection honours cgroup CPU quota / memory limit and counts physical cores. | Inside `docker --cpus=2` it used to report the whole host (32 CPUs). |
 | 2026-11-23 | **Loupe 1** = fine-tune of `bge-reranker-v2-m3` (int8), distilled from `Qwen3-Reranker-0.6B` as teacher. | Best permissive, multilingual, NAS-viable reranker; Qwen3 best but ~40 s/question. |
 | 2026-11-23 | **No model that needs `trust_remote_code`** (we never run code from model repos). | Security; it also rules out models without ONNX builds. |
 | 2026-11-23 | **Vane 1** base = `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` (Apache-2.0); `multilingual-e5-small` (MIT) is the comparison candidate; base-model training data audit is open. | Drop-in upgrade for existing indexes. |
@@ -85,7 +86,9 @@
   - ROCm smoke: 2 training steps + ONNX export on the RX 7900 XTX in 37 s.
 - **Round 3 (2026-11-23):** handoff doc; LICENSE synced with NithronOS (sha256 `62f2cf4c…c05c177`, "Sync
   LICENSE with NithronOS…" `d496d16` on `main`), tag moved, branch rebased. New session from step 2: 2a
-  embedding-model change detection (`3222ff6`). Rest in progress (see Status).
+  embedding-model change detection (`3222ff6`); 2b reranker auto policy + cgroup-aware hardware detection;
+  bge int8 top-10 latency: 2 threads 2.08 s, 4 threads 1.09 s, 8 threads 0.70 s
+  (`evals/results/rerankers-threads-2026-11-23.md`). Rest in progress (see Status).
 
 ## How to resume
 

@@ -40,9 +40,10 @@ services:
 
       # Semantic search (multilingual model, downloaded once into the data volume)
       - NAI_EMBEDDINGS_ENABLED=true
-      # Cross-encoder reranking: off by default. The bundled reranker is English-only and didn't
-      # help on the multilingual nai-bench; see docs/KNOWN_ISSUES.md before turning it on.
-      - NAI_RERANKER=false
+      # Reranking (multilingual bge-reranker-v2-m3 int8, top 10): "auto" turns it on only on machines
+      # with 8+ effective cores and 8+ GB RAM, where it adds well under ~1 s per question; on small NAS
+      # CPUs it stays off (about 2 s per question on 2 cores). on/off force it.
+      - NAI_RERANKER=auto
 
       - NAI_RATE_LIMIT_ENABLED=true
       - NAI_RATE_LIMIT_REQUESTS=100

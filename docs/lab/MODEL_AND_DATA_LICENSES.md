@@ -28,8 +28,8 @@ Status values: **in use** (shipped or used by nAI today), **approved** (may be u
 | `intfloat/multilingual-e5-small` | MIT | candidate | 2026-11-22 | 118M, 384-d; needs "query:" / "passage:" prefixes. |
 | `intfloat/multilingual-e5-base` | MIT | candidate | 2026-11-22 | 278M; probably too slow for low-end NAS CPUs. |
 | `BAAI/bge-m3` | MIT | candidate (teacher / upper bound) | 2026-11-22 | 568M; too big as a NAS default, useful as a reference and for hard-negative mining. |
-| `BAAI/bge-reranker-v2-m3` | Apache-2.0 | **approved (Loupe 1 base)** | 2026-11-23 | Multilingual reranker; fastembed ships an int8 ONNX. Best NAS-viable result on nai-bench (MRR 0.918 vs 0.793 without reranking). |
-| `Qwen/Qwen3-Reranker-0.6B` | Apache-2.0 | approved (teacher for Loupe distillation) | 2026-11-23 | MRR 0.956 but ~40 s per question on 2 CPU threads; use for labelling, not in nAI. |
+| `BAAI/bge-reranker-v2-m3` | Apache-2.0 (model card, checked 2026-11-23) | **approved: Loupe 1 base and nAI's default reranker** (int8) | 2026-11-23 | Loaded as `XLMRobertaForSequenceClassification` (no custom code). nAI's int8 ONNX comes via fastembed from `onnx-community/bge-reranker-v2-m3-ONNX`, whose card states no license (derived from the Apache-2.0 base); Loupe 1 ships our own export. nai-bench v0: MRR 0.918 (top 30), 0.878 (top 10). |
+| `Qwen/Qwen3-Reranker-0.6B` | Apache-2.0 (model card, checked 2026-11-23) | **approved: teacher for Loupe 1 distillation** | 2026-11-23 | Built-in `Qwen3ForCausalLM`, loads without `trust_remote_code` (no `auto_map`). MRR 0.956 but ~40 s per question on 2 CPU threads; used to label training pairs, never in nAI. |
 | `cross-encoder/mmarco-mMiniLMv2-L12-H384-v1` | Apache-2.0 (model); trained on mMARCO (MS MARCO translations, non-commercial terms) | avoid | 2026-11-23 | Small gain only (MRR 0.802) and a data-lineage risk. |
 | `Alibaba-NLP/gte-multilingual-reranker-base` | Apache-2.0 | not usable as published | 2026-11-23 | Needs `trust_remote_code` (runs code from the model repo) and has no ONNX build; we don't run remote code. |
 | `jinaai/jina-reranker-v2-base-multilingual` | CC-BY-NC-4.0 | avoid | 2026-11-22 | Non-commercial. |

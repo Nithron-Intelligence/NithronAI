@@ -33,7 +33,7 @@ services:
       - NAI_RATE_LIMIT_ENABLED=false
       - NAI_EMBEDDINGS_ENABLED=true
       - NAI_RERANKER=${NAI_RERANKER:-false}
-      - NAI_RERANKER_MODEL=${NAI_RERANKER_MODEL:-Xenova/ms-marco-MiniLM-L-6-v2}
+      - NAI_RERANKER_MODEL=${NAI_RERANKER_MODEL:-BAAI/bge-reranker-v2-m3-int8}
       - NAI_OCR_ENABLED=true
       - NAI_LLM_ENABLED=${NAI_LLM_ENABLED:-true}
       - NAI_LLM_PROVIDER=ollama

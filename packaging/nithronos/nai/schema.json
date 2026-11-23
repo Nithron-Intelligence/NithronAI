@@ -69,12 +69,12 @@
     "RERANKER": {
       "type": "string",
       "title": "Reranking",
-      "description": "Re-scores the top results at some CPU cost. Off by default: the bundled reranker is English-only. 'auto' enables it on capable hardware.",
-      "default": "false",
+      "description": "Re-scores the top 10 results with a multilingual reranker. Off by default on NithronOS (NAS CPUs: about 2 s per question). 'auto' turns it on only on fast machines (8+ cores, 8+ GB RAM); 'on' forces it.",
+      "default": "off",
       "enum": [
+        "off",
         "auto",
-        "true",
-        "false"
+        "on"
       ]
     },
     "OCR_ENABLED": {

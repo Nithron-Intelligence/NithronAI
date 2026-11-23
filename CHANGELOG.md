@@ -6,6 +6,14 @@ All notable changes to nAI. Versions follow [semantic versioning](https://semver
 ## [Unreleased]
 
 ### Changed
+- **Reranker policy:** `NAI_RERANKER` now takes `auto` (default), `on` or `off` (`true`/`false` still work).
+  `auto` reranks the top 10 (`NAI_RERANKER_CANDIDATES=10`, was 30) only on machines with 8+ effective cores
+  and 8+ GB RAM (~0.7 s per question on 8 cores) and stays off on NAS-class CPUs (~2 s on 2 cores). The
+  default model is now the multilingual `BAAI/bge-reranker-v2-m3-int8` (0.57 GB download, ~1-1.5 GB RAM),
+  replacing the English-only `Xenova/ms-marco-MiniLM-L-6-v2`. `/system` shows the effective state and the
+  reason. `infra/docker-compose.yml` uses `auto`; the NithronOS template uses `off`.
+- Hardware detection honours container limits (cgroup CPU quota and memory limit, CPU affinity) and counts
+  physical cores, so a `docker --cpus=2 --memory=4g` container is no longer reported as the whole host.
 - **Changing the embedding model no longer re-embeds silently.** nAI keeps the old vectors, pauses semantic
   search (keyword search keeps working) and asks an admin to confirm in the system panel or with
   `POST /system/embeddings/reindex`. Set `NAI_EMBEDDINGS_AUTO_REINDEX=true` for the old automatic re-embed.
