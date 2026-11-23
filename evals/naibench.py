@@ -12,13 +12,16 @@ Only needs the standard library and ``httpx`` (already a nAI test dependency).
 
 from __future__ import annotations
 
+import hashlib
 import json
 import math
 import re
+import subprocess
 import time
 import unicodedata
 from collections.abc import Iterator
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -29,11 +32,23 @@ BENCH_DIR = EVALS_DIR / "nai-bench"
 QUESTIONS_FILE = BENCH_DIR / "questions.jsonl"
 MANIFEST_FILE = BENCH_DIR / "corpus-manifest.json"
 CORPUS_DIR = BENCH_DIR / "corpus"
+# v1 (V1_PLAN.md): its own corpus and manifest, dev and test questions in separate files.
+V1_DIR = BENCH_DIR / "v1"
+V1_DEV_FILE = V1_DIR / "questions-dev.jsonl"
+V1_TEST_FILE = V1_DIR / "questions-test.jsonl"
+V1_MANIFEST_FILE = V1_DIR / "corpus-manifest.json"
+V1_CORPUS_DIR = V1_DIR / "corpus"
+# Every load of a test split is recorded here (date, commit, label, items, dataset hash).
+TEST_LEDGER_FILE = EVALS_DIR / "results" / "test-ledger.jsonl"
 
 CATEGORIES = ("lookup", "multi-hop", "cross-lingual", "table/scan-OCR", "unanswerable")
 DIFFICULTIES = ("easy", "medium", "hard")
 LANGUAGES = ("en", "de", "sv", "fr", "pt")
 MIN_UNANSWERABLE = 10
+# Dev/test split: sha256(item id) mod 100 < DEV_PERCENT -> dev, else test. Per item, so adding items never
+# moves an existing item between splits.
+SPLITS = ("dev", "test")
+DEV_PERCENT = 40
 # Human review (V1_PLAN.md): only accepted or fixed items count toward published numbers.
 REVIEW_STATUSES = ("unreviewed", "accepted", "fixed", "rejected")
 REVIEWED = ("accepted", "fixed")
@@ -103,25 +118,164 @@ def _item_from_json(raw: dict[str, Any]) -> BenchItem:
     )
 
 
-def load_all_items(path: Path = QUESTIONS_FILE) -> list[BenchItem]:
-    """Every item in the file, including rejected ones (for the review tool). Raises if invalid."""
-    raw_items = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
-    items = [_item_from_json(raw) for raw in raw_items]
-    errors = validate([i for i in items if i.review_status != "rejected"]) + validate_review(items)
+class TestSplitError(PermissionError):
+    """A test split was opened without an explicit final run (V1_PLAN.md: test items never tune anything)."""
+
+
+def split_of(item_id: str) -> str:
+    """'dev' or 'test' for an item id, by hash (stable, independent of every other item)."""
+    bucket = int.from_bytes(hashlib.sha256(item_id.encode("utf-8")).digest()[:8], "big") % 100
+    return "dev" if bucket < DEV_PERCENT else "test"
+
+
+def split_file_kind(path: Path) -> str | None:
+    """'dev' / 'test' for split files (``questions-dev*.jsonl`` / ``questions-test*.jsonl``), else None."""
+    match = re.fullmatch(r"questions-(dev|test)\b.*\.jsonl", path.name)
+    return match.group(1) if match else None
+
+
+def manifest_for(path: Path) -> Path:
+    """The corpus manifest that belongs to a questions file (the one next to it, else v0's)."""
+    sibling = path.parent / "corpus-manifest.json"
+    return sibling if sibling.exists() else MANIFEST_FILE
+
+
+def _read_raw(path: Path) -> list[dict[str, Any]]:
+    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+
+
+def _guard_test_split(path: Path, final_run: bool, allow_test: bool) -> None:
+    if split_file_kind(path) == "test" and not (final_run or allow_test):
+        raise TestSplitError(
+            f"{path.name} is the test split: it is only evaluated in a final run (pass --final-run; the run "
+            "is recorded in evals/results/test-ledger.jsonl). Tune on the dev split."
+        )
+
+
+def load_all_items(path: Path = QUESTIONS_FILE, *, allow_test: bool = False) -> list[BenchItem]:
+    """Every item in the file, including rejected ones (for the review tool). Raises if invalid.
+
+    A test split needs ``allow_test=True`` (human review only; evaluation goes through ``load_items``).
+    """
+    _guard_test_split(path, final_run=False, allow_test=allow_test)
+    items = [_item_from_json(raw) for raw in _read_raw(path)]
+    kind = split_file_kind(path)
+    manifest = load_manifest(manifest_for(path))
+    errors = validate(
+        [i for i in items if i.review_status != "rejected"], manifest, check_counts=kind is None
+    ) + validate_review(items)
+    if kind:
+        errors += [
+            f"{i.id}: hashes to the {split_of(i.id)} split, not {kind}"
+            for i in items
+            if split_of(i.id) != kind
+        ]
     if errors:
         raise ValueError("invalid nai-bench questions:\n  " + "\n  ".join(errors))
     return items
 
 
-def load_items(path: Path = QUESTIONS_FILE, reviewed_only: bool = False) -> list[BenchItem]:
-    """Items to evaluate: rejected items are always dropped; ``reviewed_only`` keeps accepted/fixed ones."""
-    items = [i for i in load_all_items(path) if i.review_status != "rejected"]
-    return [i for i in items if i.reviewed] if reviewed_only else items
+def load_items(
+    path: Path = QUESTIONS_FILE,
+    reviewed_only: bool = False,
+    *,
+    final_run: bool = False,
+    run_label: str | None = None,
+    ledger: Path | None = None,
+) -> list[BenchItem]:
+    """Items to evaluate: rejected items are always dropped; ``reviewed_only`` keeps accepted/fixed ones.
+
+    A test split (``questions-test*.jsonl``) is refused unless ``final_run`` is set; every final run is
+    appended to ``ledger`` before any item is returned.
+    """
+    _guard_test_split(path, final_run=final_run, allow_test=False)
+    items = [i for i in load_all_items(path, allow_test=final_run) if i.review_status != "rejected"]
+    items = [i for i in items if i.reviewed] if reviewed_only else items
+    if final_run and split_file_kind(path) == "test":
+        record_test_run(path, items, run_label or "unlabelled", reviewed_only, ledger)
+    return items
 
 
-def review_summary(path: Path = QUESTIONS_FILE) -> dict[str, int]:
+def dataset_sha256(*paths: Path) -> str:
+    """One hash over the given files (questions + manifest) in order."""
+    digest = hashlib.sha256()
+    for path in paths:
+        digest.update(path.name.encode("utf-8") + b"\0" + path.read_bytes() + b"\0")
+    return digest.hexdigest()
+
+
+def _git_commit() -> str | None:
+    try:
+        out = subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"], cwd=EVALS_DIR, capture_output=True, text=True, timeout=10
+        )
+    except OSError:
+        return None
+    if out.returncode != 0:
+        return None
+    return out.stdout.strip() or None
+
+
+def record_test_run(
+    path: Path, items: list[BenchItem], label: str, reviewed_only: bool, ledger: Path | None = None
+) -> dict[str, Any]:
+    """Append one line per final (test split) run to the ledger and return it."""
+    entry = {
+        "date": datetime.now(UTC).isoformat(timespec="seconds"),
+        "commit": _git_commit(),
+        "label": label,
+        "file": path.name,
+        "items": len(items),
+        "reviewed_only": reviewed_only,
+        "dataset_sha256": dataset_sha256(path, manifest_for(path)),
+    }
+    ledger = ledger or TEST_LEDGER_FILE
+    ledger.parent.mkdir(parents=True, exist_ok=True)
+    with ledger.open("a", encoding="utf-8") as f:
+        f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    return entry
+
+
+FINAL_RUN_HELP = (
+    "evaluate a test split (questions-test*.jsonl): only for the final, published run of a model; "
+    "the run is appended to evals/results/test-ledger.jsonl"
+)
+
+
+def cli_load_items(
+    path: Path, reviewed_only: bool, final_run: bool, label: str, ledger: Path | None = None
+) -> list[BenchItem]:
+    """``load_items`` for the eval scripts: a refused test split exits with the reason, no traceback."""
+    try:
+        return load_items(path, reviewed_only, final_run=final_run, run_label=label, ledger=ledger)
+    except TestSplitError as e:
+        raise SystemExit(f"refused: {e}") from None
+
+
+def validate_splits(dev: Path = V1_DEV_FILE, test: Path = V1_TEST_FILE) -> list[str]:
+    """Schema, split membership and counts over both split files together (for tests and CI).
+
+    Returns problems only, never items, so it can't be used to look at the test split.
+    """
+    errors: list[str] = []
+    items: list[BenchItem] = []
+    manifest = load_manifest(manifest_for(dev))
+    for path, kind in ((dev, "dev"), (test, "test")):
+        if not path.exists():
+            errors.append(f"missing split file {path.name}")
+            continue
+        loaded = [_item_from_json(raw) for raw in _read_raw(path)]
+        errors += [
+            f"{path.name}: {i.id} hashes to {split_of(i.id)}" for i in loaded if split_of(i.id) != kind
+        ]
+        items += loaded
+    live = [i for i in items if i.review_status != "rejected"]
+    return errors + validate(live, manifest, check_counts=len(live) >= 100) + validate_review(items)
+
+
+def review_summary(path: Path = QUESTIONS_FILE, *, allow_test: bool = False) -> dict[str, int]:
     """Counts per review status, plus 'total' and 'reviewed' (accepted + fixed)."""
-    items = load_all_items(path)
+    items = load_all_items(path, allow_test=allow_test)
     counts = {status: sum(1 for i in items if i.review_status == status) for status in REVIEW_STATUSES}
     counts["total"] = len(items)
     counts["reviewed"] = counts["accepted"] + counts["fixed"]

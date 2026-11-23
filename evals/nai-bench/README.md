@@ -222,6 +222,36 @@ contract), which is what the multi-hop questions use. Near-duplicate files (2023
 - **Heuristic answer metrics.** Fact matching, refusal and language detection are deterministic
   heuristics, so read the per-question output before trusting small differences.
 
+## Dev/test split (v1)
+
+v1 lives in [`v1/`](v1/) with its own corpus and manifest; v0 (`questions.jsonl`) stays frozen as the smoke
+set and has no split.
+
+- **Rule:** an item is in **dev** if `sha256(id)` mod 100 < 40, else in **test** (`naibench.split_of`). The
+  split depends only on the item's own id, so adding items never moves existing ones; ids are never reused.
+- **Separate files:** `v1/questions-dev.jsonl` and `v1/questions-test.jsonl`. An item in the wrong file fails
+  validation.
+- **Dev** is for everything that changes a model or a prompt: tuning, ablations, error analysis, prompt
+  work. **Test** is evaluated only for a model's final, published number.
+- **Guard:** every loader (`naibench.load_items` and through it `eval_retrieval.py`, `eval_answers.py`,
+  `run_baseline.py`) refuses a `questions-test*.jsonl` file unless it gets `--final-run`
+  (`final_run=True`). The review tool opens the test split only with `--test-split` (human review is
+  needed for every item, but it doesn't tune anything). `naibench.validate_splits` checks both files for CI
+  and returns problems only, never items. `evals/tests/test_splits.py` proves the scripts can't load the
+  test split without the flag.
+- **Ledger:** every final run appends one line to
+  [`evals/results/test-ledger.jsonl`](../results/test-ledger.jsonl) before any item is returned: UTC date,
+  git commit, run label, file, item count, `reviewed_only`, and a SHA-256 over the questions file and its
+  manifest. Commit the ledger with the results. A model may have several final runs, but each one is
+  visible there; looking at test results and then changing the model makes the next test number a dev
+  number.
+
+```bash
+python evals/run_baseline.py --bench evals/nai-bench/v1/questions-dev.jsonl --label dev-x        # tuning
+python evals/run_baseline.py --bench evals/nai-bench/v1/questions-test.jsonl --final-run \
+    --reviewed-only --label vane-1-final                                                         # publish
+```
+
 ## Human review
 
 No number from nai-bench is published until a person has reviewed the items behind it.

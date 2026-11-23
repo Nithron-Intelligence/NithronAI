@@ -6,7 +6,7 @@
 
 ## Status now
 
-- **Updated:** 2026-11-23, TrueNAS VM session 2 (VM test done). **Release 0.5.0 is pushed and published.**
+- **Updated:** 2026-11-23, nai-bench v1 session (step 3 in progress). **Release 0.5.0 is pushed and published.**
 - **Branches:** `main` = `lab/stage-0` (fast-forwarded after the release merge), both pushed;
   `lab/stage-0` tracks `origin/lab/stage-0`. Work continues on `lab/stage-0`; push it after each close-out.
 - **Push authorization:** on 2026-11-23 the human authorized this session to commit, merge and push as them
@@ -19,6 +19,12 @@
   not. A second session the same day (2026-11-23) got the same permissions again from the human (commit and
   push `lab/stage-0` as them, no attribution trailers, no history rewrite/force-push, no push to main, no
   tags, no branch deletion; user-space installs; ask before deleting outside the VM directory).
+- **nai-bench v1 session (2026-11-23):** the human (from another Claude Code account) authorized this
+  session to commit and push `lab/stage-0` as them (no attribution trailers, no history rewrite, no
+  force-push, no push to main, no tags, no branch deletion, no image pushed to any registry), user-space
+  installs (Python packages, download tools, Playwright browsers; sudo commands go to the human), and
+  starting/configuring/stopping the TrueNAS test VM; ask before deleting anything.
+  NithronOS repo read-only. Part 2 (TrueNAS custom-app test) only if step 3 finishes with room to spare.
 - **TrueNAS VM test: done (2026-11-23, session 2).** TrueNAS Community Edition **25.10.8** (current stable;
   27.0.0 is RC), ISO SHA-256 `af5c8cea…f419d7bc` matched the `.sha256` file and the download page. Installed
   headless over the serial console; configured and tested with `scripts/truenas-vm/` (README there has every
@@ -31,9 +37,14 @@
   `~/vms/truenas-test/secrets.env` (mode 600: admin password, `nai-reader` API key); CA in `pki/`. Restart:
   `scripts/truenas-vm/start-vm.sh`, API on `https://localhost:8443` after ~3 min. `lab/stage-0` has no CI
   (CI runs on main/develop and PRs only); local checks passed before every commit.
-- **Next 1: step 3, nai-bench v1 (not started).** Do it in this order, closing out (HANDOFF + checks + commit)
-  after each bullet and every 25 files or questions:
-  1. **Split rules first.** v1 lives in `evals/nai-bench/v1/`: `questions-dev.jsonl` and
+- **Next 1: step 3, nai-bench v1 (in progress: 1 done).** Do it in this order, closing out (HANDOFF + checks +
+  commit) after each bullet and every 25 files or questions. **Next command:** step 2, the training guard in
+  `training/embed/common.py` (see `training/tests/`).
+  1. **Split rules (done):** rules in `evals/nai-bench/README.md` ("Dev/test split"); `naibench.split_of`,
+     guard in `load_items`/`load_all_items`, `--final-run` + `--label` in `eval_retrieval.py`,
+     `eval_answers.py`, `run_baseline.py` (+ `--bench`), `review.py --test-split`, ledger
+     `evals/results/test-ledger.jsonl` (created on the first final run), `naibench.validate_splits`; tests in
+     `evals/tests/test_splits.py` (fail when the guard is disabled). Original requirement: v1 lives in `evals/nai-bench/v1/`: `questions-dev.jsonl` and
      `questions-test.jsonl` (separate files) plus its own corpus and manifest. Split by hash, never by hand:
      `sha256(item_id)` mod 100 < 40 → dev, else test (V1_PLAN.md: 40/60). Every loader (`naibench.load_items`
      and the eval scripts) refuses the test file unless called with an explicit `--final-run` flag, and each
