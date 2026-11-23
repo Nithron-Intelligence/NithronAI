@@ -76,6 +76,8 @@ python evals/nai-bench/build_corpus.py --check  # verify files against the manif
 | `difficulty` | `easy` `medium` `hard` | Author's estimate. |
 | `provenance` | object | Who wrote the item and how; `use` must be `eval-only` for anything written by an AI service (lab principle 3). |
 | `notes` | string \| null | Why an unanswerable item is unanswerable (often a near miss). |
+| `review_status` | `unreviewed` `accepted` `fixed` `rejected` | Human review state. Only `accepted` and `fixed` items count toward published numbers; `rejected` items are never evaluated. |
+| `reviewed_by`, `reviewed_at`, `review_note` | string \| null | Who reviewed the item, when, and why (required for `fixed` and `rejected`). |
 
 `evals/naibench.py::validate` enforces the schema (also in CI): unique ids, known categories and
 languages, gold files that exist in the manifest, pages that exist, cross-lingual items whose sources are
@@ -217,6 +219,22 @@ contract), which is what the multi-hop questions use. Near-duplicate files (2023
   multi-column layouts). Scans are rendered with mild rotation, blur and noise only.
 - **Heuristic answer metrics.** Fact matching, refusal and language detection are deterministic
   heuristics, so read the per-question output before trusting small differences.
+
+## Human review
+
+No number from nai-bench is published until a person has reviewed the items behind it.
+
+```bash
+python evals/nai-bench/review.py --summary     # how many items are reviewed
+python evals/nai-bench/review.py               # review unreviewed items one at a time: accept / fix / reject
+python evals/run_baseline.py --reviewed-only   # published numbers: reviewed items only
+```
+
+The tool shows each question with its gold answer, facts and an excerpt of each gold source, and saves
+every decision immediately (fixes open `$EDITOR`, or go field by field with `--no-editor`). Every report
+from `run_baseline.py` states how many items are reviewed, and runs without `--reviewed-only` are marked
+**PROVISIONAL**. All 56 v0 items are unreviewed as of 2026-11-23. The plan for v1 is in
+[V1_PLAN.md](V1_PLAN.md).
 
 ## Adding questions
 

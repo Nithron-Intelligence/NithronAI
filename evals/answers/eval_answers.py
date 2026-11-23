@@ -314,6 +314,9 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Evaluate nAI answer quality on nai-bench")
     parser.add_argument("--bench", type=Path, default=QUESTIONS_FILE)
     parser.add_argument("--api-url", default="http://localhost:8000")
+    parser.add_argument(
+        "--reviewed-only", action="store_true", help="only human-reviewed items (published numbers)"
+    )
     parser.add_argument("--api-key", default=None)
     parser.add_argument("--top-k", type=int, default=5)
     parser.add_argument("--extractive", action="store_true", help="use_llm=false (quote passages, no LLM)")
@@ -324,7 +327,7 @@ def main() -> int:
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
 
-    items = load_items(args.bench)[: args.limit]
+    items = load_items(args.bench, reviewed_only=args.reviewed_only)[: args.limit]
     judge_client = None
     if args.judge_url:
         headers = {"Authorization": f"Bearer {args.judge_api_key}"} if args.judge_api_key else {}

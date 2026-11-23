@@ -152,6 +152,9 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Evaluate nAI retrieval on nai-bench")
     parser.add_argument("--bench", type=Path, default=QUESTIONS_FILE, help="questions.jsonl")
     parser.add_argument("--api-url", default="http://localhost:8000")
+    parser.add_argument(
+        "--reviewed-only", action="store_true", help="only human-reviewed items (published numbers)"
+    )
     parser.add_argument("--api-key", default=None, help="nAI API key (when auth is on)")
     parser.add_argument("--methods", default="bm25,embedding,hybrid", help="comma-separated /search methods")
     parser.add_argument("--k-values", default=",".join(map(str, DEFAULT_K)))
@@ -163,7 +166,7 @@ def main() -> int:
     parser.add_argument("--output", type=Path, help="write the full report as JSON")
     args = parser.parse_args()
 
-    items = load_items(args.bench)
+    items = load_items(args.bench, reviewed_only=args.reviewed_only)
     methods = [m.strip() for m in args.methods.split(",") if m.strip()]
     k_values = tuple(int(k) for k in args.k_values.split(","))
     client = NaiClient(args.api_url, args.api_key)
