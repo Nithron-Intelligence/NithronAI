@@ -5,13 +5,28 @@ All notable changes to nAI. Versions follow [semantic versioning](https://semver
 
 ## [Unreleased]
 
-Lab Stage 0 (see the [lab roadmap](docs/lab/ROADMAP.md)); no change to the nAI service itself.
+### Changed
+- **Reranking is off by default** in `infra/docker-compose.yml` and the NithronOS template (it was `auto`):
+  the bundled reranker is English-only and didn't help on the multilingual nai-bench. Multilingual
+  alternative: `NAI_RERANKER=true` with `NAI_RERANKER_MODEL=BAAI/bge-reranker-v2-m3-int8` (MRR 0.793 → 0.918
+  on nai-bench v0, but about 2–4 s per question on a 2-core CPU).
+- nAI is described as a product for any NAS OS, with NithronOS as the reference platform (ADR-0004).
 
 ### Added
+- NAS adapter layer (`app/nas/`, `NAI_NAS_PLATFORM`: `generic` or `nithronos`) and
+  `GET /sources/discover` (admin): folders under the allowed roots that could become sources.
+- `/system` reports which Nithron answering model (Tern or Nox) fits the machine; `/health/detailed`
+  reports the reranker model. Model names and IDs live in `app/nithron_models.py`.
 - **nai-bench v0**: a multilingual NAS-style benchmark (27 files, 56 questions) with retrieval and
-  answer-quality evals, a first baseline in `evals/results/`, and CI runs.
+  answer-quality evals, a human review workflow (`evals/nai-bench/review.py`), baselines, a reranker
+  comparison and simulated-NAS measurements in `evals/results/`, and CI runs with OCR.
 - `infra/compose.bench.yaml` and `evals/smoke_ollama.sh`: an nAI + Ollama end-to-end smoke test.
-- Lab docs: roadmap, ADR-0002, model/data license register, Stage 1 plan; `training/embed/` skeleton.
+- Docs: `docs/ARCHITECTURE.md`, `CONTRIBUTING.md`, `docs/KNOWN_ISSUES.md`, ADR-0003 (product scope),
+  ADR-0004 (NAS adapters), lab roadmap, license register, model naming, Stage 1 plan, product and
+  licensing draft; `training/` (Stage 1 skeleton, ROCm training container).
+
+### Removed
+- `packages/rag-kit`, `packages/toolpacks`, `packages/model-router` (unused by nai-core).
 
 ## [0.5.0] – 2026-11-23
 
