@@ -1,16 +1,17 @@
 # nai-bench v1 (in progress)
 
-**Corpus: 100 files, questions: 100 (2026-11-23)**; targets ≥ 300 files and 625 questions. All items are
+**Corpus: 100 files, questions: 150 (2026-11-23)**; targets ≥ 300 files and 625 questions. All items are
 **unreviewed**: no v1 number is publishable until people review them (`review.py --file …`).
 
-Questions: 4 per category per language (lookup, cross-lingual, table/scan-OCR, multi-hop, unanswerable ×
-en/de/sv/fr/pt = 100; 80 answerable, 20 unanswerable, mostly near misses). Split by hash: **dev 43, test
-57**; per-cell counts vary because the split is per item, not stratified (dev: lookup 6, cross-lingual 12,
-table/OCR 6, multi-hop 9, unanswerable 10). Difficulty: 19 easy, 57 medium, 24 hard (target 30/40/30: later
-batches need more easy and hard items). Every question was written by Claude (claude-opus-5-5) on 2026-11-23
+Questions: 6 per category per language (lookup, cross-lingual, table/scan-OCR, multi-hop, unanswerable ×
+en/de/sv/fr/pt = 150; 120 answerable, 30 unanswerable, mostly near misses). Difficulty **45 easy / 60 medium /
+45 hard = 30/40/30**, the V1_PLAN.md target: the first 100 came out 19/57/24, so v1-0101…0150 (round 4) are 26
+easy, 3 medium and 21 hard (easy lookups and table reads; hard multi-hop, buried official-text facts and near
+misses). Split by hash: **dev 62, test 88** (dev difficulty 17/25/20); per-cell counts vary because the split is
+per item, not stratified. Every question was written by Claude (claude-opus-5-5) on 2026-11-23
 (`provenance.written_by: "Claude-written"`, `use: eval-only`). Questions about EU acts list all five
 language versions as gold sources (each one answers them), so EU acts are not used for cross-lingual items.
-Law facts used in answers were checked against the stored texts; each gold fact matches its gold answer.
+No file has more than 5 questions. Law facts used in answers were checked against the stored texts; each gold fact matches its gold answer.
 
 | Group | Files | License |
 |---|---|---|
