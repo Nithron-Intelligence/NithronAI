@@ -38,10 +38,14 @@
   100 synthetic documents by mistral-small3.1 (CC0). 581 selected passages → overlap check → 570; 1 878 pairs (27 min
   of teacher time; 39 language-mismatched queries dropped) → overlap check → **1 875 pairs**, 46 % cross-language,
   queries en 506 / de 362 / sv 339 / pt 350 / fr 318. Training guard passes on passages and pairs. No CC-BY-SA.
-- **Round 5 running (unattended GPU run, decision 5, ≤ 3 h, log `training/runs/vane1-pilot/train.log`):**
-  `docker compose -f training/docker/compose.rocm.yaml run --rm trainer sh -c 'timeout 3h python3 training/embed/train.py --pairs training/data/vane1-pilot/pairs-clean.jsonl --output-dir training/runs/vane1-pilot --release vane-1-pilot --epochs 1 --batch-size 64 --learning-rate 2e-5 --max-seq-length 256 --hard-negatives 1 --eval-steps 100 --seed 13 --no-export > training/runs/vane1-pilot/train.log 2>&1'` (config `training/configs/vane1-pilot.json`, started 17:52).
-- **Round 5 next command:** when it finishes: `chown` the outputs, then `dense_eval.py rank --model
-  training/runs/vane1-pilot/model --name pilot` in the trainer and `dense_eval.py score --names base,pilot`.
+- **Round 5, sections 4.2–4.3 done: Vane 1 pilot `vane-1-rc0`** (label rc0 = pilot; the naming rules only accept
+  `vane-1[-rcN]`): command and config in `training/configs/vane1-pilot.json`; 24 steps, **20 s**, exit 0; checkpoint
+  `training/runs/vane1-pilot/model` (466 MB, git-ignored, no ONNX export). v1 dev, embedding-only, offline harness
+  (`evals/results/vane1-pilot-dev-2026-11-23.md`, PROVISIONAL): overall MRR 0.444 → **0.613**, Hit@5 0.532 →
+  **0.766**; cross-language MRR 0.435 → **0.676**, Hit@5 0.571 → **0.857**; every category and language improves.
+  **Nothing from it can ship** until the base-model audit is decided. (The first attempt with `--release
+  vane-1-pilot` was refused by the naming check before training; rerun as rc0.)
+- **Round 5 next command:** PR `lab/stage-0` → main for rounds-5 commits, merge after CI.
 - **Round 4 permissions (2026-11-23):** the human authorized this session to commit, push, open and merge PRs as
   them (git identity, SSH key, gh auth already configured); no attribution trailers, no history rewrite, no
   force-push, never bypass branch protection; merge PRs with a merge commit (not squash/rebase). Release
@@ -238,7 +242,10 @@
   applies cleanly to NithronOS `47def8c`) to the session that owns NithronOS.
 - **Docker disk:** ~50 GB images (ROCm PyTorch ~40 GB) + ~46 GB build cache, plus the local
   `nai-core:lab-stage-0` (1.3 GB, 2026-11-23) and `nai-core:0.6.0-local` (1.3 GB, the 0.6.0 smoke-test build),
-  and the Docker volume `nai-bench_nai-bench-v1-data` (v1 index); prune when not needed (ask first). Build venv for nai-bench rendering:
+  and the Docker volume `nai-bench_nai-bench-v1-data` (v1 index); prune when not needed (ask first). Added in
+  round 5: Ollama models `mistral-small3.1` (15 GB) and `phi4-mini` (2.5 GB) in `nai-bench_ollama-models`, the
+  pulled `ghcr.io/nithron/nithronai/nai-core:0.6.0` (1.3 GB), `training/data/vane1-pilot` (19 MB),
+  `training/runs/vane1-pilot` (1.8 GB incl. trainer checkpoints), `training/.cache` (0.46 GB, base model). Build venv for nai-bench rendering:
   `~/.venvs/nai-bench-build` (user space).
 - **TrueNAS:** adapter and custom app tested on 25.10.8 in a VM (2026-11-23). Still open: the UI menu names
   for certificate import in `packaging/truenas/README.md` (unverified); the guide needs a release after 0.5.0
@@ -297,6 +304,10 @@
   - Simulated NAS (2 CPUs / 4 GB each, CPU only): index 27 s; search 0.20 s; extractive answer 0.20 s;
     qwen2.5:1.5b answer 4.7 s median (p95 21 s); nai-core 1.1 GB, Ollama 1.6 GB.
   - ROCm smoke: 2 training steps + ONNX export on the RX 7900 XTX in 37 s.
+- **Round 5 (2026-11-23):** permissions/decisions `0c941ad`; **v0.6.0 tagged on `06c29e0` and published** (release
+  run 45207761865); NithronOS template 0.6.0 `bbd8155`; audit `4966ff0`; Stage 0 baselines `5877b1b`; pilot tooling
+  `a5970c5`; pilot dataset `e65d5c2`; pilot run + dev eval in the closing commits. Tests: 218 nai-core, 119
+  evals/training.
 - **Round 4 (2026-11-23):** PR #3 (lab/stage-0 → main, merge `3163618`; CI fix `41facf4`), PR #4 (0.6.0 prep, merge
   `06c29e0`), HANDOFF `3065eda`, v1 baseline tooling `22336af`, v1 dev baseline `09f6cd1`, v1 questions 125
   `3344685` and 150 `7f146be`, plan `b560d2b`, PR #5 merge `7a2d6d1`, then this closing HANDOFF commit. 0.6.0 smoke-tested from `06c29e0` (incl. `--user
