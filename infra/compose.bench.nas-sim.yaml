@@ -28,3 +28,5 @@ volumes:
   nai-nas-sim-data:
   nai-nas-sim-r6-minilm-data:
   nai-nas-sim-r6-granite97-data:
+  nai-nas-sim-r7-off-data:
+  nai-nas-sim-r7-on-data:

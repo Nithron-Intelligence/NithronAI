@@ -16,6 +16,10 @@ All notable changes to nAI. Versions follow [semantic versioning](https://semver
   semantic search (keyword search keeps working) and asks an admin to start re-indexing; with
   `NAI_EMBEDDINGS_AUTO_REINDEX=true` it re-embeds without asking. To stay on the old model, set
   `NAI_EMBEDDINGS_MODEL=sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`.
+- **Higher RAM need:** with the new model nai-core peaks at about 1.8 GB (was about 1.0 GB) on a 2-CPU / 4-GB NAS
+  profile, about 3.3 GB with the reranker forced on. Minimum: 3g container limit, 4 GB NAS RAM; recommended 8 GB.
+  The shipped templates already use 3g (NithronOS) and 4g (TrueNAS); their texts now state these numbers. A 2 GB NAS
+  is too small for the new default (keep the old model there).
 
 ## [0.6.0] – 2026-11-23
 

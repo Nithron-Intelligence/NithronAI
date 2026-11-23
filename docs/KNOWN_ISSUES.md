@@ -33,7 +33,8 @@ Recorded 2026-11-21 in NithronOS's `NAI_INTEGRATION.md` (owned by the NithronOS 
 - **Container-name networking:** nAI reaches Ollama and other services by container name; the NithronOS app
   network must resolve those names.
 - **Memory cap:** NithronOS's template renderer gives apps a 1024M memory limit by default; nAI needs more
-  (the template sets an explicit limit; about 1.4 GB with the reranker loaded).
+  (the template sets an explicit 3g limit). Measured in round 7 with 0.7.0's default model (granite 97m) on a
+  2-CPU / 4-GB profile: peak ~1.8 GB with reranking off, ~3.3 GB with it on; hand-over item 4 updates the form text.
 
 ## Hand-over: NithronOS template sync (for the session that owns NithronOS)
 
@@ -50,7 +51,10 @@ NithronOS's copy of the nAI template (`usr/share/nithronos/apps/templates/nai/`,
    (image tag and the `nos.app.version` label); in `schema.json` set `NAI_VERSION` `"default": "0.6.0"` and the
    enum to `"0.6.0", "0.6", "0.5.0", "0.4.0", "latest"`; set the catalog entry's `version: "0.6.0"`. This repo's
    copy (`packaging/nithronos/`) has these values since round 5.
-4. Nothing else differs in `compose.yaml` or `schema.json` (the template README is NithronOS's own catalog
+4. **Memory text (0.7.0):** in `schema.json` set the `MEMORY_LIMIT` description to "Container memory limit. nAI
+   0.7.0 peaks around 1.8 GB (reranking off, the default here) and 3.3 GB with reranking on: keep at least 3g, use
+   5g if you turn reranking on." (default stays `3g`).
+5. Nothing else differs in `compose.yaml` or `schema.json` (the template README is NithronOS's own catalog
    text and isn't synced).
 
 Safe with today's images: nai-core 0.4.0/0.5.0 ignore `NAI_NAS_PLATFORM` and treat `off` as off; existing

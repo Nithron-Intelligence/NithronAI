@@ -6,7 +6,21 @@
 
 ## Status now
 
-- **Updated:** 2026-11-23, round 6 (Granite R2 as embedding base, Vane 1 pilot on it, reranker audit).
+- **Updated:** 2026-11-23, round 7 (Granite memory limits, Vane 1 Granite pilot, reranker audit, fusion, quantization).
+- **Round 7 permissions (2026-11-23):** commit, push, open and merge PRs as the human (merge commits; no attribution,
+  no history rewrite, no force-push, never bypass branch protection); **no tags**; delete the three empty
+  `v1-dev-*.err` files (done); ask before deleting anything else; user-space installs and model downloads; start/stop
+  bench and ROCm trainer containers; unattended GPU runs ≤ 3 h with command and config recorded here first.
+- **Round 7, section 1 done: Granite memory** (`evals/results/simulated-nas-granite97-rerank-{off,on}-2026-11-23.*`,
+  2 CPU / 4 GB, v0 corpus): reranker off: peak **1 759 MiB** (indexing), 1 625 idle/search, search median 0.20 s;
+  reranker forced on: peak **3 340 MiB** (search), search median **20.3 s**. Templates unchanged (NithronOS 3g with
+  reranking off by default; TrueNAS 4g where `auto` stays off below 8 GB); texts updated (README memory note,
+  NithronOS `MEMORY_LIMIT` description, TrueNAS README, KNOWN_ISSUES hand-over item 4, CHANGELOG). Minimum 3g /
+  4 GB NAS, recommended 8 GB; forcing the reranker on needs 5g.
+- **Round 7 stopped after section 1 (context budget).** Next, in order: section 2 (Vane 1 Granite pilot, commands
+  under "Round 6 stopped here"), section 3 (reranker audit, same place), then 4 (fusion weights) and 5 (Granite
+  quantization) from the round-7 prompt. The first command: re-run `check_overlap.py` on
+  `training/data/vane1-pilot/pairs-clean.jsonl`.
 - **Round 6 permissions (2026-11-23):** commit, push, open and merge PRs as the human (merge commits; no attribution
   trailers, no history rewrite, no force-push, never bypass branch protection); **no tags**; user-space installs,
   Hugging Face and Ollama downloads (sudo → the human); start/stop the bench and ROCm trainer containers; unattended
@@ -32,10 +46,26 @@
   1 444 MiB, indexing 36 → 65 s for 27 files. nAI registers Granite as a custom fastembed model (CLS, fp32 ONNX);
   bench compose takes `NAI_EMBEDDINGS_MODEL`, per-model volumes; nas-sim overlay `NAS_SIM_DATA`. 311m hybrid in nAI
   stopped (CPU too slow, ~1.5 h); measured offline instead.
-- **Round 6, section 3 in progress:** default embedding model → granite 97m in `config.py`, `nithron_models.py` (Vane 1
-  base), bench compose; docs (README, ARCHITECTURE, MODEL_NAMING, register, CHANGELOG Unreleased); upgrade test
-  `test_upgrade_from_the_old_default_model_asks_before_reindexing`.
-- **Round 6 next command:** PR lab/stage-0 → main for the default change, poll CI, merge.
+- **Round 6, section 3 done: granite 97m is nAI's default embedding model** (Unreleased → 0.7.0, no release): PR #7
+  merged as `d824cb8`; PR CI and main CI (run 45235492227, incl. nai-bench with Granite) green. Upgrade from the old
+  default keeps the old vectors and asks before re-indexing (`test_upgrade_from_the_old_default_model_asks_before_reindexing`).
+- **Round 6 stopped here (context budget).** Sections 4 and 5 not started. Next commands, in order:
+  - **4. Vane 1 pilot on Granite (`vane-1-rc1`):** re-check the reused dataset first:
+    `apps/nai-core/.venv/bin/python training/embed/check_overlap.py training/data/vane1-pilot/pairs-clean.jsonl` (all
+    nai-bench) and the training guard (`select_passages.read_training_rows` / `train.load_pairs`); copy
+    `training/configs/vane1-pilot.json` to `training/configs/vane1-rc1-granite.json` with `--base-model
+    ibm-granite/granite-embedding-97m-multilingual-r2 --release vane-1-rc1 --output-dir training/runs/vane1-rc1`
+    (same seed 13, epochs 1, batch 64, lr 2e-5, max length 256, one hard negative, `--no-export`); record the command
+    here, run it in the ROCm container with `timeout 3h` and a log file; then `dense_eval.py rank --model
+    training/runs/vane1-rc1/model --name rc1` and `dense_eval.py score --names base,granite97,granite311,pilot,rc1`
+    (rankings for base/granite97/granite311/pilot already exist in `training/runs/vane1-pilot/eval`). Note: the
+    synthetic pilot documents are stylistically close to v1's fictional files, so a gain may be partly domain fit;
+    plain granite 97m already reaches embedding-only MRR 0.854 offline, so the headroom is small.
+  - **5. Reranker lineage audit:** `BAAI/bge-reranker-v2-m3` (and its int8 ONNX source) and `Qwen/Qwen3-Reranker-0.6B`
+    (Loupe 1 teacher): model cards + papers, datasets and licenses, verdict per model, a section in
+    `docs/lab/vane1-base-model-audit.md` (or a new reranker audit doc); if non-commercial data shows up, look for a
+    clean multilingual alternative and test it with the reranker-on setup (`NAI_RERANKER=true NAI_RERANKER_MODEL=…`).
+    Don't change nAI's reranker defaults.
 - **Round 5 permissions (2026-11-23):** commit, push, open and merge PRs as the human (merge commits; no
   attribution trailers, no history rewrite, no force-push, never bypass branch protection); create and push the
   tag **v0.6.0 once** (never move/re-push a tag, no other tags); user-space installs, pulling Ollama models and
@@ -265,9 +295,12 @@
 - **Licensing direction** for nAI itself (NCL + commercial vs dual license vs open core): not decided.
 - **nai-bench review:** all items are unreviewed: v0 56 (`python evals/nai-bench/review.py`), v1 150 (dev 62:
   `review.py --file evals/nai-bench/v1/questions-dev.jsonl`; test 88 needs `--test-split`).
-- **Vane 1 base-model audit decision:** accept the base model's training-data lineage (MS MARCO / Flickr30k
-  non-commercial terms, CC-BY-SA data) or reject it (then a different base or our own student; affects nAI's
-  current default model too). See `docs/lab/vane1-base-model-audit.md`. Until then nothing from Vane 1 ships.
+- **Embedding base:** decided in round 6 (Granite R2 97m, now the default in Unreleased). The old MiniLM base is
+  replaced; its pilot `vane-1-rc0` stays a learning run. Upstream CC-BY-SA in Granite's lineage (Wikipedia, Stack
+  Exchange) is recorded for lawyer review before any commercial deal (decision 2).
+- **Release 0.7.0:** the default-model change waits in CHANGELOG "Unreleased". Memory: nAI on Granite needs ~1.8 GB
+  (reranker off) → **a 2 GB NAS can't run the new default** (OS + ZFS leave too little); such boxes must stay on the
+  old MiniLM model (~1 GB). Decide whether that is acceptable for 0.7.0.
 - **Hugging Face:** `nithron/vane-1` under Apache-2.0 is a proposal waiting on the human; dataset release open.
 - **Trademark search** for Nithron Vane / Loupe / Tern / Nox before any public release.
 - **NithronOS template sync:** hand the patch in `docs/KNOWN_ISSUES.md` ("Hand-over: NithronOS template sync";
@@ -277,7 +310,10 @@
   and the Docker volume `nai-bench_nai-bench-v1-data` (v1 index); prune when not needed (ask first). Added in
   round 5: Ollama models `mistral-small3.1` (15 GB) and `phi4-mini` (2.5 GB) in `nai-bench_ollama-models`, the
   pulled `ghcr.io/nithron/nithronai/nai-core:0.6.0` (1.3 GB), `training/data/vane1-pilot` (19 MB),
-  `training/runs/vane1-pilot` (1.8 GB incl. trainer checkpoints), `training/.cache` (0.46 GB, base model). Build venv for nai-bench rendering:
+  `training/runs/vane1-pilot` (1.8 GB incl. trainer checkpoints), `training/.cache` (0.46 GB, base model). Added in
+  round 6: image `nai-core:granite-local` (1.3 GB), volumes `nai-bench_nai-bench-v1-granite97-data`,
+  `…-granite311-data` (partial), `nai-bench_nai-nas-sim-r6-minilm-data`, `…-r6-granite97-data`, Granite 97m/311m in
+  `training/.cache` (~1.6 GB with the ONNX files) and `training/runs/vet-granite-97m` (~0.5 GB exports). Build venv for nai-bench rendering:
   `~/.venvs/nai-bench-build` (user space).
 - **TrueNAS:** adapter and custom app tested on 25.10.8 in a VM (2026-11-23). Still open: the UI menu names
   for certificate import in `packaging/truenas/README.md` (unverified); the guide needs a release after 0.5.0
@@ -339,6 +375,11 @@
   - Simulated NAS (2 CPUs / 4 GB each, CPU only): index 27 s; search 0.20 s; extractive answer 0.20 s;
     qwen2.5:1.5b answer 4.7 s median (p95 21 s); nai-core 1.1 GB, Ollama 1.6 GB.
   - ROCm smoke: 2 training steps + ONNX export on the RX 7900 XTX in 37 s.
+- **Round 7 (2026-11-23):** `.err` files deleted; Granite peak-RAM measurements and memory docs (PR to main);
+  sections 2–5 not started (context).
+- **Round 6 (2026-11-23):** permissions/decisions + Granite vetting `ef1f971`; Granite vs MiniLM on v1 dev + NAS `7dd7a0e`;
+  default switch `9d0f72d`, PR #7 merge `d824cb8`; closing HANDOFF commit. Sections 4–5 not started (context).
+  Tests: 221 nai-core, 119 evals/training.
 - **Round 5 (2026-11-23):** permissions/decisions `0c941ad`; **v0.6.0 tagged on `06c29e0` and published** (release
   run 45207761865); NithronOS template 0.6.0 `bbd8155`; audit `4966ff0`; Stage 0 baselines `5877b1b`; pilot tooling
   `a5970c5`; pilot dataset `e65d5c2`; pilot results `2a144c2`, PR #6 merge `bd987dc`, then this closing HANDOFF commit. Tests: 218 nai-core, 119
