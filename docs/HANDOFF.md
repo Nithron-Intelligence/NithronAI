@@ -6,7 +6,7 @@
 
 ## Status now
 
-- **Updated:** 2026-11-23, round 3 wrap-up session. **Release 0.5.0 is pushed and published.**
+- **Updated:** 2026-11-23, TrueNAS VM session 2 (VM test done). **Release 0.5.0 is pushed and published.**
 - **Branches:** `main` = `lab/stage-0` (fast-forwarded after the release merge), both pushed;
   `lab/stage-0` tracks `origin/lab/stage-0`. Work continues on `lab/stage-0`; push it after each close-out.
 - **Push authorization:** on 2026-11-23 the human authorized this session to commit, merge and push as them
@@ -19,29 +19,19 @@
   not. A second session the same day (2026-11-23) got the same permissions again from the human (commit and
   push `lab/stage-0` as them, no attribution trailers, no history rewrite/force-push, no push to main, no
   tags, no branch deletion; user-space installs; ask before deleting outside the VM directory).
-- **TrueNAS VM test, in progress (2026-11-23, session 2):** main CI for `c9d3d05` green. ISO
-  TrueNAS-SCALE-25.10.8 (current stable; 27.0.0 is RC) downloaded, SHA-256 `af5c8cea…f419d7bc` matches the
-  `.sha256` file and the download page. **VM installed** headless over the serial console and **configured**
-  with `scripts/truenas-vm/` (pool `tank` mirror, `tank/documents` with sample files, `tank/photos`, SMB +
-  NFS shares, user `nai-reader` in `truenas_readonly_administrators`, API key; own CA via `make-cert.sh`
-  imported as the UI certificate). Secrets: `~/vms/truenas-test/secrets.env` (mode 600). Restart:
-  `scripts/truenas-vm/start-vm.sh`; API on `https://localhost:8443`. **Adapter tested:** all 8 checks of
-  `scripts/truenas-vm/test_adapter.py` pass by host name and by IP (results table in
-  `packaging/truenas/README.md`). Fixes: errors show `error.data.reason`; no deprecated websockets `connect()`;
-  fixtures recorded from 25.10.8. Finding: the default cert names only `localhost` and 25.10 has no CA
-  creation, so real installs need an imported certificate (README section 3).
-- **Next 1: TrueNAS manual test in a VM (in progress, see above).** Requirements from the human: check disk and
-  `/dev/kvm`; VM files in `~/vms/truenas-test/` (outside the repo); download the current stable TrueNAS
-  Community Edition ISO from truenas.com and verify its SHA-256 against the published checksum; KVM VM with
-  ~8 GB RAM, 4 vCPUs, 32 GB boot disk + 1–2 data disks, user-mode networking with HTTPS forwarded to a
-  localhost port; try a headless install (serial/scripted VNC), else stop at the installer and give the human
-  the VNC address; admin password generated and stored outside the repo (mode 600), never printed or
-  committed; configure via the JSON-RPC API (pool, dataset with self-written sample files, SMB + NFS share,
-  read-only user + API key); test nAI's adapter over wss:// with the CA-file option, the failure without it,
-  version + both shares, the allow-list refusal, no key in logs; fix the adapter and update recorded fixtures
-  if the real API differs; add `scripts/truenas-vm/` (no secrets) and the tested version/date in
-  `packaging/truenas/README.md`; shut the VM down, keep its files.
-- **Next 2: step 3, nai-bench v1 (not started).** Do it in this order, closing out (HANDOFF + checks + commit)
+- **TrueNAS VM test: done (2026-11-23, session 2).** TrueNAS Community Edition **25.10.8** (current stable;
+  27.0.0 is RC), ISO SHA-256 `af5c8cea…f419d7bc` matched the `.sha256` file and the download page. Installed
+  headless over the serial console; configured and tested with `scripts/truenas-vm/` (README there has every
+  command). All 8 adapter checks pass by host name and by IP with only the read-only key (results table in
+  `packaging/truenas/README.md`). Adapter fixes: errors show `error.data.reason`; no deprecated websockets
+  `connect()`; fixtures recorded from 25.10.8. Findings: the default cert names only `localhost` and 25.10
+  can't create CAs, so real installs import their own certificate; certificates need key identifiers for
+  Python 3.13+ strict verification (`make-cert.sh` adds them). **VM is shut down, files kept** in
+  `~/vms/truenas-test/` (5.9 GB: ISO 2.2 GB, boot disk 3.5 GB, data disks 71 MB each); secrets in
+  `~/vms/truenas-test/secrets.env` (mode 600: admin password, `nai-reader` API key); CA in `pki/`. Restart:
+  `scripts/truenas-vm/start-vm.sh`, API on `https://localhost:8443` after ~3 min. `lab/stage-0` has no CI
+  (CI runs on main/develop and PRs only); local checks passed before every commit.
+- **Next 1: step 3, nai-bench v1 (not started).** Do it in this order, closing out (HANDOFF + checks + commit)
   after each bullet and every 25 files or questions:
   1. **Split rules first.** v1 lives in `evals/nai-bench/v1/`: `questions-dev.jsonl` and
      `questions-test.jsonl` (separate files) plus its own corpus and manifest. Split by hash, never by hand:
@@ -122,6 +112,9 @@
   - Simulated NAS (2 CPUs / 4 GB each, CPU only): index 27 s; search 0.20 s; extractive answer 0.20 s;
     qwen2.5:1.5b answer 4.7 s median (p95 21 s); nai-core 1.1 GB, Ollama 1.6 GB.
   - ROCm smoke: 2 training steps + ONNX export on the RX 7900 XTX in 37 s.
+- **TrueNAS VM test (2026-11-23, session 2):** TrueNAS 25.10.8 in a QEMU/KVM VM; commits `e96e35d` (setup
+  scripts), `19a2894` (adapter fixes, README results), then the certificate/HANDOFF close-out commit. Tests:
+  216 nai-core, 66 evals/training.
 - **Round 3 wrap-up (2026-11-23):** merged `origin/main` (PRs #1, #2) into `main` as `ae7cadc` (clean, LICENSE
   `62f2cf4c…`), CI green; pushed tag `v0.5.0` (`d496d16`): release.yml run `45140589825` succeeded; GHCR now
   has `0.5.0`, `0.5`, `sha-d496d16` and moved `latest`, `0`; anonymous pull + `/health` smoke test reported

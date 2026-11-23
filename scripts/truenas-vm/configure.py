@@ -114,6 +114,7 @@ def bootstrap_context(cert_pem: str) -> ssl.SSLContext:
     # localhost). nAI itself never does this; it always verifies the host name.
     context = ssl.create_default_context(cadata=cert_pem)
     context.check_hostname = False
+    context.verify_flags |= ssl.VERIFY_X509_PARTIAL_CHAIN  # accept the pinned leaf even if a CA signed it
     return context
 
 
