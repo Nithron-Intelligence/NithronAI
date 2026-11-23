@@ -1327,6 +1327,22 @@ body {
   color: var(--text-muted);
 }
 
+.reindex-notice {
+  margin: 0 0 var(--space-md);
+  padding: var(--space-md);
+  border: 1px solid var(--warning);
+  border-radius: var(--radius-md);
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.reindex-notice .btn {
+  display: block;
+  margin-top: var(--space-sm);
+}
+
 .system-tips {
   margin: var(--space-md) 0 0;
   padding-left: 1.2rem;

@@ -94,7 +94,10 @@ NAI_SOURCES_ALLOWED_ROOTS='["/shares"]'
 # Semantic search (vectors stored in SQLite, model downloaded on first start)
 NAI_EMBEDDINGS_ENABLED=true
 NAI_EMBEDDINGS_MODEL=sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
-NAI_RERANKER=auto
+NAI_EMBEDDINGS_AUTO_REINDEX=false   # true: re-embed automatically when the model changes
+NAI_RERANKER=auto                   # auto | on | off (auto: only on 8+ effective cores and 8+ GB RAM)
+NAI_RERANKER_MODEL=BAAI/bge-reranker-v2-m3-int8
+NAI_RERANKER_CANDIDATES=10          # top-k the reranker re-scores
 
 # Authentication (secret generated into data/.secret_key when unset)
 NAI_AUTH_ENABLED=true

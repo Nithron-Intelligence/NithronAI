@@ -67,6 +67,7 @@ def detailed_health(
             "embeddings_enabled": settings.embeddings_enabled,
             "embeddings_provider": settings.embeddings_provider,
             "reranker": settings.reranker,
+            "reranker_model": settings.reranker_model,
             "llm_enabled": settings.llm_enabled,
             "llm_provider": settings.llm_provider if settings.llm_enabled else None,
             "auth_enabled": settings.auth_enabled,

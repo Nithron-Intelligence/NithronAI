@@ -1,0 +1,28 @@
+# Overlay: simulate a typical NAS (CPU only, limited cores and RAM) for nAI + Ollama.
+#
+#   OLLAMA_IMAGE=ollama/ollama:0.40.17-rocm \
+#   docker compose -f infra/compose.bench.yaml -f infra/compose.bench.nas-sim.yaml up -d
+#   python evals/measure_nas.py
+#
+# Use it WITHOUT compose.bench.rocm.yaml: no GPU devices are passed, so Ollama runs on the CPU
+# (the ROCm image falls back to CPU, which avoids pulling a second image).
+# Profile "nas-small": nai-core 2 CPUs / 4 GB, Ollama 2 CPUs / 4 GB (about an Intel N100 box with
+# 8 GB RAM). Results are labelled "simulated NAS": a desktop CPU core is much faster than a NAS core.
+# nai-core gets its own data volume so indexing is measured from scratch.
+
+services:
+  nai-core:
+    cpus: ${NAS_SIM_NAI_CPUS:-2}
+    mem_limit: ${NAS_SIM_NAI_MEMORY:-4g}
+    memswap_limit: ${NAS_SIM_NAI_MEMORY:-4g}
+    volumes:
+      - nai-nas-sim-data:/app/data
+      - ../evals/nai-bench/corpus:/shares/nai-bench:ro
+
+  ollama:
+    cpus: ${NAS_SIM_OLLAMA_CPUS:-2}
+    mem_limit: ${NAS_SIM_OLLAMA_MEMORY:-4g}
+    memswap_limit: ${NAS_SIM_OLLAMA_MEMORY:-4g}
+
+volumes:
+  nai-nas-sim-data:

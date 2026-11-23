@@ -7,7 +7,9 @@
 [![Built by Nithron](https://img.shields.io/badge/built_by-Nithron-0b8fe0.svg)](https://nithron.com/projects/)
 
 **nAI** lets you search and ask questions about the files on your NAS, privately, on your own
-hardware. It is built to become the built-in AI of [NithronOS](https://github.com/Nithron/NithronOS).
+hardware. It runs on any NAS that can run containers (TrueNAS, Unraid, Synology, QNAP, OpenMediaVault or
+plain Docker on Linux), and it is the built-in AI of [NithronOS](https://github.com/Nithron/NithronOS),
+the reference platform.
 
 Ask *"the insurance contract for the car"* and get `scan_0042.pdf`, page 2, even though the file
 name says nothing and the contract is in German.
@@ -49,6 +51,13 @@ This starts:
 A catalog template lives in [`packaging/nithronos/`](packaging/nithronos/). It mounts the NithronOS
 shares (`/srv/shares`) read-only.
 
+### Other NAS systems
+
+On TrueNAS (custom app via YAML), Unraid, Synology (Container Manager project), QNAP (Container Station)
+or OpenMediaVault (compose plugin), use the Compose file from Option 1 and mount your shares read-only under
+`/shares`. Native packages for these platforms are planned; see
+[docs/architecture/nas-adapters.md](docs/architecture/nas-adapters.md).
+
 ### Option 3: Local Development
 
 ```bash
@@ -78,7 +87,10 @@ NAI_SOURCES_SCAN_INTERVAL_SECONDS=900     # full incremental rescan (catches wha
 NAI_EMBEDDINGS_ENABLED=true
 NAI_EMBEDDINGS_PROVIDER=auto              # fastembed (ONNX, CPU) | ollama | sentence-transformers
 NAI_EMBEDDINGS_MODEL=sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
-NAI_RERANKER=false                        # true | false | auto (on when the hardware can afford it)
+NAI_EMBEDDINGS_AUTO_REINDEX=false         # model changed? false: pause semantic search and ask an admin to re-index
+NAI_RERANKER=auto                         # auto | on | off: auto reranks the top 10 only on 8+ cores / 8+ GB RAM
+NAI_RERANKER_MODEL=BAAI/bge-reranker-v2-m3-int8   # multilingual; 0.57 GB download, ~1-1.5 GB RAM while running
+NAI_RERANKER_CANDIDATES=10                # how many top results the reranker re-scores
 
 # OCR for scanned PDFs and images (needs pytesseract + tesseract)
 NAI_OCR_ENABLED=true
@@ -207,67 +219,17 @@ nAI/
 │       └── web/           # Static frontend (served by nai-core at /)
 ├── packaging/
 │   └── nithronos/         # NithronOS app catalog template
-├── packages/              # Standalone libraries, not used by nai-core
-│   ├── rag-kit/           # Chunkers, rerankers, evaluators
-│   └── toolpacks/         # PDF OCR, web, email, code extractors
 ├── evals/
-│   └── retrieval/         # Evaluation framework
+│   ├── nai-bench/         # Benchmark: corpus, questions, corpus builder
+│   ├── retrieval/         # Retrieval eval (Recall, MRR, nDCG, Hit, page Hit)
+│   ├── answers/           # Answer-quality eval (facts, citations, refusals, language)
+│   └── results/           # Baseline and model results
 ├── infra/
-│   └── docker-compose.yml # Full stack deployment
+│   ├── docker-compose.yml # Full stack deployment
+│   └── compose.bench.yaml # nai-bench / smoke-test stack
 └── docs/
-    └── ADRs/              # Architecture decisions
-```
-
----
-
-## 🧩 Packages
-
-These are standalone libraries kept in the repo; nai-core does not import them.
-
-### RAG Kit (`packages/rag-kit`)
-
-Reusable components for RAG systems:
-
-```python
-from rag_kit import SentenceChunker, CrossEncoderReranker, RetrievalMetrics
-
-# Semantic chunking
-chunker = SentenceChunker(max_chunk_size=1000)
-chunks = chunker.chunk(document_text)
-
-# Reranking
-reranker = CrossEncoderReranker()
-reranked = reranker.rerank(query, documents, top_k=5)
-
-# Evaluation
-metrics = RetrievalMetrics()
-results = metrics.evaluate_single(retrieved_docs, relevant_docs)
-print(f"Recall@5: {results.recall_at_k[5]:.3f}")
-```
-
-### Toolpacks (`packages/toolpacks`)
-
-Specialized extractors:
-
-```python
-from toolpacks import PDFExtractor, WebScraper, EmailParser, CodeExtractor
-
-# PDF with OCR
-pdf = PDFExtractor(enable_ocr=True)
-doc = pdf.extract("scanned.pdf")
-
-# Web scraping
-scraper = WebScraper()
-content = scraper.scrape("https://example.com")
-
-# Email parsing
-parser = EmailParser()
-emails = parser.parse_mbox("mailbox.mbox")
-
-# Code analysis
-extractor = CodeExtractor()
-code = extractor.extract("main.py")
-print(code.summary)
+    ├── ADRs/              # Architecture decisions
+    └── lab/               # Lab roadmap, license register, stage plans
 ```
 
 ---
@@ -285,33 +247,50 @@ ruff check app tests && ruff format --check app tests && mypy app
 
 ## 📊 Evaluation
 
-Run retrieval evaluation:
+nAI is measured on **nai-bench**, a public benchmark of NAS-style questions over a multilingual corpus of
+contracts, invoices, scans, manuals, notes and code ([`evals/nai-bench/`](evals/nai-bench/README.md)).
+Retrieval and answer quality are scored separately; results with their exact settings go in
+[`evals/results/`](evals/results/).
 
 ```bash
-python evals/retrieval/eval_retrieval.py \
-  --test-file evals/retrieval/test_cases.json \
-  --api-url http://localhost:8000 \
-  --output results.json
+# nAI + Ollama with the nai-bench corpus mounted (auth off, localhost only)
+docker compose -f infra/compose.bench.yaml up -d --build
+docker compose -f infra/compose.bench.yaml exec ollama ollama pull qwen2.5:1.5b
+python evals/run_baseline.py --index-corpus /shares/nai-bench    # retrieval + answers
+evals/smoke_ollama.sh                                            # end-to-end smoke test
 ```
+
+Latest baseline: [`evals/results/baseline-2026-11-22.md`](evals/results/baseline-2026-11-22.md).
 
 ---
 
 ## 🛣️ Roadmap
 
-The goal: nAI as **the AI that knows your NAS**, shipped as a NithronOS app.
+The goal: nAI as **the AI that knows your NAS**, on any NAS OS, with NithronOS as the reference platform
+([ADR-0004](docs/ADRs/0004-nas-adapter-layer.md), [NAS adapters](docs/architecture/nas-adapters.md)). Alongside it, Nithron AI is
+becoming a small lab that builds private, local models for NAS-class hardware, starting with the models nAI
+uses: see the **[lab roadmap](docs/lab/ROADMAP.md)** and [ADR-0002](docs/ADRs/0002-nithron-ai-lab-direction.md).
+
+Releases: **v0.5.0** (2026-11-23) is the latest release; see [CHANGELOG.md](CHANGELOG.md).
 
 - [x] **Phase 0 — Foundation** (v0.3): auth on every endpoint, SQLite storage, persistent chat,
       SSRF-safe URL ingestion, green CI
-- [x] **Phase 1 — "Ask your NAS" MVP** (v0.4): NAS folders indexed in place with a file watcher and
+- [x] **Phase 1 — "Ask your NAS" MVP** (v0.4.0): NAS folders indexed in place with a file watcher and
       incremental rescans; per-group access; page/heading-aware parsing for PDF, DOCX, Markdown, HTML,
       plus OCR; hybrid search (BM25 + multilingual vectors in SQLite, RRF, optional reranker) with
-      contextual chunk headers; streaming answers; hardware-aware model choice; NithronOS catalog template
-  - Still open: publish the v0.4.0 image and add the template to the NithronOS catalog; map NithronOS
-    share permissions to nAI groups automatically; Docling for complex layouts (tables in PDFs)
-- [ ] **Phase 2 — Assistant**: done so far (v0.5): API keys, OpenAI-compatible API, MCP server for nAI's
-      own documents. Next: MCP server for the NithronOS API (read-only first, then confirmed actions),
-      tool use, NithronOS sign-in, share permissions → nAI groups
-- [ ] **Phase 3 — Everywhere**: NithronOS desktop/mobile clients, photo search, eval suite from real questions
+      contextual chunk headers; streaming answers; hardware-aware model choice; NithronOS catalog template.
+      The 0.4.0 image is published; the template is in the NithronOS repo, waiting to be merged there.
+  - Still open: map NithronOS share permissions to nAI groups automatically; Docling for complex layouts
+    (tables in PDFs)
+- [ ] **Phase 2 — Assistant**: done so far (0.5.0, on `main`, not tagged): API keys, OpenAI-compatible API,
+      MCP server for nAI's own documents. Next: MCP server for the NithronOS API (read-only first, then
+      confirmed actions), tool use, NithronOS sign-in, share permissions → nAI groups
+- [ ] **Phase 3 — Everywhere**: NithronOS desktop/mobile clients, photo search, an eval suite built from real
+      (opt-in, anonymized) user questions
+- [ ] **Lab Stage 0 — Measurement** (in progress): nai-bench v0 (56 questions, 27 files, 5 languages),
+      retrieval and answer-quality evals, Ollama end-to-end test, first baseline. Next: nai-bench v1 with
+      a test split, then the first Nithron models (Nithron Vane 1 and Loupe 1, see
+      [model names](docs/lab/MODEL_NAMING.md))
 
 ---
 

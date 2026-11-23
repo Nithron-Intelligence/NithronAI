@@ -6,7 +6,17 @@ Manage NAS folders that are indexed in place (admin), and list visible sources (
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from fastapi.concurrency import run_in_threadpool
 
-from ..models.schemas import ScanResult, SourceCreate, SourceInfo, SourceUpdate, User
+from ..config import Settings, get_config
+from ..models.schemas import (
+    ScanResult,
+    ShareCandidateInfo,
+    ShareDiscovery,
+    SourceCreate,
+    SourceInfo,
+    SourceUpdate,
+    User,
+)
+from ..nas import get_nas_adapter
 from ..security import get_scope, require_admin, require_auth
 from ..services.access import AccessScope
 from ..services.sources import SourceError, SourceService, get_source_service
@@ -30,6 +40,24 @@ def list_sources(
         for s in service.list_sources(include_paths=False)
         if scope.allows(s.id)
     ]
+
+
+@router.get("/discover", response_model=ShareDiscovery, dependencies=[Depends(require_admin)])
+def discover_shares(
+    settings: Settings = Depends(get_config),
+    service: SourceService = Depends(get_source_service),
+) -> ShareDiscovery:
+    """Folders under the allowed roots that could be added as sources (from the NAS adapter)."""
+    adapter = get_nas_adapter(settings)
+    existing = [s.path for s in service.list_sources() if s.path]
+    shares = adapter.discover_shares(settings.sources_allowed_roots, existing)
+    return ShareDiscovery(
+        platform=adapter.name,
+        platform_name=adapter.display_name,
+        capabilities=vars(adapter.capabilities),
+        status=adapter.platform_status(),
+        shares=[ShareCandidateInfo(**vars(s)) for s in shares],
+    )
 
 
 @router.post("", response_model=SourceInfo, status_code=201, dependencies=[Depends(require_admin)])

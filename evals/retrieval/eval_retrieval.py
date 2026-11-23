@@ -1,313 +1,187 @@
 """
-nAI Retrieval Evaluation Framework
-===================================
+nAI retrieval evaluation on nai-bench
+=====================================
 
-Evaluate retrieval quality using standard IR metrics:
-- Recall@K: Fraction of relevant docs in top-K
-- Precision@K: Fraction of top-K docs that are relevant
-- MRR (Mean Reciprocal Rank): Average of 1/rank of first relevant doc
-- NDCG@K: Normalized Discounted Cumulative Gain
+Runs every answerable nai-bench question through ``POST /search`` and scores the
+ranked files against the gold sources (document level: several chunks of the same
+file count once). Unanswerable questions have no gold sources and are skipped here;
+``answers/eval_answers.py`` scores them.
 
-Usage:
-    python eval_retrieval.py --test-file test_cases.json --api-url http://localhost:8000
+Metrics per retrieval method, overall and per category / language:
+  Recall@K, Precision@K, Hit@K (at least one gold file in the top K), MRR, NDCG@K,
+  and page Hit@K (a returned chunk from a gold file *and* gold page, for gold
+  sources that have a page).
 
-Test file format (JSON):
-    [
-        {
-            "query": "What is X?",
-            "relevant_docs": ["doc1.pdf", "doc2.md"],
-            "expected_answer": "X is..." (optional)
-        },
-        ...
-    ]
+Usage (nAI running with auth off, or pass --api-key):
+    python evals/retrieval/eval_retrieval.py --index-corpus /path/seen/by/server \\
+        --methods bm25,embedding,hybrid --output results.json
 """
+
+from __future__ import annotations
 
 import argparse
 import json
-import math
-from dataclasses import dataclass, field
-from typing import List, Dict, Any, Optional
+import sys
+from collections import defaultdict
 from pathlib import Path
-import httpx
-from datetime import datetime
+from typing import Any
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from naibench import (
+    QUESTIONS_FILE,
+    BenchItem,
+    NaiClient,
+    hit_at_k,
+    is_cross_lingual,
+    load_items,
+    load_manifest,
+    matches_gold,
+    mean,
+    ndcg_at_k,
+    precision_at_k,
+    ranked_files,
+    recall_at_k,
+    reciprocal_rank,
+)
+
+DEFAULT_K = (1, 3, 5, 10)
 
 
-@dataclass
-class TestCase:
-    """A single test case for evaluation."""
-    query: str
-    relevant_docs: List[str]
-    expected_answer: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+def page_hit_at_k(results: list[dict[str, Any]], item: BenchItem, k: int) -> float | None:
+    """1.0 if a top-k chunk comes from a gold file *and* its gold page (None: no paged gold)."""
+    paged = [s for s in item.gold_sources if s.page is not None]
+    if not paged:
+        return None
+    files_seen: list[str] = []
+    for r in results:
+        if r["doc_path"] not in files_seen:
+            files_seen.append(r["doc_path"])
+        if len(files_seen) > k:
+            break
+        if any(matches_gold(r["doc_path"], s.file) and r.get("page") == s.page for s in paged):
+            return 1.0
+    return 0.0
 
 
-@dataclass
-class RetrievalResult:
-    """Result from the search API."""
-    query: str
-    retrieved_docs: List[str]
-    scores: List[float]
-    answer: Optional[str] = None
+def score_item(item: BenchItem, results: list[dict[str, Any]], k_values: tuple[int, ...]) -> dict[str, Any]:
+    ranked = ranked_files([r["doc_path"] for r in results])
+    gold = item.gold_files
+    row: dict[str, Any] = {
+        "id": item.id,
+        "category": item.category,
+        "language": item.language,
+        "retrieved": ranked[:5],
+        "gold": list(gold),
+        "mrr": reciprocal_rank(ranked, gold),
+    }
+    for k in k_values:
+        row[f"recall@{k}"] = recall_at_k(ranked, gold, k)
+        row[f"precision@{k}"] = precision_at_k(ranked, gold, k)
+        row[f"hit@{k}"] = hit_at_k(ranked, gold, k)
+        row[f"ndcg@{k}"] = ndcg_at_k(ranked, gold, k)
+        row[f"page_hit@{k}"] = page_hit_at_k(results, item, k)
+    return row
 
 
-@dataclass
-class EvalMetrics:
-    """Evaluation metrics for a test run."""
-    recall_at_k: Dict[int, float] = field(default_factory=dict)
-    precision_at_k: Dict[int, float] = field(default_factory=dict)
-    mrr: float = 0.0
-    ndcg_at_k: Dict[int, float] = field(default_factory=dict)
-    
-    def to_dict(self) -> Dict[str, Any]:
-        return {
-            "recall": self.recall_at_k,
-            "precision": self.precision_at_k,
-            "mrr": self.mrr,
-            "ndcg": self.ndcg_at_k,
-        }
-
-
-class RetrievalEvaluator:
-    """Evaluator for retrieval quality."""
-    
-    def __init__(self, api_url: str = "http://localhost:8000"):
-        self.api_url = api_url.rstrip("/")
-        self.client = httpx.Client(timeout=60.0)
-    
-    def search(self, query: str, top_k: int = 10) -> RetrievalResult:
-        """Execute a search query against the API."""
-        response = self.client.post(
-            f"{self.api_url}/search",
-            json={"query": query, "top_k": top_k}
-        )
-        response.raise_for_status()
-        data = response.json()
-        
-        return RetrievalResult(
-            query=query,
-            retrieved_docs=[r["doc_path"] for r in data.get("results", [])],
-            scores=[r["score"] for r in data.get("results", [])],
-        )
-    
-    def ask(self, query: str, top_k: int = 5) -> RetrievalResult:
-        """Execute a question against the ask API."""
-        response = self.client.post(
-            f"{self.api_url}/ask",
-            json={"question": query, "top_k": top_k, "use_llm": False}
-        )
-        response.raise_for_status()
-        data = response.json()
-        
-        return RetrievalResult(
-            query=query,
-            retrieved_docs=[c["doc_path"] for c in data.get("citations", [])],
-            scores=[c["score"] for c in data.get("citations", [])],
-            answer=data.get("answer"),
-        )
-    
-    def calculate_recall_at_k(
-        self, 
-        retrieved: List[str], 
-        relevant: List[str], 
-        k: int
-    ) -> float:
-        """Calculate Recall@K."""
-        if not relevant:
-            return 0.0
-        
-        retrieved_at_k = set(self._normalize_paths(retrieved[:k]))
-        relevant_set = set(self._normalize_paths(relevant))
-        
-        hits = len(retrieved_at_k & relevant_set)
-        return hits / len(relevant_set)
-    
-    def calculate_precision_at_k(
-        self, 
-        retrieved: List[str], 
-        relevant: List[str], 
-        k: int
-    ) -> float:
-        """Calculate Precision@K."""
-        retrieved_at_k = self._normalize_paths(retrieved[:k])
-        if not retrieved_at_k:
-            return 0.0
-        
-        relevant_set = set(self._normalize_paths(relevant))
-        hits = sum(1 for doc in retrieved_at_k if doc in relevant_set)
-        return hits / len(retrieved_at_k)
-    
-    def calculate_mrr(
-        self, 
-        retrieved: List[str], 
-        relevant: List[str]
-    ) -> float:
-        """Calculate Mean Reciprocal Rank for a single query."""
-        relevant_set = set(self._normalize_paths(relevant))
-        retrieved_norm = self._normalize_paths(retrieved)
-        
-        for i, doc in enumerate(retrieved_norm):
-            if doc in relevant_set:
-                return 1.0 / (i + 1)
-        return 0.0
-    
-    def calculate_ndcg_at_k(
-        self, 
-        retrieved: List[str], 
-        relevant: List[str], 
-        k: int
-    ) -> float:
-        """Calculate NDCG@K."""
-        relevant_set = set(self._normalize_paths(relevant))
-        retrieved_norm = self._normalize_paths(retrieved[:k])
-        
-        # DCG
-        dcg = 0.0
-        for i, doc in enumerate(retrieved_norm):
-            if doc in relevant_set:
-                dcg += 1.0 / math.log2(i + 2)  # i+2 because log2(1) = 0
-        
-        # Ideal DCG
-        ideal_dcg = sum(1.0 / math.log2(i + 2) for i in range(min(len(relevant_set), k)))
-        
-        if ideal_dcg == 0:
-            return 0.0
-        
-        return dcg / ideal_dcg
-    
-    def _normalize_paths(self, paths: List[str]) -> List[str]:
-        """Normalize document paths for comparison."""
-        return [Path(p).name.lower() for p in paths]
-    
-    def evaluate_single(
-        self, 
-        test_case: TestCase, 
-        k_values: List[int] = [1, 3, 5, 10]
-    ) -> Dict[str, Any]:
-        """Evaluate a single test case."""
-        result = self.search(test_case.query, top_k=max(k_values))
-        
-        metrics = {
-            "query": test_case.query,
-            "retrieved": result.retrieved_docs[:5],
-            "relevant": test_case.relevant_docs,
-        }
-        
-        for k in k_values:
-            metrics[f"recall@{k}"] = self.calculate_recall_at_k(
-                result.retrieved_docs, test_case.relevant_docs, k
-            )
-            metrics[f"precision@{k}"] = self.calculate_precision_at_k(
-                result.retrieved_docs, test_case.relevant_docs, k
-            )
-            metrics[f"ndcg@{k}"] = self.calculate_ndcg_at_k(
-                result.retrieved_docs, test_case.relevant_docs, k
-            )
-        
-        metrics["mrr"] = self.calculate_mrr(result.retrieved_docs, test_case.relevant_docs)
-        
-        return metrics
-    
-    def evaluate_batch(
-        self, 
-        test_cases: List[TestCase],
-        k_values: List[int] = [1, 3, 5, 10]
-    ) -> Dict[str, Any]:
-        """Evaluate a batch of test cases."""
-        results = []
-        
-        for test_case in test_cases:
-            try:
-                result = self.evaluate_single(test_case, k_values)
-                result["status"] = "success"
-                results.append(result)
-            except Exception as e:
-                results.append({
-                    "query": test_case.query,
-                    "status": "error",
-                    "error": str(e),
-                })
-        
-        # Aggregate metrics
-        successful = [r for r in results if r.get("status") == "success"]
-        
-        if not successful:
-            return {"results": results, "aggregate": None}
-        
-        aggregate = {}
-        for k in k_values:
-            aggregate[f"recall@{k}"] = sum(r[f"recall@{k}"] for r in successful) / len(successful)
-            aggregate[f"precision@{k}"] = sum(r[f"precision@{k}"] for r in successful) / len(successful)
-            aggregate[f"ndcg@{k}"] = sum(r[f"ndcg@{k}"] for r in successful) / len(successful)
-        
-        aggregate["mrr"] = sum(r["mrr"] for r in successful) / len(successful)
-        aggregate["total_queries"] = len(test_cases)
-        aggregate["successful_queries"] = len(successful)
-        
-        return {
-            "results": results,
-            "aggregate": aggregate,
-            "timestamp": datetime.utcnow().isoformat() + "Z",
-        }
-
-
-def load_test_cases(file_path: str) -> List[TestCase]:
-    """Load test cases from a JSON file."""
-    with open(file_path, "r") as f:
-        data = json.load(f)
-    
-    return [
-        TestCase(
-            query=item["query"],
-            relevant_docs=item["relevant_docs"],
-            expected_answer=item.get("expected_answer"),
-            metadata=item.get("metadata", {}),
-        )
-        for item in data
+def aggregate(rows: list[dict[str, Any]], k_values: tuple[int, ...]) -> dict[str, Any]:
+    keys = ["mrr"] + [
+        f"{m}@{k}" for k in k_values for m in ("recall", "precision", "hit", "ndcg", "page_hit")
     ]
+    out: dict[str, Any] = {"n": len(rows)}
+    for key in keys:
+        values = [r[key] for r in rows if r.get(key) is not None]
+        out[key] = round(mean(values), 4) if values else None
+    return out
 
 
-def main():
-    parser = argparse.ArgumentParser(description="Evaluate retrieval quality")
-    parser.add_argument("--test-file", required=True, help="Path to test cases JSON")
-    parser.add_argument("--api-url", default="http://localhost:8000", help="API URL")
-    parser.add_argument("--output", help="Output file for results (JSON)")
-    parser.add_argument("--k-values", default="1,3,5,10", help="K values for metrics")
-    
+def breakdown(rows: list[dict[str, Any]], field: str, k_values: tuple[int, ...]) -> dict[str, Any]:
+    groups: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for row in rows:
+        groups[row[field]].append(row)
+    return {name: aggregate(group, k_values) for name, group in sorted(groups.items())}
+
+
+def evaluate(
+    client: NaiClient, items: list[BenchItem], methods: list[str], k_values: tuple[int, ...] = DEFAULT_K
+) -> dict[str, Any]:
+    answerable = [i for i in items if i.answerable]
+    top_k = max(k_values) * 3  # chunks; several chunks of one file collapse into one ranked file
+    manifest = load_manifest()
+    report: dict[str, Any] = {
+        "questions": len(answerable),
+        "skipped_unanswerable": len(items) - len(answerable),
+    }
+    for method in methods:
+        rows, errors, used = [], [], set()
+        for item in answerable:
+            try:
+                data = client.search(item.question, top_k=top_k, method=method)
+            except Exception as e:  # report and keep going; one bad query must not hide the rest
+                errors.append({"id": item.id, "error": str(e)})
+                continue
+            used.add(data.get("method"))
+            row = score_item(item, data.get("results", []), k_values)
+            row["cross_lingual"] = "yes" if is_cross_lingual(item, manifest) else "no"
+            rows.append(row)
+        report[method] = {
+            "method_used": sorted(m for m in used if m),
+            "overall": aggregate(rows, k_values),
+            "by_category": breakdown(rows, "category", k_values),
+            "by_language": breakdown(rows, "language", k_values),
+            # question language differs from all gold sources' languages (wider than the category)
+            "by_cross_lingual": breakdown(rows, "cross_lingual", k_values),
+            "errors": errors,
+            "per_question": rows,
+        }
+    return report
+
+
+def print_summary(report: dict[str, Any], methods: list[str]) -> None:
+    print(f"\nnai-bench retrieval: {report['questions']} answerable questions")
+    print(f"{'method':<12}{'MRR':>7}{'Hit@1':>8}{'Hit@5':>8}{'R@5':>7}{'P@5':>7}{'nDCG@5':>8}{'pHit@5':>8}")
+    for method in methods:
+        o = report[method]["overall"]
+        print(
+            f"{method:<12}{o['mrr']:>7.3f}{o['hit@1']:>8.3f}{o['hit@5']:>8.3f}{o['recall@5']:>7.3f}"
+            f"{o['precision@5']:>7.3f}{o['ndcg@5']:>8.3f}{(o['page_hit@5'] or 0):>8.3f}"
+        )
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Evaluate nAI retrieval on nai-bench")
+    parser.add_argument("--bench", type=Path, default=QUESTIONS_FILE, help="questions.jsonl")
+    parser.add_argument("--api-url", default="http://localhost:8000")
+    parser.add_argument(
+        "--reviewed-only", action="store_true", help="only human-reviewed items (published numbers)"
+    )
+    parser.add_argument("--api-key", default=None, help="nAI API key (when auth is on)")
+    parser.add_argument("--methods", default="bm25,embedding,hybrid", help="comma-separated /search methods")
+    parser.add_argument("--k-values", default=",".join(map(str, DEFAULT_K)))
+    parser.add_argument(
+        "--index-corpus",
+        metavar="SERVER_PATH",
+        help="create a 'nai-bench' source for this path (as the server sees it) and wait until indexed",
+    )
+    parser.add_argument("--output", type=Path, help="write the full report as JSON")
     args = parser.parse_args()
-    
-    # Parse k values
-    k_values = [int(k) for k in args.k_values.split(",")]
-    
-    # Load test cases
-    print(f"Loading test cases from {args.test_file}...")
-    test_cases = load_test_cases(args.test_file)
-    print(f"Loaded {len(test_cases)} test cases")
-    
-    # Run evaluation
-    print(f"Evaluating against {args.api_url}...")
-    evaluator = RetrievalEvaluator(args.api_url)
-    results = evaluator.evaluate_batch(test_cases, k_values)
-    
-    # Print aggregate metrics
-    if results["aggregate"]:
-        print("\n" + "=" * 50)
-        print("AGGREGATE METRICS")
-        print("=" * 50)
-        agg = results["aggregate"]
-        print(f"Queries: {agg['successful_queries']}/{agg['total_queries']} successful")
-        print(f"MRR: {agg['mrr']:.4f}")
-        for k in k_values:
-            print(f"Recall@{k}: {agg[f'recall@{k}']:.4f}")
-            print(f"Precision@{k}: {agg[f'precision@{k}']:.4f}")
-            print(f"NDCG@{k}: {agg[f'ndcg@{k}']:.4f}")
-    
-    # Save results
+
+    items = load_items(args.bench, reviewed_only=args.reviewed_only)
+    methods = [m.strip() for m in args.methods.split(",") if m.strip()]
+    k_values = tuple(int(k) for k in args.k_values.split(","))
+    client = NaiClient(args.api_url, args.api_key)
+    client.wait_until_up()
+    if args.index_corpus:
+        source_id = client.ensure_source(args.index_corpus)
+        client.wait_until_indexed(source_id)
+
+    report = evaluate(client, items, methods, k_values)
+    print_summary(report, methods)
     if args.output:
-        with open(args.output, "w") as f:
-            json.dump(results, f, indent=2)
-        print(f"\nResults saved to {args.output}")
+        args.output.write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        print(f"\nwrote {args.output}")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
-
+    raise SystemExit(main())

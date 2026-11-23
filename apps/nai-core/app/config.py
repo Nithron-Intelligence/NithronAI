@@ -6,7 +6,7 @@ Environment-based configuration using pydantic-settings
 import os
 from functools import lru_cache
 
-from pydantic import Field
+from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings
 
 DEFAULT_OLLAMA_BASE_URL = "http://localhost:11434"
@@ -104,6 +104,18 @@ class Settings(BaseSettings):
     )
     ocr_languages: str = Field(default="eng+deu", description="Tesseract language codes, '+'-separated")
 
+    # NAS platform adapter (docs/architecture/nas-adapters.md); set by packaging
+    nas_platform: str = Field(default="generic", description="NAS adapter: generic | nithronos | truenas")
+    # TrueNAS adapter (read-only discovery over the JSON-RPC WebSocket API; packaging/truenas/README.md)
+    truenas_url: str = Field(default="", description="wss://<truenas-host>/api/current (wss only)")
+    truenas_api_key: SecretStr = Field(
+        default=SecretStr(""), description="API key of a dedicated read-only TrueNAS user (never logged)"
+    )
+    truenas_ca_file: str = Field(
+        default="", description="CA certificate for a self-signed TrueNAS certificate"
+    )
+    truenas_timeout: float = Field(default=15.0, description="Seconds per TrueNAS API call")
+
     # Sources (folders on the NAS that are indexed in place and kept in sync)
     sources_allowed_roots: list[str] = Field(
         default=["/shares"],
@@ -136,6 +148,14 @@ class Settings(BaseSettings):
         description="Embedding model (multilingual by default). For ollama e.g. 'nomic-embed-text'",
     )
     embeddings_batch_size: int = Field(default=32, description="Chunks embedded per batch")
+    embeddings_auto_reindex: bool = Field(
+        default=False,
+        description=(
+            "Re-embed everything automatically when the embedding model changes. Off: nAI keeps the old "
+            "vectors, pauses semantic search and asks an admin to confirm the re-index (POST "
+            "/system/embeddings/reindex), so vectors from two models are never mixed"
+        ),
+    )
     embeddings_background: bool = Field(
         default=True, description="Embed new chunks in a background thread (disable only for testing)"
     )
@@ -155,12 +175,36 @@ class Settings(BaseSettings):
     # Retrieval
     rrf_k: int = Field(default=60, description="Reciprocal Rank Fusion constant")
     retrieval_candidates: int = Field(default=50, description="Candidates per retriever before fusion")
-    reranker: str = Field(default="false", description="Cross-encoder reranking: true | false | auto")
-    reranker_model: str = Field(
-        default="Xenova/ms-marco-MiniLM-L-6-v2",
-        description="fastembed cross-encoder (multilingual option: BAAI/bge-reranker-v2-m3-int8)",
+    # auto: on only when the hardware fits the latency budget (hardware.reranker_auto_decision: 8+ effective
+    # cores, 8+ GB RAM); off on NAS-class CPUs. bge-reranker-v2-m3 int8 lifts nai-bench MRR 0.793 -> 0.878
+    # with the top 10 but costs ~2 s per question on 2 cores (evals/results/rerankers-*.md, provisional).
+    reranker: str = Field(
+        default="auto",
+        description="Cross-encoder reranking: auto (on when the hardware is fast enough) | on | off "
+        "(true/false/1/0/yes/no also work)",
     )
-    reranker_candidates: int = Field(default=30, description="Fused candidates passed to the reranker")
+    reranker_model: str = Field(
+        default="BAAI/bge-reranker-v2-m3-int8",
+        description="fastembed cross-encoder; multilingual default (0.57 GB download, ~1-1.5 GB RAM while "
+        "running). English-only alternative: Xenova/ms-marco-MiniLM-L-6-v2",
+    )
+    reranker_candidates: int = Field(
+        default=10,
+        ge=1,
+        description="Top-k fused candidates the reranker re-scores (NAI_RERANKER_CANDIDATES)",
+    )
+
+    @field_validator("reranker")
+    @classmethod
+    def normalize_reranker_mode(cls, value: str) -> str:
+        mode = str(value).strip().lower()
+        if mode in ("true", "1", "yes", "on"):
+            return "on"
+        if mode in ("false", "0", "no", "off"):
+            return "off"
+        if mode == "auto":
+            return "auto"
+        raise ValueError(f"NAI_RERANKER must be auto, on or off (or true/false), not {value!r}")
 
     # LLM
     llm_enabled: bool = Field(default=False, description="Enable LLM for answer generation")

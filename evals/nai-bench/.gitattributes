@@ -1,0 +1,2 @@
+# Rendered benchmark files are compared byte-for-byte with corpus-manifest.json.
+corpus/** -text

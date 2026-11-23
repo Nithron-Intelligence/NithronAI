@@ -109,9 +109,7 @@ def test_embeddings_follow_document_changes(make_client, fake_embeddings):
     assert c.post("/search", json={"query": "automobile", "method": "embedding"}).json()["results"] == []
 
 
-def test_switching_model_reembeds_everything(make_client, fake_embeddings):
-    from app.db import get_db
-    from app.services import get_embedding_service
+def _switch_to_other_model(make_client, fake_embeddings, **env):
     from app.services.embeddings import register_provider
 
     from .conftest import FakeEmbeddingProvider
@@ -125,17 +123,50 @@ def test_switching_model_reembeds_everything(make_client, fake_embeddings):
         model = "fake-v2"
 
     register_provider("fake2", OtherModel)
-    c = make_client(NAI_EMBEDDINGS_PROVIDER="fake2")
+    return make_client(NAI_EMBEDDINGS_PROVIDER="fake2", **env)
+
+
+def test_model_change_waits_for_confirmation_and_never_mixes_vectors(make_client, fake_embeddings):
+    from app.db import get_db
+    from app.services import get_embedding_service
+
+    c = _switch_to_other_model(make_client, fake_embeddings)
     service = get_embedding_service()
-    assert service.pending_count() == 2
+    assert service.is_available()  # load the new model (the background worker does this at start)
+
+    # Nothing is re-embedded until an admin confirms, and the old vectors are never searched.
+    assert service.reindex_required
+    assert service.embed_pending() == 0
+    # Searches keep working on keywords only; an explicit embedding search says why it can't run.
+    r = c.post("/search", json={"query": "electricity", "method": "hybrid"}).json()
+    assert r["method"] == "bm25" and r["results"][0]["filename"] == "bill.txt"
+    paused = c.post("/search", json={"query": "receipt", "method": "embedding"})
+    assert paused.status_code == 400 and "re-index" in paused.json()["detail"]
+    stats = c.get("/system").json()["features"]["embeddings"]
+    assert stats["reindex_required"] is True and stats["previous_models"] == {"fake:fake-synonyms": 2}
+
+    r = c.post("/system/embeddings/reindex").json()
+    assert r["reindexing"] is True and r["removed_vectors"] == 2
+    assert not service.reindex_required
     assert service.embed_pending() == 2
     with get_db().connect() as conn:
-        models = {r[0] for r in conn.execute("SELECT model FROM chunk_embeddings")}
+        models = {row[0] for row in conn.execute("SELECT model FROM chunk_embeddings")}
     assert models == {"fake:fake-v2"}
     assert (
         c.post("/search", json={"query": "receipt", "method": "embedding"}).json()["results"][0]["filename"]
         == "bill.txt"
     )
+    assert c.post("/system/embeddings/reindex").json()["reindexing"] is False
+
+
+def test_auto_reindex_setting_re_embeds_without_asking(make_client, fake_embeddings):
+    from app.services import get_embedding_service
+
+    _switch_to_other_model(make_client, fake_embeddings, NAI_EMBEDDINGS_AUTO_REINDEX="true")
+    service = get_embedding_service()
+    assert not service.reindex_required
+    assert service.embed_pending() == 2
+    assert service.other_model_vectors() == {}
 
 
 def test_unavailable_provider_falls_back_to_keyword_search(make_client):

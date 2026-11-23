@@ -1,0 +1,28 @@
+# nAI as a TrueNAS custom app (Apps > Discover Apps > menu next to "Custom App" > Install via YAML).
+# Edit the dataset paths below first: see README.md in this folder.
+services:
+  nai:
+    image: ghcr.io/nithron/nithronai/nai-core:0.5.0
+    restart: unless-stopped
+    user: "568:568"                 # TrueNAS's built-in apps user/group
+    ports:
+      - "8000:8000"
+    mem_limit: 4g
+    volumes:
+      # nAI's own data (index, users, models): a dedicated dataset, writable by the apps user
+      - /mnt/tank/apps/nai:/app/data
+      # Datasets to search, read-only. Add one line per dataset; the folder name under /shares is what
+      # nAI shows as the share name.
+      - /mnt/tank/documents:/shares/documents:ro
+      - /mnt/tank/photos:/shares/photos:ro
+    environment:
+      - NAI_AUTH_ENABLED=true
+      - NAI_SOURCES_ALLOWED_ROOTS=["/shares"]
+      - NAI_NAS_PLATFORM=truenas
+      # Optional: read-only share discovery through the TrueNAS API (see README.md). Leave empty to
+      # only list the folders mounted above.
+      - NAI_TRUENAS_URL=
+      - NAI_TRUENAS_API_KEY=
+      # - NAI_TRUENAS_CA_FILE=/app/data/truenas-ca.pem   # only for a self-signed TrueNAS certificate
+      - NAI_RERANKER=auto
+      - NAI_LLM_ENABLED=false
