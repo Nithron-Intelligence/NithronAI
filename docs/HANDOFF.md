@@ -37,12 +37,12 @@
   `~/vms/truenas-test/secrets.env` (mode 600: admin password, `nai-reader` API key); CA in `pki/`. Restart:
   `scripts/truenas-vm/start-vm.sh`, API on `https://localhost:8443` after ~3 min. `lab/stage-0` has no CI
   (CI runs on main/develop and PRs only); local checks passed before every commit.
-- **Next 1: step 3, nai-bench v1 (in progress: 1–4 done; questions 0/100).** Do it in this order, closing out
-  (HANDOFF + checks + commit) after each bullet and every 25 files or questions. **Next command:** step 5,
-  questions batch 1 (25): write a generator script in scratch that emits items with ids `v1-0001…`, routes each
-  to `v1/questions-dev.jsonl` or `v1/questions-test.jsonl` by `naibench.split_of`, then
-  `apps/nai-core/.venv/bin/python -c "import sys; sys.path.insert(0,'evals'); import naibench as nb;
-  print(nb.validate_splits())"`.
+- **Next 1: step 3, nai-bench v1 (in progress: 1–4 done; questions 25/100).** Do it in this order, closing out
+  (HANDOFF + checks + commit) after each bullet and every 25 files or questions. **Next command:** questions
+  batch 2: append items v1-0026…v1-0050 (generator kept outside the repo at
+  `/tmp/claude-1000/-mnt-vault-Dev-Nithron-NithronAI/b95c3deb-bdc3-4ad9-9402-00329d95690f/scratchpad/questions/gen_v1_questions.py`;
+  if it is gone, write the next items by hand from `v1/corpus-src/` following the plan below), then
+  `nb.validate_splits()`.
   1. **Split rules (done):** rules in `evals/nai-bench/README.md` ("Dev/test split"); `naibench.split_of`,
      guard in `load_items`/`load_all_items`, `--final-run` + `--label` in `eval_retrieval.py`,
      `eval_answers.py`, `run_baseline.py` (+ `--bench`), `review.py --test-split`, ledger
@@ -79,7 +79,15 @@
      publications, Gutenberg distractors, fictional docs); download with `curl`, record source URL, license,
      retrieval date, author and SHA-256 per file in the v1 manifest; Claude-written files say so and are
      eval-only. Close out every 25 files.
-  5. **Questions:** first 100 v1 questions spread over the 4 categories × 5 languages (+ unanswerable), all
+  5. **Questions (25/100):** plan for the first 100 = per language 4 lookup, 4 cross-lingual (each question
+     language paired once with each other document language), 4 table/scan-OCR, 4 multi-hop, 4 unanswerable
+     (near misses); ids `v1-0001…`, split by `naibench.split_of` into `v1/questions-dev.jsonl` /
+     `v1/questions-test.jsonl`; all `unreviewed`, `provenance.author: claude`, `written_by: Claude-written`,
+     `use: eval-only`. EU-act questions list all five language versions as gold (each answers it), so EU acts
+     are never used for cross-lingual items. Law facts were checked against the stored texts (HeizkostenV
+     § 7, BetrKV § 1(2), WoFlV § 4, 2011/83 Art. 9, 2019/771 Art. 10, konsumentköplag 3:17, konsumenttjänstlag
+     17 §, 16 CFR 429 and 435). Batch 1 = v1-0001…0025 (20 German, 5 English).
+     Original requirement: first 100 v1 questions spread over the 4 categories × 5 languages (+ unanswerable), all
      `review_status: unreviewed`, `provenance.author: claude` ("Claude-written"), `use: eval-only`;
      validate with `naibench.validate`. Close out every 25 questions.
 - **After round 3:** human review of nai-bench items; finish v1 (to 300+ files, 625 questions);
