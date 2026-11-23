@@ -212,9 +212,13 @@ _STOPWORDS: dict[str, set[str]] = {
         "der die das und ist sind nicht ein eine mit für auf dem des zu im von bei auch wird ich sie es".split()
     ),
     "sv": set("och är att det som en ett på för med till inte av har de om vid kan ska från".split()),
-    "fr": set("de le la les et est sont un une des du pour dans pas que qui sur avec au par ce il vous".split()),
+    "fr": set(
+        "de le la les et est sont un une des du pour dans pas que qui sur avec au par ce il vous".split()
+    ),
     # No "a", "o", "e", "no": they are common English words.
-    "pt": set("de os as é são um uma do da dos das para com não que em na por se ao ou mas está foi pelo pela".split()),
+    "pt": set(
+        "de os as é são um uma do da dos das para com não que em na por se ao ou mas está foi pelo pela".split()
+    ),
 }
 
 

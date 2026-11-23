@@ -49,11 +49,12 @@ jobs:
         working-directory: apps/nai-core
         run: mypy app
 
-      - name: Lint and type-check evals (nai-bench)
+      - name: Lint and type-check evals (nai-bench) and training
         run: |
-          ruff check --config apps/nai-core/pyproject.toml evals --output-format=github
-          ruff format --config apps/nai-core/pyproject.toml evals --check
+          ruff check --config apps/nai-core/pyproject.toml evals training --output-format=github
+          ruff format --config apps/nai-core/pyproject.toml evals training --check
           mypy --ignore-missing-imports evals/*.py evals/retrieval/eval_retrieval.py evals/answers/eval_answers.py evals/nai-bench/build_corpus.py
+          (cd training/embed && mypy --ignore-missing-imports common.py check_overlap.py generate_pairs.py train.py)
 
   # ====================
   # Tests
@@ -91,8 +92,8 @@ jobs:
         run: |
           pytest tests/ -v --cov=app --cov-report=xml --cov-report=term-missing
 
-      - name: Run nai-bench tests (dataset, corpus manifest, scoring)
-        run: pytest evals/tests -v
+      - name: Run nai-bench and training-guard tests
+        run: pytest evals/tests training/tests -v
       
       - name: Upload coverage
         if: matrix.python-version == '3.11'
