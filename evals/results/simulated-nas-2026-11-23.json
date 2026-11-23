@@ -1,0 +1,94 @@
+{
+  "label": "simulated-nas",
+  "environment": "simulated-nas",
+  "profile": "Profile nas-small: nai-core limited to 2 CPUs / 4 GiB and Ollama to 2 CPUs / 4 GiB (CPU only, qwen2.5:1.5b), with docker --cpus/--memory on a Ryzen 9 7950X host (about an Intel N100-class box with 8 GB RAM, but each core here is faster).",
+  "date": "2026-11-23",
+  "nai_version": "0.5.0",
+  "config": {
+    "debug": false,
+    "embeddings_enabled": true,
+    "embeddings_provider": "auto",
+    "reranker": "false",
+    "llm_enabled": true,
+    "llm_provider": "ollama",
+    "auth_enabled": false
+  },
+  "embeddings_model": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+  "review": {
+    "unreviewed": 56,
+    "accepted": 0,
+    "fixed": 0,
+    "rejected": 0,
+    "total": 56,
+    "reviewed": 0
+  },
+  "indexing": {
+    "files": 27,
+    "chunks": 78,
+    "seconds": 26.9
+  },
+  "search_seconds": {
+    "n": 45,
+    "median": 0.2,
+    "p95": 0.399
+  },
+  "extractive_answer_seconds": {
+    "n": 45,
+    "median_total": 0.199,
+    "p95_total": 0.301
+  },
+  "llm_answer": {
+    "n": 10,
+    "model": "ollama/qwen2.5:1.5b",
+    "median_ttft": 0.4,
+    "median_total": 4.693,
+    "p95_total": 21.301,
+    "median_token_events_per_s": 6.4
+  },
+  "containers": {
+    "nai-bench-nai-core-1": {
+      "2-indexing": {
+        "peak_mem_mib": 1138,
+        "mean_cpu_percent": 196
+      },
+      "3-idle-after-indexing": {
+        "peak_mem_mib": 997,
+        "mean_cpu_percent": 0
+      },
+      "4-search": {
+        "peak_mem_mib": 1001,
+        "mean_cpu_percent": 176
+      },
+      "5-extractive-answers": {
+        "peak_mem_mib": 996,
+        "mean_cpu_percent": 199
+      },
+      "6-llm-answers": {
+        "peak_mem_mib": 1044,
+        "mean_cpu_percent": 23
+      }
+    },
+    "nai-bench-ollama-1": {
+      "2-indexing": {
+        "peak_mem_mib": 1590,
+        "mean_cpu_percent": 0
+      },
+      "3-idle-after-indexing": {
+        "peak_mem_mib": 1590,
+        "mean_cpu_percent": 0
+      },
+      "4-search": {
+        "peak_mem_mib": 1590,
+        "mean_cpu_percent": 0
+      },
+      "5-extractive-answers": {
+        "peak_mem_mib": 1590,
+        "mean_cpu_percent": 0
+      },
+      "6-llm-answers": {
+        "peak_mem_mib": 1592,
+        "mean_cpu_percent": 191
+      }
+    }
+  }
+}
