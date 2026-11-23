@@ -45,7 +45,10 @@
   **0.766**; cross-language MRR 0.435 → **0.676**, Hit@5 0.571 → **0.857**; every category and language improves.
   **Nothing from it can ship** until the base-model audit is decided. (The first attempt with `--release
   vane-1-pilot` was refused by the naming check before training; rerun as rc0.)
-- **Round 5 next command:** PR `lab/stage-0` → main for rounds-5 commits, merge after CI.
+- **Round 5 end state:** PR #6 merged as `bd987dc`, main CI green (run 45222520816). main = `bd987dc`; lab/stage-0 =
+  main plus this HANDOFF-only commit, both pushed. Bench stack stopped (v1 index and Ollama models kept).
+- **Round 5 next command:** none; next round starts with the human's decision on the base-model audit (then, if
+  accepted: several pilot seeds, a larger corpus, ONNX export and a hybrid run in nAI on the dev split).
 - **Round 4 permissions (2026-11-23):** the human authorized this session to commit, push, open and merge PRs as
   them (git identity, SSH key, gh auth already configured); no attribution trailers, no history rewrite, no
   force-push, never bypass branch protection; merge PRs with a merge commit (not squash/rebase). Release
@@ -306,7 +309,7 @@
   - ROCm smoke: 2 training steps + ONNX export on the RX 7900 XTX in 37 s.
 - **Round 5 (2026-11-23):** permissions/decisions `0c941ad`; **v0.6.0 tagged on `06c29e0` and published** (release
   run 45207761865); NithronOS template 0.6.0 `bbd8155`; audit `4966ff0`; Stage 0 baselines `5877b1b`; pilot tooling
-  `a5970c5`; pilot dataset `e65d5c2`; pilot run + dev eval in the closing commits. Tests: 218 nai-core, 119
+  `a5970c5`; pilot dataset `e65d5c2`; pilot results `2a144c2`, PR #6 merge `bd987dc`, then this closing HANDOFF commit. Tests: 218 nai-core, 119
   evals/training.
 - **Round 4 (2026-11-23):** PR #3 (lab/stage-0 → main, merge `3163618`; CI fix `41facf4`), PR #4 (0.6.0 prep, merge
   `06c29e0`), HANDOFF `3065eda`, v1 baseline tooling `22336af`, v1 dev baseline `09f6cd1`, v1 questions 125
