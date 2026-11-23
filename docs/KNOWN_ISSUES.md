@@ -23,6 +23,58 @@ done, delete it here and mention it in `CHANGELOG.md`.
 - **Test warning:** Starlette warns that using `httpx` for `TestClient` is deprecated in favour of `httpx2`.
   Harmless for now.
 
+## Hand-over: NithronOS template sync (for the session that owns NithronOS)
+
+NithronOS's copy of the nAI template (`usr/share/nithronos/apps/templates/nai/`, added in NithronOS commit
+`47def8c`) lags behind `packaging/nithronos/nai/` here (checked 2026-11-23). Changes needed:
+
+1. `compose.yaml`: add `NAI_NAS_PLATFORM=nithronos` (the value the adapter registry uses for NithronOS) and
+   change the reranker default from `auto` to an explicit `off` (`NAI_RERANKER=${RERANKER:-off}`): NAS CPUs
+   need about 2 s per question for reranking.
+2. `schema.json`: `RERANKER` default `off`, enum `off`/`auto`/`on`, new description.
+3. Nothing else differs in `compose.yaml` or `schema.json` (the template README is NithronOS's own catalog
+   text and isn't synced).
+
+Safe with today's images: nai-core 0.4.0/0.5.0 ignore `NAI_NAS_PLATFORM` and treat `off` as off; existing
+installs that stored `true`/`false` keep working with newer nAI versions too. Apply from the NithronOS repo
+root with `git apply nithronos-nai.patch` (it applies cleanly to NithronOS `47def8c`):
+
+```diff
+--- a/usr/share/nithronos/apps/templates/nai/compose.yaml
++++ b/usr/share/nithronos/apps/templates/nai/compose.yaml
+@@ -25,9 +25,10 @@
+       - ${SHARES_PATH:-/srv/shares}:/shares:ro
+     environment:
+       - NAI_AUTH_ENABLED=true
++      - NAI_NAS_PLATFORM=nithronos
+       - NAI_SOURCES_ALLOWED_ROOTS=["/shares"]
+       - NAI_EMBEDDINGS_ENABLED=true
+-      - NAI_RERANKER=${RERANKER:-auto}
++      - NAI_RERANKER=${RERANKER:-off}
+       - NAI_OCR_ENABLED=${OCR_ENABLED:-true}
+       - NAI_OCR_LANGUAGES=${OCR_LANGUAGES:-eng+deu}
+       # Generated answers (optional). Without a model, nAI answers with exact quotes.
+--- a/usr/share/nithronos/apps/templates/nai/schema.json
++++ b/usr/share/nithronos/apps/templates/nai/schema.json
+@@ -69,12 +69,12 @@
+     "RERANKER": {
+       "type": "string",
+       "title": "Reranking",
+-      "description": "Sharper result ordering at some CPU cost. 'auto' enables it on capable hardware.",
+-      "default": "auto",
++      "description": "Re-scores the top 10 results with a multilingual reranker. Off by default on NithronOS (NAS CPUs: about 2 s per question). 'auto' turns it on only on fast machines (8+ cores, 8+ GB RAM); 'on' forces it.",
++      "default": "off",
+       "enum": [
++        "off",
+         "auto",
+-        "true",
+-        "false"
++        "on"
+       ]
+     },
+     "OCR_ENABLED": {
+```
+
 ## Backlog
 
 ### Index e-mail files (`.eml`, `.mbox`)
