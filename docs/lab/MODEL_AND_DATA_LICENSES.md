@@ -19,7 +19,7 @@ Status values: **in use** (shipped or used by nAI today), **approved** (may be u
 | `Xenova/ms-marco-MiniLM-L-6-v2` (ONNX of `cross-encoder/ms-marco-MiniLM-L6-v2`) | default reranker (off unless `NAI_RERANKER`) | Apache-2.0 (upstream card; the Xenova repo states none) | in use | 2026-11-22 | **English-only**, trained on MS MARCO, whose terms are non-commercial research. Fine to run, but don't fine-tune from it or reuse MS MARCO; prefer a multilingual reranker (below). |
 | `qwen2.5:1.5b` (`Qwen/Qwen2.5-1.5B-Instruct`) | LLM in the nai-bench stack and smoke test | Apache-2.0 | in use (bench) | 2026-11-22 | |
 | `qwen2.5:7b` (`Qwen/Qwen2.5-7B-Instruct`) | optional LLM judge in the baseline | Apache-2.0 | in use (bench) | 2026-11-22 | Judge outputs are eval data only. |
-| `llama3.2` | example model in `infra/docker-compose.yml` comment and `packages/model-router` | Llama 3.2 Community License | avoid for the lab | 2026-11-22 | Acceptable-use policy and naming rules for derivatives. Fine for a user to run; don't build Nithron models on it. |
+| `llama3.2` | example model in the `infra/docker-compose.yml` comment | Llama 3.2 Community License | avoid for the lab | 2026-11-22 | Acceptable-use policy and naming rules for derivatives. Fine for a user to run; don't build Nithron models on it. |
 
 ## Candidates for Stage 1 (embeddings / reranker)
 

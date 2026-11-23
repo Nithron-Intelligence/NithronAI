@@ -207,9 +207,6 @@ nAI/
 │       └── web/           # Static frontend (served by nai-core at /)
 ├── packaging/
 │   └── nithronos/         # NithronOS app catalog template
-├── packages/              # Standalone libraries, not used by nai-core
-│   ├── rag-kit/           # Chunkers, rerankers, evaluators
-│   └── toolpacks/         # PDF OCR, web, email, code extractors
 ├── evals/
 │   ├── nai-bench/         # Benchmark: corpus, questions, corpus builder
 │   ├── retrieval/         # Retrieval eval (Recall, MRR, nDCG, Hit, page Hit)
@@ -221,58 +218,6 @@ nAI/
 └── docs/
     ├── ADRs/              # Architecture decisions
     └── lab/               # Lab roadmap, license register, stage plans
-```
-
----
-
-## 🧩 Packages
-
-These are standalone libraries kept in the repo; nai-core does not import them.
-
-### RAG Kit (`packages/rag-kit`)
-
-Reusable components for RAG systems:
-
-```python
-from rag_kit import SentenceChunker, CrossEncoderReranker, RetrievalMetrics
-
-# Semantic chunking
-chunker = SentenceChunker(max_chunk_size=1000)
-chunks = chunker.chunk(document_text)
-
-# Reranking
-reranker = CrossEncoderReranker()
-reranked = reranker.rerank(query, documents, top_k=5)
-
-# Evaluation
-metrics = RetrievalMetrics()
-results = metrics.evaluate_single(retrieved_docs, relevant_docs)
-print(f"Recall@5: {results.recall_at_k[5]:.3f}")
-```
-
-### Toolpacks (`packages/toolpacks`)
-
-Specialized extractors:
-
-```python
-from toolpacks import PDFExtractor, WebScraper, EmailParser, CodeExtractor
-
-# PDF with OCR
-pdf = PDFExtractor(enable_ocr=True)
-doc = pdf.extract("scanned.pdf")
-
-# Web scraping
-scraper = WebScraper()
-content = scraper.scrape("https://example.com")
-
-# Email parsing
-parser = EmailParser()
-emails = parser.parse_mbox("mailbox.mbox")
-
-# Code analysis
-extractor = CodeExtractor()
-code = extractor.extract("main.py")
-print(code.summary)
 ```
 
 ---
