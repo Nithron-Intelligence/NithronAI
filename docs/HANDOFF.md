@@ -6,7 +6,21 @@
 
 ## Status now
 
-- **Updated:** 2026-11-23, round 6 (Granite R2 as embedding base, Vane 1 pilot on it, reranker audit).
+- **Updated:** 2026-11-23, round 7 (Granite memory limits, Vane 1 Granite pilot, reranker audit, fusion, quantization).
+- **Round 7 permissions (2026-11-23):** commit, push, open and merge PRs as the human (merge commits; no attribution,
+  no history rewrite, no force-push, never bypass branch protection); **no tags**; delete the three empty
+  `v1-dev-*.err` files (done); ask before deleting anything else; user-space installs and model downloads; start/stop
+  bench and ROCm trainer containers; unattended GPU runs ≤ 3 h with command and config recorded here first.
+- **Round 7, section 1 done: Granite memory** (`evals/results/simulated-nas-granite97-rerank-{off,on}-2026-11-23.*`,
+  2 CPU / 4 GB, v0 corpus): reranker off: peak **1 759 MiB** (indexing), 1 625 idle/search, search median 0.20 s;
+  reranker forced on: peak **3 340 MiB** (search), search median **20.3 s**. Templates unchanged (NithronOS 3g with
+  reranking off by default; TrueNAS 4g where `auto` stays off below 8 GB); texts updated (README memory note,
+  NithronOS `MEMORY_LIMIT` description, TrueNAS README, KNOWN_ISSUES hand-over item 4, CHANGELOG). Minimum 3g /
+  4 GB NAS, recommended 8 GB; forcing the reranker on needs 5g.
+- **Round 7 stopped after section 1 (context budget).** Next, in order: section 2 (Vane 1 Granite pilot, commands
+  under "Round 6 stopped here"), section 3 (reranker audit, same place), then 4 (fusion weights) and 5 (Granite
+  quantization) from the round-7 prompt. The first command: re-run `check_overlap.py` on
+  `training/data/vane1-pilot/pairs-clean.jsonl`.
 - **Round 6 permissions (2026-11-23):** commit, push, open and merge PRs as the human (merge commits; no attribution
   trailers, no history rewrite, no force-push, never bypass branch protection); **no tags**; user-space installs,
   Hugging Face and Ollama downloads (sudo → the human); start/stop the bench and ROCm trainer containers; unattended
@@ -284,8 +298,9 @@
 - **Embedding base:** decided in round 6 (Granite R2 97m, now the default in Unreleased). The old MiniLM base is
   replaced; its pilot `vane-1-rc0` stays a learning run. Upstream CC-BY-SA in Granite's lineage (Wikipedia, Stack
   Exchange) is recorded for lawyer review before any commercial deal (decision 2).
-- **Stray files:** three empty `v1-dev-*.err` files in the repo root (round-5 script artifacts): OK to delete?
-- **Release 0.7.0:** the default-model change waits in CHANGELOG "Unreleased" (decision 3: no release this round).
+- **Release 0.7.0:** the default-model change waits in CHANGELOG "Unreleased". Memory: nAI on Granite needs ~1.8 GB
+  (reranker off) → **a 2 GB NAS can't run the new default** (OS + ZFS leave too little); such boxes must stay on the
+  old MiniLM model (~1 GB). Decide whether that is acceptable for 0.7.0.
 - **Hugging Face:** `nithron/vane-1` under Apache-2.0 is a proposal waiting on the human; dataset release open.
 - **Trademark search** for Nithron Vane / Loupe / Tern / Nox before any public release.
 - **NithronOS template sync:** hand the patch in `docs/KNOWN_ISSUES.md` ("Hand-over: NithronOS template sync";
@@ -360,6 +375,8 @@
   - Simulated NAS (2 CPUs / 4 GB each, CPU only): index 27 s; search 0.20 s; extractive answer 0.20 s;
     qwen2.5:1.5b answer 4.7 s median (p95 21 s); nai-core 1.1 GB, Ollama 1.6 GB.
   - ROCm smoke: 2 training steps + ONNX export on the RX 7900 XTX in 37 s.
+- **Round 7 (2026-11-23):** `.err` files deleted; Granite peak-RAM measurements and memory docs (PR to main);
+  sections 2–5 not started (context).
 - **Round 6 (2026-11-23):** permissions/decisions + Granite vetting `ef1f971`; Granite vs MiniLM on v1 dev + NAS `7dd7a0e`;
   default switch `9d0f72d`, PR #7 merge `d824cb8`; closing HANDOFF commit. Sections 4–5 not started (context).
   Tests: 221 nai-core, 119 evals/training.

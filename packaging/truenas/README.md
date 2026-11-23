@@ -14,6 +14,9 @@ permissions yet (manage nAI groups in nAI). Design: [docs/architecture/nas-adapt
 
 ## 2. Install the app
 
+Memory: keep `mem_limit: 4g` (nAI 0.7.0 peaks around 1.8 GB with the default model; the reranker's `auto`
+policy stays off below 8 GB). If you force `NAI_RERANKER=on`, raise it to 5g (peak ~3.3 GB).
+
 Use nai-core **0.6.0** or later (the compose file does): 0.5.0 predates the TrueNAS adapter, and when TrueNAS
 runs it as the `apps` user it can't download its embedding model (fixed in 0.6.0, see CHANGELOG "Image runs
 as any user").
