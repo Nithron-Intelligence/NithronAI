@@ -375,12 +375,14 @@ class ShareCandidateInfo(BaseModel):
     path: str
     source: str = "mount"
     already_added: bool = False
+    mounted: bool = True
 
 
 class ShareDiscovery(BaseModel):
     platform: str
     platform_name: str
     capabilities: dict[str, bool]
+    status: dict[str, Any] = Field(default_factory=dict)
     shares: list[ShareCandidateInfo]
 
 

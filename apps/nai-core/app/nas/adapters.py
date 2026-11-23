@@ -7,6 +7,7 @@ and the management MCP server are planned per adapter.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Any
 
 from .base import Capabilities, ShareCandidate, discover_mounted_shares
 
@@ -21,6 +22,9 @@ class GenericAdapter:
 
     def discover_shares(self, roots: list[str], existing: list[str]) -> list[ShareCandidate]:
         return discover_mounted_shares(roots, existing)
+
+    def platform_status(self) -> dict[str, Any]:
+        return {}
 
 
 @dataclass(frozen=True)

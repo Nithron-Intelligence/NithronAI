@@ -6,7 +6,7 @@ Environment-based configuration using pydantic-settings
 import os
 from functools import lru_cache
 
-from pydantic import Field, field_validator
+from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings
 
 DEFAULT_OLLAMA_BASE_URL = "http://localhost:11434"
@@ -105,7 +105,16 @@ class Settings(BaseSettings):
     ocr_languages: str = Field(default="eng+deu", description="Tesseract language codes, '+'-separated")
 
     # NAS platform adapter (docs/architecture/nas-adapters.md); set by packaging
-    nas_platform: str = Field(default="generic", description="NAS adapter: generic | nithronos")
+    nas_platform: str = Field(default="generic", description="NAS adapter: generic | nithronos | truenas")
+    # TrueNAS adapter (read-only discovery over the JSON-RPC WebSocket API; packaging/truenas/README.md)
+    truenas_url: str = Field(default="", description="wss://<truenas-host>/api/current (wss only)")
+    truenas_api_key: SecretStr = Field(
+        default=SecretStr(""), description="API key of a dedicated read-only TrueNAS user (never logged)"
+    )
+    truenas_ca_file: str = Field(
+        default="", description="CA certificate for a self-signed TrueNAS certificate"
+    )
+    truenas_timeout: float = Field(default=15.0, description="Seconds per TrueNAS API call")
 
     # Sources (folders on the NAS that are indexed in place and kept in sync)
     sources_allowed_roots: list[str] = Field(
