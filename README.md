@@ -7,7 +7,9 @@
 [![Built by Nithron](https://img.shields.io/badge/built_by-Nithron-0b8fe0.svg)](https://nithron.com/projects/)
 
 **nAI** lets you search and ask questions about the files on your NAS, privately, on your own
-hardware. It is built to become the built-in AI of [NithronOS](https://github.com/Nithron/NithronOS).
+hardware. It runs on any NAS that can run containers (TrueNAS, Unraid, Synology, QNAP, OpenMediaVault or
+plain Docker on Linux), and it is the built-in AI of [NithronOS](https://github.com/Nithron/NithronOS),
+the reference platform.
 
 Ask *"the insurance contract for the car"* and get `scan_0042.pdf`, page 2, even though the file
 name says nothing and the contract is in German.
@@ -48,6 +50,13 @@ This starts:
 
 A catalog template lives in [`packaging/nithronos/`](packaging/nithronos/). It mounts the NithronOS
 shares (`/srv/shares`) read-only.
+
+### Other NAS systems
+
+On TrueNAS (custom app via YAML), Unraid, Synology (Container Manager project), QNAP (Container Station)
+or OpenMediaVault (compose plugin), use the Compose file from Option 1 and mount your shares read-only under
+`/shares`. Native packages for these platforms are planned; see
+[docs/architecture/nas-adapters.md](docs/architecture/nas-adapters.md).
 
 ### Option 3: Local Development
 
@@ -254,12 +263,12 @@ Latest baseline: [`evals/results/baseline-2026-11-22.md`](evals/results/baseline
 
 ## 🛣️ Roadmap
 
-The goal: nAI as **the AI that knows your NAS**, shipped as a NithronOS app. Alongside it, Nithron AI is
+The goal: nAI as **the AI that knows your NAS**, on any NAS OS, with NithronOS as the reference platform
+([ADR-0004](docs/ADRs/0004-nas-adapter-layer.md), [NAS adapters](docs/architecture/nas-adapters.md)). Alongside it, Nithron AI is
 becoming a small lab that builds private, local models for NAS-class hardware, starting with the models nAI
 uses: see the **[lab roadmap](docs/lab/ROADMAP.md)** and [ADR-0002](docs/ADRs/0002-nithron-ai-lab-direction.md).
 
-Releases: **v0.4.0** is the latest tagged release (image `ghcr.io/nithron/nithronai/nai-core:0.4.0`).
-`main` is **0.5.0**, not tagged yet; see [CHANGELOG.md](CHANGELOG.md).
+Releases: **v0.5.0** (2026-11-23) is the latest release; see [CHANGELOG.md](CHANGELOG.md).
 
 - [x] **Phase 0 — Foundation** (v0.3): auth on every endpoint, SQLite storage, persistent chat,
       SSRF-safe URL ingestion, green CI
@@ -276,7 +285,8 @@ Releases: **v0.4.0** is the latest tagged release (image `ghcr.io/nithron/nithro
 - [ ] **Phase 3 — Everywhere**: NithronOS desktop/mobile clients, photo search
 - [ ] **Lab Stage 0 — Measurement** (in progress): nai-bench v0 (56 questions, 27 files, 5 languages),
       retrieval and answer-quality evals, Ollama end-to-end test, first baseline. Next: nai-bench v1 with
-      a test split, then the first Nithron model (`nithron-embed-small`)
+      a test split, then the first Nithron models (Nithron Vane 1 and Loupe 1, see
+      [model names](docs/lab/MODEL_NAMING.md))
 
 ---
 
