@@ -38,7 +38,14 @@ from typing import Any
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent))
 
-from naibench import QUESTIONS_FILE, REVIEW_STATUSES, _item_from_json, review_summary, validate  # noqa: E402
+from naibench import (  # noqa: E402
+    QUESTIONS_FILE,
+    REVIEW_STATUSES,
+    _item_from_json,
+    review_summary,
+    split_file_kind,
+    validate,
+)
 
 SRC_DIR = HERE / "corpus-src"
 MANIFEST = HERE / "corpus-manifest.json"
@@ -237,7 +244,7 @@ def default_reviewer() -> str:
     return name or os.environ.get("USER", "unknown")
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Review nai-bench questions one at a time")
     parser.add_argument("--file", type=Path, default=QUESTIONS_FILE)
     parser.add_argument("--reviewer", default=None, help="your name (default: git config user.name)")
@@ -246,10 +253,17 @@ def main() -> int:
         "--no-editor", action="store_true", help="edit fixes field by field instead of $EDITOR"
     )
     parser.add_argument("--summary", action="store_true", help="print counts per review status and exit")
-    args = parser.parse_args()
+    parser.add_argument(
+        "--test-split",
+        action="store_true",
+        help="allow opening a test split (questions-test*.jsonl) for human review; never use it for tuning",
+    )
+    args = parser.parse_args(argv)
+    if split_file_kind(args.file) == "test" and not args.test_split:
+        parser.error(f"{args.file.name} is the test split: pass --test-split to review it (people only)")
 
     if args.summary:
-        counts = review_summary(args.file)
+        counts = review_summary(args.file, allow_test=args.test_split)
         print(
             " ".join(f"{s}={counts[s]}" for s in REVIEW_STATUSES),
             f"reviewed={counts['reviewed']}/{counts['total']}",
@@ -268,7 +282,7 @@ def main() -> int:
         print("\nstopped; decisions made so far are saved")
         return 0
     print(f"\ndone: {done}")
-    counts = review_summary(args.file)
+    counts = review_summary(args.file, allow_test=args.test_split)
     print(f"reviewed so far: {counts['reviewed']} of {counts['total']}")
     return 0
 

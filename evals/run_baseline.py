@@ -32,7 +32,15 @@ sys.path[:0] = [str(EVALS), str(EVALS / "retrieval"), str(EVALS / "answers"), st
 
 import eval_answers  # noqa: E402
 import eval_retrieval  # noqa: E402
-from naibench import MANIFEST_FILE, QUESTIONS_FILE, NaiClient, load_items, review_summary  # noqa: E402
+from naibench import (  # noqa: E402
+    FINAL_RUN_HELP,
+    QUESTIONS_FILE,
+    NaiClient,
+    cli_load_items,
+    manifest_for,
+    review_summary,
+    split_file_kind,
+)
 
 from app.nithron_models import FAMILIES, parse_model_id  # noqa: E402
 
@@ -73,7 +81,7 @@ def nithron_models_in(model_ids: dict[str, str | None]) -> list[dict[str, str]]:
     return found
 
 
-def metadata(client: NaiClient, label: str) -> dict[str, Any]:
+def metadata(client: NaiClient, label: str, bench: Path = QUESTIONS_FILE) -> dict[str, Any]:
     health = client.detailed_health()
     return {
         "label": label,
@@ -84,8 +92,10 @@ def metadata(client: NaiClient, label: str) -> dict[str, Any]:
         "embeddings": {k: (health.get("embeddings") or {}).get(k) for k in ("provider", "model")},
         "index": health.get("index"),
         "dataset": {
-            "questions_sha256": sha256_file(QUESTIONS_FILE),
-            "corpus_manifest_sha256": sha256_file(MANIFEST_FILE),
+            "questions_file": bench.name,
+            "split": split_file_kind(bench),
+            "questions_sha256": sha256_file(bench),
+            "corpus_manifest_sha256": sha256_file(manifest_for(bench)),
         },
         "client_host": {"platform": platform.platform(), "python": platform.python_version()},
         "nithron_models": nithron_models_in(
@@ -189,7 +199,7 @@ def markdown(report: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Run the nai-bench baseline")
     parser.add_argument("--api-url", default="http://localhost:8000")
     parser.add_argument("--api-key", default=None)
@@ -210,21 +220,24 @@ def main() -> int:
     )
     parser.add_argument("--notes", help="free text for the summary, e.g. the hardware the LLM ran on")
     parser.add_argument("--out-dir", type=Path, default=RESULTS_DIR)
-    args = parser.parse_args()
+    parser.add_argument("--bench", type=Path, default=QUESTIONS_FILE, help="questions file (v0 by default)")
+    parser.add_argument("--final-run", action="store_true", help=FINAL_RUN_HELP)
+    args = parser.parse_args(argv)
 
-    client = NaiClient(args.api_url, args.api_key)
-    client.wait_until_up()
-    if args.index_corpus:
-        client.wait_until_indexed(client.ensure_source(args.index_corpus))
-    items = load_items(reviewed_only=args.reviewed_only)
+    # Load (and check the split guard) before touching the server.
+    items = cli_load_items(args.bench, args.reviewed_only, args.final_run, args.label)
     if not items:
         raise SystemExit(
             "no items to evaluate (with --reviewed-only, review some first: evals/nai-bench/review.py)"
         )
+    client = NaiClient(args.api_url, args.api_key)
+    client.wait_until_up()
+    if args.index_corpus:
+        client.wait_until_indexed(client.ensure_source(args.index_corpus))
     methods = [m.strip() for m in args.methods.split(",") if m.strip()]
-    meta = metadata(client, args.label)
+    meta = metadata(client, args.label, args.bench)
     meta["notes"] = args.notes
-    counts = review_summary()
+    counts = review_summary(args.bench, allow_test=args.final_run)
     meta["review"] = {
         **counts,
         "scope": "reviewed items only" if args.reviewed_only else "all non-rejected items",

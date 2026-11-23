@@ -29,12 +29,13 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from naibench import (
+    FINAL_RUN_HELP,
     QUESTIONS_FILE,
     BenchItem,
     NaiClient,
+    cli_load_items,
     hit_at_k,
     is_cross_lingual,
-    load_items,
     load_manifest,
     matches_gold,
     mean,
@@ -148,7 +149,7 @@ def print_summary(report: dict[str, Any], methods: list[str]) -> None:
         )
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Evaluate nAI retrieval on nai-bench")
     parser.add_argument("--bench", type=Path, default=QUESTIONS_FILE, help="questions.jsonl")
     parser.add_argument("--api-url", default="http://localhost:8000")
@@ -164,9 +165,11 @@ def main() -> int:
         help="create a 'nai-bench' source for this path (as the server sees it) and wait until indexed",
     )
     parser.add_argument("--output", type=Path, help="write the full report as JSON")
-    args = parser.parse_args()
+    parser.add_argument("--final-run", action="store_true", help=FINAL_RUN_HELP)
+    parser.add_argument("--label", default="eval_retrieval", help="run label for the test ledger")
+    args = parser.parse_args(argv)
 
-    items = load_items(args.bench, reviewed_only=args.reviewed_only)
+    items = cli_load_items(args.bench, args.reviewed_only, args.final_run, args.label)
     methods = [m.strip() for m in args.methods.split(",") if m.strip()]
     k_values = tuple(int(k) for k in args.k_values.split(","))
     client = NaiClient(args.api_url, args.api_key)
