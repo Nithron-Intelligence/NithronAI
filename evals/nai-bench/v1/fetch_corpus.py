@@ -8,8 +8,9 @@ SHA-256 (and, for Project Gutenberg books, the SHA-256 of the download before th
 transform). Files are stored byte-exact as downloaded, except:
 
 - ``gutenberg-strip``: Project Gutenberg's header and licence (everything up to and including the
-  ``*** START OF ...`` line, and from the ``*** END OF ...`` line on) are removed, as V1_PLAN.md requires;
-  the body is kept byte-exact.
+  ``*** START OF ...`` line, and from the ``*** END OF ...`` line on, plus an "End of [the] Project
+  Gutenberg ..." line just before it in older ebooks) are removed, as V1_PLAN.md requires; the body is kept
+  byte-exact.
 
 Only openly reusable sources belong in ``sources.json`` (official texts, US federal works, public-domain
 books); fictional documents are written by ``build_corpus.py`` and keep their own manifest entries.
@@ -23,6 +24,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import subprocess
 import sys
 import tempfile
@@ -62,7 +64,13 @@ def gutenberg_strip(data: bytes) -> bytes:
     end = next((i for i, line in enumerate(lines) if line.startswith(b"*** END OF")), None)
     if start is None or end is None or end <= start:
         raise ValueError("Project Gutenberg START/END markers not found")
-    body = b"".join(lines[start + 1 : end]).strip(b"\r\n") + b"\n"
+    body_lines = lines[start + 1 : end]
+    # Older ebooks also end with "End of [the] Project Gutenberg['s] ..." just before the END marker.
+    for i in range(len(body_lines) - 1, max(-1, len(body_lines) - 16), -1):
+        if re.match(rb"\s*End of (the )?Project Gutenberg", body_lines[i]):
+            body_lines = body_lines[:i]
+            break
+    body = b"".join(body_lines).strip(b"\r\n") + b"\n"
     if b"Project Gutenberg" in body[:2000] or b"Project Gutenberg" in body[-2000:]:
         raise ValueError("Project Gutenberg text left at the start or end of the body")
     return body
