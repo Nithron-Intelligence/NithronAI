@@ -26,7 +26,8 @@ Phase 2a: nAI works with other AI apps.
 - Renaming a source rewrites its chunks' context headers and re-embeds them.
 - NithronOS template: service named `app`, absolute data path, explicit memory limit, trusted proxy range.
 - License renamed to **Nithron Community License (NCL) v1.0** (same terms as the NithronOS Community
-  License).
+  License). `LICENSE` synced byte-for-byte with NithronOS (adds the product name Niro to the trademark
+  list); `NOTICE` lists Niro too.
 - The release workflow creates GitHub Releases; GitHub Actions updated to their Node 24 versions.
 
 ### Fixed
