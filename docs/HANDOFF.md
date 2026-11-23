@@ -34,8 +34,9 @@
   cutoff emptied no result list on v1 (10 452 chunks); the failure is ranking (books outrank the right document).
   LLM answers correct 0.455, correct refusal 0.30. Fixed on the way: evaluate() used v0's manifest for v1 items
   (`22336af`). Bench stack stopped; v1 index kept in the `nai-bench_nai-bench-v1-data` volume.
-- **Round 4 next command:** section 4, 50 more v1 questions (v1-0101…0150: 26 easy, 3 medium, 21 hard → 45/60/45
-  of 150), generator in the scratchpad (`…/scratchpad/questions/gen_v1_questions.py 125`, then 150).
+- **Round 4, section 4 in progress:** v1 questions 125/150 (v1-0101…0125 added: 10 German, 10 English, 5 Swedish).
+- **Round 4 next command:** `python …/scratchpad/questions/gen_v1_questions.py 150` (adds v1-0126…0150), validate,
+  close out; then section 5 (next-stage plan in HANDOFF).
 - **Branches:** `main` = `lab/stage-0` (fast-forwarded after the release merge), both pushed;
   `lab/stage-0` tracks `origin/lab/stage-0`. Work continues on `lab/stage-0`; push it after each close-out.
 - **Push authorization:** on 2026-11-23 the human authorized this session to commit, merge and push as them
