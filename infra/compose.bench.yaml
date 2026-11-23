@@ -25,8 +25,9 @@ services:
     ports:
       - "127.0.0.1:${NAI_PORT:-8000}:8000"
     volumes:
-      - nai-bench-data:/app/data
-      - ../evals/nai-bench/corpus:/shares/nai-bench:ro
+      # v1: NAI_BENCH_CORPUS=../evals/nai-bench/v1/corpus NAI_BENCH_DATA=nai-bench-v1-data (its own index)
+      - ${NAI_BENCH_DATA:-nai-bench-data}:/app/data
+      - ${NAI_BENCH_CORPUS:-../evals/nai-bench/corpus}:/shares/nai-bench:ro
     environment:
       - NAI_LOG_LEVEL=INFO
       - NAI_AUTH_ENABLED=false
@@ -59,4 +60,5 @@ services:
 
 volumes:
   nai-bench-data:
+  nai-bench-v1-data:
   ollama-models:
