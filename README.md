@@ -110,6 +110,13 @@ NAI_AUTH_ALLOW_REGISTRATION=false         # only admins create accounts after th
 NAI_TRUSTED_PROXIES='["10.0.0.0/8"]'
 ```
 
+Memory (0.7.0, granite 97m default, measured on a 2-CPU / 4-GB NAS profile): nai-core peaks at **~1.8 GB**
+(reranker off) and **~3.3 GB** with the reranker forced on. Minimum: a **3g** container limit and a NAS with
+**4 GB** RAM in total; recommended **8 GB** NAS RAM. A 2 GB NAS is too small for the default model (set
+`NAI_EMBEDDINGS_MODEL=sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` there, ~1 GB peak). Forcing
+the reranker on needs a **5g** limit (and is slow on NAS CPUs: ~20 s per search on 2 cores).
+
+
 See [`apps/nai-core/app/config.py`](apps/nai-core/app/config.py) for all options. `GET /system`
 (admin) shows the detected hardware, which features are active, and recommendations.
 
