@@ -6,7 +6,7 @@ Environment-based configuration using pydantic-settings
 import os
 from functools import lru_cache
 
-from pydantic import Field, SecretStr, field_validator
+from pydantic import Field, SecretStr, ValidationInfo, field_validator
 from pydantic_settings import BaseSettings
 
 DEFAULT_OLLAMA_BASE_URL = "http://localhost:11434"
@@ -138,7 +138,16 @@ class Settings(BaseSettings):
     default_top_k: int = Field(default=5, description="Default number of results")
 
     # Embeddings (semantic search). Vectors are stored in SQLite and searched in memory.
-    embeddings_enabled: bool = Field(default=True, description="Enable semantic (vector) search")
+    embeddings_enabled: bool = Field(
+        default=True, description="Master switch for semantic (vector) search; false = keyword-only"
+    )
+    # auto: on only when the memory fits the embedding model (hardware.embeddings_auto_decision: 2.5+ GB
+    # effective RAM); smaller boxes run keyword-only (BM25). No second, smaller embedding model.
+    embeddings: str = Field(
+        default="auto",
+        description="Semantic search: auto (on when there is enough memory) | on | off "
+        "(true/false/1/0/yes/no also work); NAI_EMBEDDINGS_ENABLED=false always means off",
+    )
     embeddings_provider: str = Field(
         default="auto",
         description="auto | fastembed | ollama | sentence-transformers",
@@ -194,9 +203,9 @@ class Settings(BaseSettings):
         description="Top-k fused candidates the reranker re-scores (NAI_RERANKER_CANDIDATES)",
     )
 
-    @field_validator("reranker")
+    @field_validator("reranker", "embeddings")
     @classmethod
-    def normalize_reranker_mode(cls, value: str) -> str:
+    def normalize_auto_mode(cls, value: str, info: ValidationInfo) -> str:
         mode = str(value).strip().lower()
         if mode in ("true", "1", "yes", "on"):
             return "on"
@@ -204,7 +213,8 @@ class Settings(BaseSettings):
             return "off"
         if mode == "auto":
             return "auto"
-        raise ValueError(f"NAI_RERANKER must be auto, on or off (or true/false), not {value!r}")
+        name = f"NAI_{(info.field_name or '').upper()}"
+        raise ValueError(f"{name} must be auto, on or off (or true/false), not {value!r}")
 
     # LLM
     llm_enabled: bool = Field(default=False, description="Enable LLM for answer generation")

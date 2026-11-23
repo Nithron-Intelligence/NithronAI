@@ -128,7 +128,7 @@
     "MEMORY_LIMIT": {
       "type": "string",
       "title": "Memory Limit",
-      "description": "Container memory limit. nAI 0.7.0 peaks around 1.8 GB (reranking off, the default here) and 3.3 GB with reranking on: keep at least 3g, use 5g if you turn reranking on.",
+      "description": "Container memory limit. nAI 0.7.0 peaks around 1.8 GB (reranking off, the default here) and 3.3 GB with reranking on: keep at least 3g, use 5g if you turn reranking on. Below 2.5g nAI runs keyword-only (no semantic search).",
       "default": "3g",
       "pattern": "^[0-9]+[mMgG]$"
     },

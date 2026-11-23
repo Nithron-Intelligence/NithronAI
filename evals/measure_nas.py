@@ -134,7 +134,7 @@ def wait_for_embedding_model(client: NaiClient, timeout: float = 900) -> None:
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         emb = client.detailed_health().get("embeddings") or {}
-        if emb.get("state") in ("ready", "disabled", None):
+        if emb.get("state") in ("ready", "disabled", None):  # disabled: keyword-only mode
             return
         if emb.get("state") == "error":
             raise RuntimeError(f"embedding model failed: {emb.get('error')}")
@@ -165,9 +165,10 @@ def measure(args: argparse.Namespace) -> dict[str, Any]:
     for item in items[:5]:  # warm-up
         client.search(item.question, top_k=10, method="hybrid")
     search = []
+    methods: set[str] = set()  # "bm25" when nAI runs keyword-only (NAI_EMBEDDINGS=auto on a small box)
     for item in items:
         t = time.monotonic()
-        client.search(item.question, top_k=10, method="hybrid")
+        methods.add(client.search(item.question, top_k=10, method="hybrid").get("method", "?"))
         search.append(time.monotonic() - t)
 
     sampler.phase = "5-extractive-answers"
@@ -191,6 +192,9 @@ def measure(args: argparse.Namespace) -> dict[str, Any]:
         "nai_version": health.get("version"),
         "config": health.get("config"),
         "embeddings_model": (health.get("embeddings") or {}).get("model"),
+        "embeddings_mode": (health.get("embeddings") or {}).get("mode"),
+        "embeddings_reason": (health.get("embeddings") or {}).get("reason"),
+        "search_methods": sorted(methods),
         "review": review_summary(),
         "indexing": {
             "files": source.get("document_count"),
@@ -220,6 +224,13 @@ def measure(args: argparse.Namespace) -> dict[str, Any]:
     }
 
 
+def _embeddings_text(r: dict[str, Any]) -> str:
+    """Embedding model, or the keyword-only reason (results from before 0.7.0 have no mode)."""
+    if r.get("embeddings_mode") in ("off", "auto-off"):
+        return f"embeddings off (keyword-only; {r.get('embeddings_reason')})"
+    return f"embeddings `{r['embeddings_model']}`"
+
+
 def markdown(r: dict[str, Any]) -> str:
     env = "SIMULATED NAS" if r["environment"] == "simulated-nas" else "REAL NAS"
     lines = [
@@ -232,13 +243,13 @@ def markdown(r: dict[str, Any]) -> str:
         if r["environment"] == "simulated-nas"
         else "Measured on real NAS hardware.",
         "",
-        f"nAI {r['nai_version']}, embeddings `{r['embeddings_model']}`, reranker `{(r['config'] or {}).get('reranker')}`, "
+        f"nAI {r['nai_version']}, {_embeddings_text(r)}, reranker `{(r['config'] or {}).get('reranker')}`, "
         f"OCR on. nai-bench corpus: {r['indexing']['files']} files, {r['indexing']['chunks']} chunks.",
         "",
         "| Measurement | Value |",
         "|---|---|",
         f"| Indexing from scratch (scan + OCR + embeddings) | {r['indexing']['seconds']} s |",
-        f"| Search (hybrid), median / p95 | {r['search_seconds']['median']} s / {r['search_seconds']['p95']} s |",
+        f"| Search ({'/'.join(r.get('search_methods') or ['hybrid'])}), median / p95 | {r['search_seconds']['median']} s / {r['search_seconds']['p95']} s |",
         f"| Extractive answer, median / p95 | {r['extractive_answer_seconds']['median_total']} s / "
         f"{r['extractive_answer_seconds']['p95_total']} s |",
     ]

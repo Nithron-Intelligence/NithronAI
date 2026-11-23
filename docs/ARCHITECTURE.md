@@ -89,6 +89,14 @@ model see but users don't; the embedding input is `"{context}\n{text}"`
   `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` (its training lineage has non-commercial data, see `docs/lab/vane1-base-model-audit.md`).
   Changing the model ID triggers the "ask before re-indexing" flow. The 0.3 `embeddings_min_score` below was tuned
   for MiniLM; Granite passed nai-bench v1 dev with it, but re-check it when tuning.
+- **Keyword-only mode** (`NAI_EMBEDDINGS=auto|on|off`, default auto; `NAI_EMBEDDINGS_ENABLED=false` is the
+  master switch and always means off). `EmbeddingService.decision()` resolves the mode once per process
+  (`on`, `off`, `auto-on`, `auto-off`); auto asks `hardware.embeddings_auto_decision`, which turns semantic search
+  on only with **2.5+ GB** effective memory (`HardwareInfo.memory_gb`: cgroup limit capped by host RAM; Granite
+  peaks at 1 759 MiB plus ~40 % headroom). When off, the model is never loaded, the worker never starts, nothing
+  is re-embedded, stored vectors are kept but `reindex_required` stays false (no re-index prompt), `auto`/`hybrid`
+  search is BM25 only and `method=embedding` returns 400. `/system` → `features.embeddings.mode` and `reason`;
+  the web UI shows a notice for `auto-off`. There is no smaller fallback model (decision 2026-11-23).
 - Vectors are float32 blobs in the `chunk_embeddings` table, searched with numpy in memory (no vector
   database).
 - Filters: `embeddings_min_score` 0.3 **and** a relative cutoff of 0.5 × the best score. These were tuned

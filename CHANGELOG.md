@@ -5,6 +5,16 @@ All notable changes to nAI. Versions follow [semantic versioning](https://semver
 
 ## [Unreleased]
 
+### Added
+- **Keyword-only mode for small boxes:** `NAI_EMBEDDINGS=auto|on|off` (default `auto`). Below 2.5 GB of effective
+  memory (container limit, capped by the NAS's RAM) nAI doesn't load the embedding model and searches with keywords
+  (BM25) only: ~150 MB RAM at a 2g limit, search ~2 ms on the nai-bench corpus. On nai-bench v1 dev (PROVISIONAL)
+  keyword-only scores MRR 0.842 / Hit@5 0.894 (hybrid with Granite 0.834 / 0.915); questions in another language
+  than the file drop to Hit@5 0.643 (0.714). The system panel says why and how to turn semantic search on;
+  `/system` reports `features.embeddings.mode` (`on`, `off`, `auto-on`, `auto-off`) and `reason`. Upgrading a
+  2 GB box from 0.6.0 keeps the old vectors and shows no re-index prompt. `NAI_EMBEDDINGS_ENABLED=false` still
+  turns semantic search off everywhere.
+
 ### Changed
 - **New default embedding model: `ibm-granite/granite-embedding-97m-multilingual-r2`** (IBM Granite Embedding R2, Apache-2.0, trained without MS MARCO or other
   non-commercial data). The old default, `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`, was distilled from a teacher trained on
@@ -19,7 +29,7 @@ All notable changes to nAI. Versions follow [semantic versioning](https://semver
 - **Higher RAM need:** with the new model nai-core peaks at about 1.8 GB (was about 1.0 GB) on a 2-CPU / 4-GB NAS
   profile, about 3.3 GB with the reranker forced on. Minimum: 3g container limit, 4 GB NAS RAM; recommended 8 GB.
   The shipped templates already use 3g (NithronOS) and 4g (TrueNAS); their texts now state these numbers. A 2 GB NAS
-  is too small for the new default (keep the old model there).
+  (or a limit below 2.5g) runs keyword-only (see Added).
 
 ## [0.6.0] – 2026-11-23
 

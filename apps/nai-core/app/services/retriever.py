@@ -166,7 +166,7 @@ class RetrieverService:
         still loading (first start downloads it) searches use BM25 only. ``wait=True``
         loads it synchronously (used when a client explicitly asks for embedding search).
         """
-        if not (self.settings.embeddings_enabled and self.embeddings):
+        if self.embeddings is None or not self.embeddings.wanted():
             return False
         ready = self.embeddings.is_available() if wait else self.embeddings.is_ready()
         # After an embedding-model change, semantic search waits for the admin to confirm a re-index;
@@ -199,6 +199,10 @@ class RetrieverService:
                 raise ValueError(
                     "Embedding search is paused: the embedding model changed and an admin must confirm "
                     "a re-index (POST /system/embeddings/reindex)"
+                )
+            if self.embeddings is not None and not self.embeddings.wanted():
+                raise ValueError(
+                    f"Embedding search is off, keyword search only ({self.embeddings.decision()[1]})"
                 )
             raise ValueError("Embedding search is not available (see /system for details)")
 
