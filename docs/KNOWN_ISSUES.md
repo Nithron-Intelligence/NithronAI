@@ -5,10 +5,12 @@ done, delete it here and mention it in `CHANGELOG.md`.
 
 ## Known issues
 
-- **No multilingual reranker by default.** The bundled cross-encoder (`Xenova/ms-marco-MiniLM-L-6-v2`) is
-  English-only and trained on MS MARCO (non-commercial data terms), and it didn't improve nai-bench, so
-  reranking is off by default everywhere (`config.py`, `infra/docker-compose.yml`, the NithronOS template).
-  Candidates are compared in `evals/results/rerankers-*.md`; Nithron Loupe 1 is meant to replace it.
+- **Reranking is too slow for small NAS CPUs.** The multilingual default (`BAAI/bge-reranker-v2-m3-int8`)
+  takes ~2 s per question for the top 10 on 2 cores (1.1 s on 4, 0.7 s on 8 Zen 4 cores;
+  `evals/results/rerankers-threads-2026-11-23.md`), so `NAI_RERANKER=auto` keeps it off below 8 effective
+  cores and the NithronOS template sets it off. Nithron Loupe 1 (a distilled bge) should make it cheap
+  enough to run on NAS CPUs. Its ONNX build comes from `onnx-community/bge-reranker-v2-m3-ONNX`, whose card
+  states no license (base model Apache-2.0); Loupe 1 will ship our own export.
 - **MCP clients that only do OAuth can't connect.** nAI's MCP server accepts API keys (bearer tokens);
   clients that require OAuth (for example Claude Desktop custom connectors) can't use it yet.
 - **Vector search is brute force in memory.** Fine up to roughly 10^5–10^6 chunks; beyond that, move to an

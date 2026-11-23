@@ -1,0 +1,28 @@
+{
+  "date": "2026-11-23",
+  "model": "BAAI/bge-reranker-v2-m3-int8 (fastembed, onnxruntime CPU)",
+  "candidates": "top 10 hybrid candidates per question, 45 answerable nai-bench v0 questions (provisional: items unreviewed)",
+  "host": "AMD Ryzen 9 7950X (Zen 4), thread count limited per run",
+  "threads": {
+    "2": {
+      "median": 2.08,
+      "p90": 2.891,
+      "mrr": 0.8778,
+      "source": "rerankers-2026-11-23 (round 2)"
+    },
+    "4": {
+      "median": 1.092,
+      "p90": 1.521,
+      "mrr": 0.8778,
+      "peak_rss_mb": 1476,
+      "source": "measured 2026-11-23 (round 3)"
+    },
+    "8": {
+      "median": 0.699,
+      "p90": 1.003,
+      "mrr": 0.8778,
+      "peak_rss_mb": 1474,
+      "source": "measured 2026-11-23 (round 3)"
+    }
+  }
+}

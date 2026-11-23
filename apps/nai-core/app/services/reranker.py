@@ -18,16 +18,24 @@ class RerankerService:
         self._model = None
         self._error: str | None = None
         self._lock = threading.Lock()
+        self._auto: tuple[bool, str] | None = None  # hardware decision for mode=auto, computed once
+
+    def decision(self) -> tuple[bool, str]:
+        """(on?, reason) for the configured mode; auto asks the hardware policy (cached)."""
+        mode = self.settings.reranker  # normalized to auto | on | off by Settings
+        if mode == "on":
+            return True, "on (set by NAI_RERANKER)"
+        if mode == "off":
+            return False, "off (set by NAI_RERANKER)"
+        if self._auto is None:
+            from ..hardware import detect_hardware, reranker_auto_decision
+
+            on, why = reranker_auto_decision(detect_hardware())
+            self._auto = (on, f"auto, {'on' if on else 'off'}: {why}")
+        return self._auto
 
     def wanted(self) -> bool:
-        mode = self.settings.reranker.lower()
-        if mode in ("true", "1", "yes", "on"):
-            return True
-        if mode == "auto":
-            from ..hardware import detect_hardware
-
-            return detect_hardware().tier != "low"
-        return False
+        return self.decision()[0]
 
     def _load(self):
         if self._model is not None or self._error is not None:
@@ -67,6 +75,8 @@ class RerankerService:
         return {
             "mode": self.settings.reranker,
             "active": self.wanted(),
+            "reason": self.decision()[1],
+            "top_k": self.settings.reranker_candidates,
             "model": self.settings.reranker_model,
             "error": self._error,
         }
