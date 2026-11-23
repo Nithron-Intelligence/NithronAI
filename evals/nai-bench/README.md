@@ -263,7 +263,12 @@ python evals/run_baseline.py --reviewed-only   # published numbers: reviewed ite
 ```
 
 The tool shows each question with its gold answer, facts and an excerpt of each gold source, and saves
-every decision immediately (fixes open `$EDITOR`, or go field by field with `--no-editor`). Every report
+every decision immediately (fixes open `$EDITOR`, or go field by field with `--no-editor`). It is made for
+short sessions: each item shows the progress (`[23/100 reviewed · item 4 of 77 this session]`), `q`,
+Ctrl+C or Ctrl+D stop at once without losing a decision, the next session resumes after the last item you
+looked at (skipped items come back at the end of the round; the position is kept in
+`~/.cache/nai-bench/review-state.json`), and every session ends with a one-line summary. v1:
+`--file evals/nai-bench/v1/questions-dev.jsonl` (the test split also needs `--test-split`). Every report
 from `run_baseline.py` states how many items are reviewed, and runs without `--reviewed-only` are marked
 **PROVISIONAL**. All 56 v0 items are unreviewed as of 2026-11-23. The plan for v1 is in
 [V1_PLAN.md](V1_PLAN.md).

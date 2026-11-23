@@ -302,10 +302,16 @@ def test_review_tool_records_accept_fix_reject(tmp_path: Path) -> None:
         ]
     )
     done = review.run(
-        path, "Test Reviewer", None, ask=lambda _: next(answers), out=lambda _: None, use_editor=False
+        path,
+        "Test Reviewer",
+        None,
+        ask=lambda _: next(answers),
+        out=lambda _: None,
+        use_editor=False,
+        state=tmp_path / "state.json",
     )
 
-    assert done == {"accepted": 1, "fixed": 1, "rejected": 1, "skipped": 0}
+    assert done == {"accepted": 1, "fixed": 1, "rejected": 1, "skipped": 0, "stopped": 1}
     rows = {r["id"]: r for r in review.read_rows(path)}
     assert rows["nb-001"]["review_status"] == "accepted" and rows["nb-001"]["reviewed_by"] == "Test Reviewer"
     assert rows["nb-002"]["review_status"] == "fixed" and rows["nb-002"]["review_note"] == "typo fixed"
@@ -353,7 +359,13 @@ def test_review_tool_refuses_invalid_fixes(tmp_path: Path) -> None:
     )
     messages: list[str] = []
     done = review.run(
-        path, "Test Reviewer", ["nb-001"], ask=lambda _: next(answers), out=messages.append, use_editor=False
+        path,
+        "Test Reviewer",
+        ["nb-001"],
+        ask=lambda _: next(answers),
+        out=messages.append,
+        use_editor=False,
+        state=tmp_path / "state.json",
     )
     assert done["fixed"] == 1
     assert any("not valid" in m for m in messages)

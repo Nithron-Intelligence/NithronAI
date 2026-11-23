@@ -12,12 +12,16 @@ gold source, and records your decision in questions.jsonl:
   q  quit
 
 Only accepted and fixed items count toward published numbers (see V1_PLAN.md). Every
-decision is written immediately, so you can stop at any time.
+decision is written immediately, so you can stop at any time (q, Ctrl+C or Ctrl+D) and lose nothing.
+Each item shows your progress ("23/100 reviewed"); the next session resumes after the last item you
+looked at (skipped items come back at the end of the round), and every session ends with a one-line
+summary. The position is kept in ~/.cache/nai-bench/review-state.json (NAI_REVIEW_STATE overrides).
 
     python evals/nai-bench/review.py                    # next unreviewed items
     python evals/nai-bench/review.py --reviewer "Jane"  # default: git config user.name
     python evals/nai-bench/review.py --id nb-038        # review (or re-review) one item
     python evals/nai-bench/review.py --summary          # counts per status
+    python evals/nai-bench/review.py --file evals/nai-bench/v1/questions-dev.jsonl   # v1 dev split
 """
 
 from __future__ import annotations
@@ -42,13 +46,15 @@ from naibench import (  # noqa: E402
     QUESTIONS_FILE,
     REVIEW_STATUSES,
     _item_from_json,
+    load_manifest,
+    manifest_for,
     review_summary,
     split_file_kind,
     validate,
 )
 
-SRC_DIR = HERE / "corpus-src"
-MANIFEST = HERE / "corpus-manifest.json"
+# Corpus files shown as text when the manifest has no source text for them (downloaded v1 files).
+TEXT_SUFFIXES = (".txt", ".md", ".csv", ".html", ".htm", ".xml", ".json", ".yml", ".yaml", ".py", ".sh")
 EXCERPT_CHARS = 700
 EDITABLE = (
     "question",
@@ -77,14 +83,21 @@ def write_rows(path: Path, rows: list[dict[str, Any]]) -> None:
     tmp.replace(path)
 
 
-def source_texts() -> dict[str, str]:
-    """corpus file -> its source text (without front matter)."""
-    manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
+def source_texts(questions: Path) -> dict[str, str]:
+    """corpus file -> text to excerpt: its source text (without front matter) if the manifest names one,
+    else the corpus file itself when it is a text file."""
+    manifest_path = manifest_for(questions)
     texts = {}
-    for entry in manifest:
-        src = HERE / entry["source_text"]
-        body = src.read_text(encoding="utf-8").split("\n---\n", 1)[-1]
-        texts[entry["file"]] = body
+    for entry in load_manifest(manifest_path):
+        if entry.get("source_text"):
+            src = manifest_path.parent / entry["source_text"]
+            texts[entry["file"]] = src.read_text(encoding="utf-8").split("\n---\n", 1)[-1]
+            continue
+        corpus_file = manifest_path.parent / "corpus" / entry["file"]
+        if corpus_file.suffix.lower() in TEXT_SUFFIXES and corpus_file.is_file():
+            texts[entry["file"]] = corpus_file.read_text(encoding="utf-8", errors="replace")
+        else:
+            texts[entry["file"]] = f"(not a text file: open {corpus_file})"
     return texts
 
 
@@ -100,9 +113,9 @@ def excerpt(text: str, facts: list[str]) -> str:
     return text[:EXCERPT_CHARS].strip() + ("…" if len(text) > EXCERPT_CHARS else "")
 
 
-def show(row: dict[str, Any], texts: dict[str, str], out: Callable[[str], None]) -> None:
+def show(row: dict[str, Any], texts: dict[str, str], out: Callable[[str], None], progress: str = "") -> None:
     out("")
-    out("=" * 78)
+    out("=" * 78 + (f"\n{progress}" if progress else ""))
     out(
         f"{row['id']}  [{row['category']}, {row['difficulty']}, {row['language']}]  status: {row.get('review_status')}"
     )
@@ -157,13 +170,14 @@ def edit_by_prompt(row: dict[str, Any], ask: Callable[[str], str]) -> dict[str, 
     return updated
 
 
-def check_item(row: dict[str, Any]) -> list[str]:
+def check_item(row: dict[str, Any], questions: Path | None = None) -> list[str]:
     """Validate one (edited) item the same way the loaders do; returns the problems."""
     try:
         item = _item_from_json(row)
     except (KeyError, TypeError) as e:
         return [f"missing or malformed field: {e}"]
-    return validate([item], check_counts=False)
+    manifest = load_manifest(manifest_for(questions)) if questions else None
+    return validate([item], manifest, check_counts=False)
 
 
 def decide(
@@ -172,6 +186,7 @@ def decide(
     ask: Callable[[str], str],
     out: Callable[[str], None],
     use_editor: bool = True,
+    questions: Path | None = None,
 ) -> dict[str, Any] | str:
     """Returns the updated row, or 'skip' / 'quit'."""
     while True:
@@ -188,7 +203,7 @@ def decide(
             except (subprocess.CalledProcessError, json.JSONDecodeError, OSError) as e:
                 out(f"edit failed ({e}); the item is unchanged")
                 continue
-            problems = check_item(fixed)
+            problems = check_item(fixed, questions)
             if problems:
                 out("the edited item is not valid, nothing saved:\n  " + "\n  ".join(problems))
                 continue
@@ -204,6 +219,65 @@ def decide(
         out("please answer a, f, r, s or q")
 
 
+def state_file() -> Path:
+    """Where review positions are kept (outside the repo): NAI_REVIEW_STATE, else the user cache."""
+    if os.environ.get("NAI_REVIEW_STATE"):
+        return Path(os.environ["NAI_REVIEW_STATE"])
+    cache = Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache")
+    return cache / "nai-bench" / "review-state.json"
+
+
+def load_position(state: Path, questions: Path) -> str | None:
+    """Id of the last item looked at in ``questions`` (None if none or unreadable)."""
+    try:
+        data = json.loads(state.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    value = data.get(str(questions.resolve())) if isinstance(data, dict) else None
+    return value if isinstance(value, str) else None
+
+
+def save_position(state: Path, questions: Path, item_id: str) -> None:
+    try:
+        data = json.loads(state.read_text(encoding="utf-8"))
+        data = data if isinstance(data, dict) else {}
+    except (OSError, ValueError):
+        data = {}
+    data[str(questions.resolve())] = item_id
+    state.parent.mkdir(parents=True, exist_ok=True)
+    tmp = state.with_suffix(".tmp")
+    tmp.write_text(json.dumps(data, indent=1) + "\n", encoding="utf-8")
+    tmp.replace(state)
+
+
+def todo_order(rows: list[dict[str, Any]], ids: list[str] | None, last_id: str | None) -> list[int]:
+    """Row indexes to review: the given ids, else unreviewed items starting after ``last_id``
+    (so skipped items come back at the end of a round instead of first)."""
+    if ids:
+        return [i for i, r in enumerate(rows) if r["id"] in ids]
+    todo = [i for i, r in enumerate(rows) if r.get("review_status", "unreviewed") == "unreviewed"]
+    last = next((i for i, r in enumerate(rows) if r["id"] == last_id), None)
+    if last is None:
+        return todo
+    return [i for i in todo if i > last] + [i for i in todo if i <= last]
+
+
+def decided(rows: list[dict[str, Any]]) -> int:
+    """Items with any decision (accepted, fixed or rejected)."""
+    return sum(1 for r in rows if r.get("review_status", "unreviewed") != "unreviewed")
+
+
+def summary_line(done: dict[str, int], rows: list[dict[str, Any]], questions: Path) -> str:
+    """One line: this session's decisions, then the file's overall progress."""
+    session = ", ".join(f"{done[k]} {k}" for k in ("accepted", "fixed", "rejected", "skipped"))
+    usable = sum(1 for r in rows if r.get("review_status") in ("accepted", "fixed"))
+    how = "stopped early" if done.get("stopped") else "done"
+    return (
+        f"{how}: {session} this session; {questions.name}: {decided(rows)}/{len(rows)} reviewed, "
+        f"{usable} usable (accepted or fixed), {len(rows) - decided(rows)} left"
+    )
+
+
 def run(
     path: Path,
     reviewer: str,
@@ -211,21 +285,30 @@ def run(
     ask: Callable[[str], str] = input,
     out: Callable[[str], None] = print,
     use_editor: bool = True,
+    state: Path | None = None,
 ) -> dict[str, int]:
+    """Review items until done or stopped; every decision and the position are saved at once.
+
+    q, Ctrl+C (KeyboardInterrupt) and Ctrl+D (EOFError) all stop cleanly with ``stopped`` = 1.
+    """
+    state = state or state_file()
     rows = read_rows(path)
-    texts = source_texts()
-    todo = [
-        i
-        for i, r in enumerate(rows)
-        if (r["id"] in ids if ids else r.get("review_status", "unreviewed") == "unreviewed")
-    ]
-    done = {"accepted": 0, "fixed": 0, "rejected": 0, "skipped": 0}
-    out(f"{len(todo)} item(s) to review as {reviewer!r}")
-    for index in todo:
-        show(rows[index], texts, out)
-        result = decide(rows[index], reviewer, ask, out, use_editor)
+    texts = source_texts(path)
+    todo = todo_order(rows, ids, None if ids else load_position(state, path))
+    done = {"accepted": 0, "fixed": 0, "rejected": 0, "skipped": 0, "stopped": 0}
+    out(f"{len(todo)} item(s) to review as {reviewer!r}; {decided(rows)}/{len(rows)} reviewed so far")
+    for number, index in enumerate(todo, start=1):
+        progress = f"[{decided(rows)}/{len(rows)} reviewed · item {number} of {len(todo)} this session]"
+        try:
+            show(rows[index], texts, out, progress)
+            result = decide(rows[index], reviewer, ask, out, use_editor, path)
+        except (KeyboardInterrupt, EOFError):
+            out("")  # the prompt line was left open
+            result = "quit"
         if result == "quit":
+            done["stopped"] = 1
             break
+        save_position(state, path, rows[index]["id"])
         if result == "skip":
             done["skipped"] += 1
             continue
@@ -233,6 +316,7 @@ def run(
         rows[index] = result
         write_rows(path, rows)  # every decision is saved at once
         done[result["review_status"]] += 1
+    out(summary_line(done, rows, path))
     return done
 
 
@@ -276,14 +360,7 @@ def main(argv: list[str] | None = None) -> int:
         known = {r["id"] for r in read_rows(args.file)}
         for missing in sorted(set(args.id) - known):
             print(f"warning: no item with id {missing!r}", file=sys.stderr)
-    try:
-        done = run(args.file, reviewer, args.id, use_editor=not args.no_editor)
-    except (EOFError, KeyboardInterrupt):
-        print("\nstopped; decisions made so far are saved")
-        return 0
-    print(f"\ndone: {done}")
-    counts = review_summary(args.file, allow_test=args.test_split)
-    print(f"reviewed so far: {counts['reviewed']} of {counts['total']}")
+    run(args.file, reviewer, args.id, use_editor=not args.no_editor)  # prints the one-line summary
     return 0
 
 
