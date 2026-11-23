@@ -80,7 +80,7 @@ PIPELINE = ("vane", "loupe", ("tern", "nox"))
 # Planned first versions and their bases (docs/lab/stage1-embedding-finetune.md). Status changes to
 # "released" only with a nai-bench result file backing the release (lab principle 4).
 PLANNED: dict[str, dict[str, str]] = {
-    "vane-1": {"base": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2", "status": "planned"},
+    "vane-1": {"base": "ibm-granite/granite-embedding-97m-multilingual-r2", "status": "planned"},
     "loupe-1": {"base": "BAAI/bge-reranker-v2-m3", "status": "planned"},
     "tern-1": {"base": "to be chosen (Stage 2)", "status": "planned"},
     "nox-1": {"base": "to be chosen (Stage 2/3)", "status": "planned"},

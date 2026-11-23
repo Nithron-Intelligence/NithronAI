@@ -86,7 +86,7 @@ NAI_SOURCES_SCAN_INTERVAL_SECONDS=900     # full incremental rescan (catches wha
 # Semantic search (vectors live in SQLite; no vector database)
 NAI_EMBEDDINGS_ENABLED=true
 NAI_EMBEDDINGS_PROVIDER=auto              # fastembed (ONNX, CPU) | ollama | sentence-transformers
-NAI_EMBEDDINGS_MODEL=sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
+NAI_EMBEDDINGS_MODEL=ibm-granite/granite-embedding-97m-multilingual-r2   # until 0.6.0: sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
 NAI_EMBEDDINGS_AUTO_REINDEX=false         # model changed? false: pause semantic search and ask an admin to re-index
 NAI_RERANKER=auto                         # auto | on | off: auto reranks the top 10 only on 8+ cores / 8+ GB RAM
 NAI_RERANKER_MODEL=BAAI/bge-reranker-v2-m3-int8   # multilingual; 0.57 GB download, ~1-1.5 GB RAM while running

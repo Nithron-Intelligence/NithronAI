@@ -5,6 +5,18 @@ All notable changes to nAI. Versions follow [semantic versioning](https://semver
 
 ## [Unreleased]
 
+### Changed
+- **New default embedding model: `ibm-granite/granite-embedding-97m-multilingual-r2`** (IBM Granite Embedding R2, Apache-2.0, trained without MS MARCO or other
+  non-commercial data). The old default, `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`, was distilled from a teacher trained on
+  non-commercial data (`docs/lab/vane1-base-model-audit.md`). On nai-bench v1 dev (PROVISIONAL) hybrid MRR rises from
+  0.720 to 0.834 and every language holds or improves (Swedish most); on a 2-CPU / 4-GB NAS profile search gets
+  faster (0.2 s) at about 0.6 GB more RAM and slower indexing. nAI loads it as a custom fastembed ONNX model (CLS
+  pooling, no prefix, fp32).
+- **One-time re-index on upgrade:** existing indexes were built with the old model. nAI keeps the old vectors, pauses
+  semantic search (keyword search keeps working) and asks an admin to start re-indexing; with
+  `NAI_EMBEDDINGS_AUTO_REINDEX=true` it re-embeds without asking. To stay on the old model, set
+  `NAI_EMBEDDINGS_MODEL=sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`.
+
 ## [0.6.0] – 2026-11-23
 
 Lab Stage 0 continues: TrueNAS support tested on a real TrueNAS, nai-bench v1 started, and the image now works
