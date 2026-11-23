@@ -44,7 +44,13 @@ NithronOS's copy of the nAI template (`usr/share/nithronos/apps/templates/nai/`,
    change the reranker default from `auto` to an explicit `off` (`NAI_RERANKER=${RERANKER:-off}`): NAS CPUs
    need about 2 s per question for reranking.
 2. `schema.json`: `RERANKER` default `off`, enum `off`/`auto`/`on`, new description.
-3. Nothing else differs in `compose.yaml` or `schema.json` (the template README is NithronOS's own catalog
+3. **Version 0.6.0 (published 2026-11-23):** point the template at the 0.6.0 image (it has the TrueNAS adapter
+   and the fix that lets the image run as another uid). From the NithronOS repo root:
+   `sed -i 's/NAI_VERSION:-0.4.0/NAI_VERSION:-0.6.0/g' usr/share/nithronos/apps/templates/nai/compose.yaml`
+   (image tag and the `nos.app.version` label); in `schema.json` set `NAI_VERSION` `"default": "0.6.0"` and the
+   enum to `"0.6.0", "0.6", "0.5.0", "0.4.0", "latest"`; set the catalog entry's `version: "0.6.0"`. This repo's
+   copy (`packaging/nithronos/`) has these values since round 5.
+4. Nothing else differs in `compose.yaml` or `schema.json` (the template README is NithronOS's own catalog
    text and isn't synced).
 
 Safe with today's images: nai-core 0.4.0/0.5.0 ignore `NAI_NAS_PLATFORM` and treat `off` as off; existing
