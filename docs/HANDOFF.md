@@ -25,7 +25,15 @@
   `training/embed/vet_onnx.py` (export like Vane 1 + fastembed custom-model parity, CLS): fp32 1.0000, int8 0.9723
   (below the 0.99 bar: nAI should load fp32, 390 MB); our export equals IBM's ONNX files; fastembed loads it via
   `add_custom_model` (CLS). `verify_fastembed` now takes pooling and model file.
-- **Round 6 next command:** section 2, v1 dev comparison (current vs granite 97m vs 311m) and simulated-NAS cost.
+- **Round 6, section 2 done: granite 97m meets the switch criteria** (`evals/results/v1-dev-granite-2026-11-23.md`,
+  PROVISIONAL, v1 dev): hybrid MRR 0.720 → 0.834, Hit@5 0.894 → 0.915; cross-language hybrid Hit@5 0.714 → 0.714,
+  embedding-only 0.643 → 0.786; every language equal or better (sv MRR 0.58 → 0.76); offline embedding-only MRR
+  0.444 → 0.854 (311m 0.938; the old pilot 0.613). NAS 2 CPU/4 GB: search 0.30 → 0.20 s median, RAM idle 812 →
+  1 444 MiB, indexing 36 → 65 s for 27 files. nAI registers Granite as a custom fastembed model (CLS, fp32 ONNX);
+  bench compose takes `NAI_EMBEDDINGS_MODEL`, per-model volumes; nas-sim overlay `NAS_SIM_DATA`. 311m hybrid in nAI
+  stopped (CPU too slow, ~1.5 h); measured offline instead.
+- **Round 6 next command:** section 3, make granite 97m nAI's default (config, docs, MODEL_NAMING, CHANGELOG
+  Unreleased, upgrade test for "ask before re-indexing"), PR to main.
 - **Round 5 permissions (2026-11-23):** commit, push, open and merge PRs as the human (merge commits; no
   attribution trailers, no history rewrite, no force-push, never bypass branch protection); create and push the
   tag **v0.6.0 once** (never move/re-push a tag, no other tags); user-space installs, pulling Ollama models and

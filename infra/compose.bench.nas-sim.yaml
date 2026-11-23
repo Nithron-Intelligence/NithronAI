@@ -16,7 +16,7 @@ services:
     mem_limit: ${NAS_SIM_NAI_MEMORY:-4g}
     memswap_limit: ${NAS_SIM_NAI_MEMORY:-4g}
     volumes:
-      - nai-nas-sim-data:/app/data
+      - ${NAS_SIM_DATA:-nai-nas-sim-data}:/app/data
       - ../evals/nai-bench/corpus:/shares/nai-bench:ro
 
   ollama:
@@ -26,3 +26,5 @@ services:
 
 volumes:
   nai-nas-sim-data:
+  nai-nas-sim-r6-minilm-data:
+  nai-nas-sim-r6-granite97-data:
