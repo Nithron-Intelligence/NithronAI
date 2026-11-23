@@ -32,7 +32,7 @@ sys.path[:0] = [str(EVALS), str(EVALS / "retrieval"), str(EVALS / "answers"), st
 
 import eval_answers  # noqa: E402
 import eval_retrieval  # noqa: E402
-from naibench import MANIFEST_FILE, QUESTIONS_FILE, NaiClient, load_items  # noqa: E402
+from naibench import MANIFEST_FILE, QUESTIONS_FILE, NaiClient, load_items, review_summary  # noqa: E402
 
 from app.nithron_models import FAMILIES, parse_model_id  # noqa: E402
 
@@ -101,6 +101,19 @@ def fmt(value: Any) -> str:
     return "–" if value is None else f"{value:.3f}" if isinstance(value, float) else str(value)
 
 
+def review_line(review: dict[str, Any]) -> str:
+    """Every report states how many items a person has reviewed (V1_PLAN.md)."""
+    if not review:
+        return "**Review status unknown.**"
+    counts = (
+        f"{review.get('reviewed', 0)} of {review.get('total', 0)} items human-reviewed "
+        f"({review.get('rejected', 0)} rejected); evaluated: {review.get('evaluated')} ({review.get('scope')})."
+    )
+    if review.get("publishable"):
+        return f"**Review:** {counts}"
+    return f"**PROVISIONAL — includes unreviewed items.** Review: {counts} Published numbers use `--reviewed-only`."
+
+
 def markdown(report: dict[str, Any]) -> str:
     meta = report["meta"]
     retrieval = report["retrieval"]
@@ -109,6 +122,8 @@ def markdown(report: dict[str, Any]) -> str:
         f"# nai-bench {meta['label']} – {meta['date']}",
         "",
         *([meta["notes"], ""] if meta.get("notes") else []),
+        review_line(meta.get("review") or {}),
+        "",
         f"nAI {meta['nai_version']} at commit `{meta['git_commit']}`; embeddings "
         f"`{meta['embeddings']['model']}` ({meta['embeddings']['provider']}); reranker `{cfg.get('reranker')}`; "
         f"{retrieval['questions']} answerable + {retrieval['skipped_unanswerable']} unanswerable questions over "
@@ -188,6 +203,11 @@ def main() -> int:
     parser.add_argument("--judge-url")
     parser.add_argument("--judge-model")
     parser.add_argument("--label", default="baseline")
+    parser.add_argument(
+        "--reviewed-only",
+        action="store_true",
+        help="evaluate only human-reviewed items (required for published numbers)",
+    )
     parser.add_argument("--notes", help="free text for the summary, e.g. the hardware the LLM ran on")
     parser.add_argument("--out-dir", type=Path, default=RESULTS_DIR)
     args = parser.parse_args()
@@ -196,10 +216,21 @@ def main() -> int:
     client.wait_until_up()
     if args.index_corpus:
         client.wait_until_indexed(client.ensure_source(args.index_corpus))
-    items = load_items()
+    items = load_items(reviewed_only=args.reviewed_only)
+    if not items:
+        raise SystemExit(
+            "no items to evaluate (with --reviewed-only, review some first: evals/nai-bench/review.py)"
+        )
     methods = [m.strip() for m in args.methods.split(",") if m.strip()]
     meta = metadata(client, args.label)
     meta["notes"] = args.notes
+    counts = review_summary()
+    meta["review"] = {
+        **counts,
+        "scope": "reviewed items only" if args.reviewed_only else "all non-rejected items",
+        "evaluated": len(items),
+        "publishable": args.reviewed_only,
+    }
 
     report: dict[str, Any] = {"meta": meta, "methods": methods}
     report["retrieval"] = eval_retrieval.evaluate(client, items, methods)

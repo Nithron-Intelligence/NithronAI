@@ -34,6 +34,9 @@ CATEGORIES = ("lookup", "multi-hop", "cross-lingual", "table/scan-OCR", "unanswe
 DIFFICULTIES = ("easy", "medium", "hard")
 LANGUAGES = ("en", "de", "sv", "fr", "pt")
 MIN_UNANSWERABLE = 10
+# Human review (V1_PLAN.md): only accepted or fixed items count toward published numbers.
+REVIEW_STATUSES = ("unreviewed", "accepted", "fixed", "rejected")
+REVIEWED = ("accepted", "fixed")
 SOURCE_NAME = "nai-bench"
 
 
@@ -62,6 +65,14 @@ class BenchItem:
     provenance: dict[str, Any]
     notes: str | None = None
     forbidden_facts: tuple[str, ...] = ()
+    review_status: str = "unreviewed"
+    reviewed_by: str | None = None
+    reviewed_at: str | None = None
+    review_note: str | None = None
+
+    @property
+    def reviewed(self) -> bool:
+        return self.review_status in REVIEWED
 
     @property
     def answerable(self) -> bool:
@@ -85,17 +96,51 @@ def _item_from_json(raw: dict[str, Any]) -> BenchItem:
         provenance=raw.get("provenance", {}),
         notes=raw.get("notes"),
         forbidden_facts=tuple(raw.get("forbidden_facts", [])),
+        review_status=raw.get("review_status", "unreviewed"),
+        reviewed_by=raw.get("reviewed_by"),
+        reviewed_at=raw.get("reviewed_at"),
+        review_note=raw.get("review_note"),
     )
 
 
-def load_items(path: Path = QUESTIONS_FILE) -> list[BenchItem]:
-    """Load questions (JSONL, one item per line). Raises ValueError if invalid."""
+def load_all_items(path: Path = QUESTIONS_FILE) -> list[BenchItem]:
+    """Every item in the file, including rejected ones (for the review tool). Raises if invalid."""
     raw_items = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
     items = [_item_from_json(raw) for raw in raw_items]
-    errors = validate(items)
+    errors = validate([i for i in items if i.review_status != "rejected"]) + validate_review(items)
     if errors:
         raise ValueError("invalid nai-bench questions:\n  " + "\n  ".join(errors))
     return items
+
+
+def load_items(path: Path = QUESTIONS_FILE, reviewed_only: bool = False) -> list[BenchItem]:
+    """Items to evaluate: rejected items are always dropped; ``reviewed_only`` keeps accepted/fixed ones."""
+    items = [i for i in load_all_items(path) if i.review_status != "rejected"]
+    return [i for i in items if i.reviewed] if reviewed_only else items
+
+
+def review_summary(path: Path = QUESTIONS_FILE) -> dict[str, int]:
+    """Counts per review status, plus 'total' and 'reviewed' (accepted + fixed)."""
+    items = load_all_items(path)
+    counts = {status: sum(1 for i in items if i.review_status == status) for status in REVIEW_STATUSES}
+    counts["total"] = len(items)
+    counts["reviewed"] = counts["accepted"] + counts["fixed"]
+    return counts
+
+
+def validate_review(items: list[BenchItem]) -> list[str]:
+    """Review fields: known status; anything but 'unreviewed' names the reviewer and date."""
+    errors = []
+    for item in items:
+        if item.review_status not in REVIEW_STATUSES:
+            errors.append(f"{item.id}: unknown review_status {item.review_status!r}")
+        elif item.review_status != "unreviewed" and not (item.reviewed_by and item.reviewed_at):
+            errors.append(
+                f"{item.id}: review_status {item.review_status!r} needs reviewed_by and reviewed_at"
+            )
+        if item.review_status == "rejected" and not item.review_note:
+            errors.append(f"{item.id}: a rejected item needs a review_note saying why")
+    return errors
 
 
 def load_manifest(path: Path = MANIFEST_FILE) -> list[dict[str, Any]]:
@@ -136,7 +181,7 @@ def validate(items: list[BenchItem], manifest: list[dict[str, Any]] | None = Non
             langs = {files[s.file]["language"] for s in item.gold_sources if s.file in files}
             if item.language in langs:
                 errors.append(f"{where}: cross-lingual question has the same language as its source")
-    if sum(1 for i in items if not i.answerable) < MIN_UNANSWERABLE:
+    if items and sum(1 for i in items if not i.answerable) < MIN_UNANSWERABLE:
         errors.append(f"need at least {MIN_UNANSWERABLE} unanswerable items")
     return errors
 

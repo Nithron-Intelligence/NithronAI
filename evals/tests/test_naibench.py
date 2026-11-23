@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import sys
 from dataclasses import replace
 from pathlib import Path
@@ -254,3 +255,70 @@ def test_cross_lingual_flag_uses_source_language() -> None:
     manifest = nb.load_manifest()
     assert nb.is_cross_lingual(items["nb-020"], manifest)  # en question, de scan
     assert not nb.is_cross_lingual(items["nb-001"], manifest)
+
+
+# --- human review workflow ---------------------------------------------------------
+
+
+def _review_module() -> ModuleType:
+    spec = importlib.util.spec_from_file_location("nai_review", nb.BENCH_DIR / "review.py")
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    sys.modules["nai_review"] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def _copy_questions(tmp_path: Path) -> Path:
+    path = tmp_path / "questions.jsonl"
+    path.write_text(nb.QUESTIONS_FILE.read_text(encoding="utf-8"), encoding="utf-8")
+    return path
+
+
+def test_all_v0_items_start_unreviewed() -> None:
+    counts = nb.review_summary()
+    assert counts["unreviewed"] == counts["total"] and counts["reviewed"] == 0
+
+
+def test_review_tool_records_accept_fix_reject(tmp_path: Path) -> None:
+    review = _review_module()
+    path = _copy_questions(tmp_path)
+    answers = iter(
+        [
+            "a",
+            "",  # nb-001: accept, no note
+            "f",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "typo fixed",  # nb-002: fix (field by field, keep all), note
+            "r",
+            "duplicate of nb-030",  # nb-003: reject with reason
+            "q",
+        ]
+    )
+    done = review.run(
+        path, "Test Reviewer", None, ask=lambda _: next(answers), out=lambda _: None, use_editor=False
+    )
+
+    assert done == {"accepted": 1, "fixed": 1, "rejected": 1, "skipped": 0}
+    rows = {r["id"]: r for r in review.read_rows(path)}
+    assert rows["nb-001"]["review_status"] == "accepted" and rows["nb-001"]["reviewed_by"] == "Test Reviewer"
+    assert rows["nb-002"]["review_status"] == "fixed" and rows["nb-002"]["review_note"] == "typo fixed"
+    assert rows["nb-003"]["review_status"] == "rejected"
+    assert [i.id for i in nb.load_items(path, reviewed_only=True)] == ["nb-001", "nb-002"]
+    assert "nb-003" not in {i.id for i in nb.load_items(path)}
+    assert nb.review_summary(path)["reviewed"] == 2
+
+
+def test_review_fields_are_validated(tmp_path: Path) -> None:
+    path = _copy_questions(tmp_path)
+    rows = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
+    rows[0]["review_status"] = "accepted"  # no reviewer, no date
+    path.write_text("\n".join(json.dumps(r, ensure_ascii=False) for r in rows) + "\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="needs reviewed_by"):
+        nb.load_items(path)
