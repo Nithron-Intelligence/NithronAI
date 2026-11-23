@@ -168,7 +168,10 @@ class RetrieverService:
         """
         if not (self.settings.embeddings_enabled and self.embeddings):
             return False
-        return self.embeddings.is_available() if wait else self.embeddings.is_ready()
+        ready = self.embeddings.is_available() if wait else self.embeddings.is_ready()
+        # After an embedding-model change, semantic search waits for the admin to confirm a re-index;
+        # searches fall back to keyword-only instead of mixing vectors from two models.
+        return ready and not self.embeddings.reindex_required
 
     # ------------------------------------------------------------------
 
@@ -192,6 +195,11 @@ class RetrieverService:
         self.ensure_index(records, self.indexer.revision)
 
         if method == "embedding" and not self.embeddings_available(wait=True):
+            if self.embeddings is not None and self.embeddings.reindex_required:
+                raise ValueError(
+                    "Embedding search is paused: the embedding model changed and an admin must confirm "
+                    "a re-index (POST /system/embeddings/reindex)"
+                )
             raise ValueError("Embedding search is not available (see /system for details)")
 
         candidates = max(self.settings.retrieval_candidates, top_k)

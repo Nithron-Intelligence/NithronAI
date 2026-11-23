@@ -6,7 +6,8 @@
 
 ## Status now
 
-- **Updated:** 2026-11-23, round 3, after step 1.
+- **Updated:** 2026-11-23, round 3, step 2a (embedding-model change detection committed; docs next).
+- **Session note:** a new session (different account) took over mid-step 2 after the previous one ran out of tokens.
 - **Branch:** `lab/stage-0` (all lab work), based on local `main` (release 0.5.0). **Nothing is pushed.**
 - **Done:** rounds 1–2 (see History). Round 3 steps 0 (handoff doc, `AGENTS.md`) and 1 (LICENSE synced with
   NithronOS on `main` as `d496d16`; local tag `v0.5.0` moved there; `lab/stage-0` rebased).
