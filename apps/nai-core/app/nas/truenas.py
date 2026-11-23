@@ -36,8 +36,19 @@ class _Connection(Protocol):
 def _default_connect(url: str, ssl_context: ssl.SSLContext, timeout: float) -> _Connection:
     from websockets.sync.client import connect
 
-    conn: _Connection = connect(url, ssl=ssl_context, open_timeout=timeout, close_timeout=timeout)
+    # __enter__() opens the connection without the legacy direct-connect call (deprecated in websockets
+    # 17); close() releases it. Works the same on websockets 13 through 17.
+    conn: _Connection = connect(url, ssl=ssl_context, open_timeout=timeout, close_timeout=timeout).__enter__()
     return conn
+
+
+def _error_text(error: Any) -> str:
+    """TrueNAS puts the useful text in error.data.reason ("[EACCES] Not authorized"); message is generic."""
+    if not isinstance(error, dict):
+        return str(error)
+    data = error.get("data")
+    reason = data.get("reason") if isinstance(data, dict) else None
+    return str(reason or error.get("message") or error)
 
 
 @dataclass
@@ -88,8 +99,7 @@ class TrueNASClient:
             if message.get("id") != request_id:  # notifications or other replies
                 continue
             if "error" in message:
-                error = message["error"]
-                raise TrueNASError(f"{method} failed: {self._redact(str(error.get('message', error)))}")
+                raise TrueNASError(f"{method} failed: {self._redact(_error_text(message['error']))}")
             return message.get("result")
 
     def __enter__(self) -> TrueNASClient:
