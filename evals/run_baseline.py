@@ -37,6 +37,7 @@ from naibench import (  # noqa: E402
     QUESTIONS_FILE,
     NaiClient,
     cli_load_items,
+    load_manifest,
     manifest_for,
     review_summary,
     split_file_kind,
@@ -124,6 +125,35 @@ def review_line(review: dict[str, Any]) -> str:
     return f"**PROVISIONAL — includes unreviewed items.** Review: {counts} Published numbers use `--reviewed-only`."
 
 
+def language_lines(method_report: dict[str, Any]) -> list[str]:
+    """Hit@5 / MRR per question language."""
+    lines = ["| Language | n | Hit@5 | MRR |", "|---|---|---|---|"]
+    for name, o in sorted(method_report.get("by_language", {}).items()):
+        lines.append(f"| {name} | {o['n']} | {fmt(o['hit@5'])} | {fmt(o['mrr'])} |")
+    return lines
+
+
+def empty_result_lines(retrieval: dict[str, Any], methods: list[str]) -> list[str]:
+    """Answerable questions for which a method returned no file at all, by the cross-lingual flag.
+
+    Embedding search drops hits below NAI_EMBEDDINGS_MIN_SCORE (cosine 0.3 by default), so an empty
+    result there means no chunk came close enough, which hits cross-lingual questions first.
+    """
+    lines = [
+        "| Method | same language: no result | question language ≠ source language: no result |",
+        "|---|---|---|",
+    ]
+    for method in methods:
+        rows = retrieval[method].get("per_question", [])
+        cells = []
+        for flag in ("no", "yes"):
+            group = [r for r in rows if r.get("cross_lingual") == flag]
+            empty = sum(1 for r in group if not r.get("retrieved"))
+            cells.append(f"{empty} of {len(group)}")
+        lines.append(f"| {method} | {cells[0]} | {cells[1]} |")
+    return lines
+
+
 def markdown(report: dict[str, Any]) -> str:
     meta = report["meta"]
     retrieval = report["retrieval"]
@@ -172,6 +202,14 @@ def markdown(report: dict[str, Any]) -> str:
     for flag, o in retrieval[best].get("by_cross_lingual", {}).items():
         label = "question language ≠ source language" if flag == "yes" else "same language"
         lines.append(f"| *{label}* | {o['n']} | {fmt(o['hit@5'])} | {fmt(o['mrr'])} |")
+    lines += ["", f"Hit@5 / MRR by question language ({best}):", "", *language_lines(retrieval[best])]
+    lines += [
+        "",
+        "Answerable questions with no result at all (embedding search drops hits below "
+        "`NAI_EMBEDDINGS_MIN_SCORE`, cosine 0.3 by default):",
+        "",
+        *empty_result_lines(retrieval, report["methods"]),
+    ]
     lines += [
         "",
         "## Answers",
@@ -246,14 +284,20 @@ def main(argv: list[str] | None = None) -> int:
     }
 
     report: dict[str, Any] = {"meta": meta, "methods": methods}
-    report["retrieval"] = eval_retrieval.evaluate(client, items, methods)
+    manifest = load_manifest(manifest_for(args.bench))
+    report["retrieval"] = eval_retrieval.evaluate(client, items, methods, manifest=manifest)
     judge_client = httpx.Client(base_url=args.judge_url.rstrip("/"), timeout=300) if args.judge_url else None
     report["answers"] = {
-        "extractive": eval_answers.evaluate(client, items, use_llm=False),
+        "extractive": eval_answers.evaluate(client, items, use_llm=False, manifest=manifest),
     }
     if not args.no_llm and (meta.get("config") or {}).get("llm_enabled"):
         llm = eval_answers.evaluate(
-            client, items, use_llm=True, judge_client=judge_client, judge_model=args.judge_model
+            client,
+            items,
+            use_llm=True,
+            judge_client=judge_client,
+            judge_model=args.judge_model,
+            manifest=manifest,
         )
         report["answers"]["llm: " + ", ".join(llm["models"] or ["?"])] = llm
         known = {m["id"] for m in meta["nithron_models"]}

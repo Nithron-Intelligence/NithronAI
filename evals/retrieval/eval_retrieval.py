@@ -37,6 +37,7 @@ from naibench import (
     hit_at_k,
     is_cross_lingual,
     load_manifest,
+    manifest_for,
     matches_gold,
     mean,
     ndcg_at_k,
@@ -104,11 +105,17 @@ def breakdown(rows: list[dict[str, Any]], field: str, k_values: tuple[int, ...])
 
 
 def evaluate(
-    client: NaiClient, items: list[BenchItem], methods: list[str], k_values: tuple[int, ...] = DEFAULT_K
+    client: NaiClient,
+    items: list[BenchItem],
+    methods: list[str],
+    k_values: tuple[int, ...] = DEFAULT_K,
+    manifest: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
+    """``manifest``: the corpus manifest of the questions file (default v0's); it gives each gold file's
+    language for the cross-lingual flag."""
     answerable = [i for i in items if i.answerable]
     top_k = max(k_values) * 3  # chunks; several chunks of one file collapse into one ranked file
-    manifest = load_manifest()
+    manifest = manifest if manifest is not None else load_manifest()
     report: dict[str, Any] = {
         "questions": len(answerable),
         "skipped_unanswerable": len(items) - len(answerable),
@@ -178,7 +185,7 @@ def main(argv: list[str] | None = None) -> int:
         source_id = client.ensure_source(args.index_corpus)
         client.wait_until_indexed(source_id)
 
-    report = evaluate(client, items, methods, k_values)
+    report = evaluate(client, items, methods, k_values, load_manifest(manifest_for(args.bench)))
     print_summary(report, methods)
     if args.output:
         args.output.write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
