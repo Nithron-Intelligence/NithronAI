@@ -33,7 +33,7 @@ services:
       - NAI_AUTH_ENABLED=false
       - NAI_RATE_LIMIT_ENABLED=false
       - NAI_EMBEDDINGS_ENABLED=true
-      - NAI_EMBEDDINGS_MODEL=${NAI_EMBEDDINGS_MODEL:-sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2}
+      - NAI_EMBEDDINGS_MODEL=${NAI_EMBEDDINGS_MODEL:-ibm-granite/granite-embedding-97m-multilingual-r2}
       - NAI_RERANKER=${NAI_RERANKER:-false}
       - NAI_RERANKER_MODEL=${NAI_RERANKER_MODEL:-BAAI/bge-reranker-v2-m3-int8}
       - NAI_OCR_ENABLED=true

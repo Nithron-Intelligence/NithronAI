@@ -387,3 +387,44 @@ def test_slow_model_load_never_blocks_health_or_search(make_client, fake_embeddi
     assert service.state == "ready"
     service.embed_pending()
     assert c.post("/search", json={"query": "automobile coverage"}).json()["method"] == "hybrid"
+
+
+def test_upgrade_from_the_old_default_model_asks_before_reindexing(make_client, fake_embeddings):
+    """0.6.0 → 0.7.0: vectors made with paraphrase-multilingual-MiniLM-L12-v2 are kept but not searched, and
+    nothing is re-embedded with the new default (granite 97m) until an admin confirms."""
+    from app.config import Settings
+    from app.services import get_embedding_service
+    from app.services.embeddings import register_provider
+
+    from .conftest import FakeEmbeddingProvider
+
+    old_default = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+    new_default = Settings.model_fields["embeddings_model"].default
+    assert new_default == "ibm-granite/granite-embedding-97m-multilingual-r2"
+
+    class OldDefault(FakeEmbeddingProvider):
+        name = "fastembed"
+        model = old_default
+
+    class NewDefault(FakeEmbeddingProvider):
+        name = "fastembed"
+        model = new_default
+
+    register_provider("fastembed", OldDefault)
+    c = make_client(
+        **{**fake_embeddings, "NAI_EMBEDDINGS_PROVIDER": "fastembed", "NAI_EMBEDDINGS_MODEL": old_default}
+    )
+    _upload(c, "car.txt", "Car insurance renewal letter.")
+    _upload(c, "bill.txt", "Electricity bill for October.")
+    _embed_all()
+
+    register_provider("fastembed", NewDefault)  # the upgraded image, default settings
+    env = {k: v for k, v in fake_embeddings.items() if k != "NAI_EMBEDDINGS_PROVIDER"}
+    c = make_client(**{**env, "NAI_EMBEDDINGS_PROVIDER": "fastembed"})
+    service = get_embedding_service()
+    assert service.is_available()
+    assert service.reindex_required
+    assert service.embed_pending() == 0
+    stats = c.get("/system").json()["features"]["embeddings"]
+    assert stats["model"] == new_default
+    assert stats["reindex_required"] is True and stats["previous_models"] == {f"fastembed:{old_default}": 2}

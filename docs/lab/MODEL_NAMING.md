@@ -26,7 +26,7 @@ Nithron models get a **family name per role**, plus a **version number**: "Nithr
 3. **IDs.** Hugging Face: `nithron/<family>-<version>[-<variant>]`, all lower case: `nithron/vane-1`,
    `nithron/loupe-1`, `nithron/tern-1`, `nithron/nox-1`, `nithron/tern-1-mini`. Ollama: the same name
    (`nithron/tern-1-mini:q4_K_M`). `nithron_models.parse_model_id` understands both.
-4. **First versions:** Vane 1 (base: `paraphrase-multilingual-MiniLM-L12-v2`); **Loupe 1 (decided 2026-11-23):
+4. **First versions:** Vane 1 (base: `ibm-granite/granite-embedding-97m-multilingual-r2` since round 6, 2026-11-23; was `paraphrase-multilingual-MiniLM-L12-v2`; any Vane change forces a re-index); **Loupe 1 (decided 2026-11-23):
    a fine-tune of `BAAI/bge-reranker-v2-m3` (Apache-2.0), shipped as int8 ONNX, distilled from
    `Qwen/Qwen3-Reranker-0.6B` (Apache-2.0) as the teacher**; Tern 1, Nox 1 (bases chosen in Stage 2).
    No base or teacher may need `trust_remote_code`.
@@ -95,7 +95,7 @@ base model, keeps its copyright/license notice, and says what we changed.
 
 | Tier | Candidate base | License | Naming rule | Attribution |
 |---|---|---|---|---|
-| Vane | `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` (**chosen for Vane 1**) | Apache-2.0 | None; may not imply endorsement | Keep license + NOTICE; state changes |
+| Vane | `ibm-granite/granite-embedding-97m-multilingual-r2` (**chosen for Vane 1**, round 6; previously `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`, dropped after the training-data audit) | Apache-2.0 | None; may not imply endorsement | Keep license + NOTICE; state changes |
 | Vane | `intfloat/multilingual-e5-small` (comparison) | MIT | None | Keep copyright + license notice |
 | Loupe | `BAAI/bge-reranker-v2-m3` | Apache-2.0 | None | Keep license; state changes |
 | Loupe | `Alibaba-NLP/gte-multilingual-reranker-base` | Apache-2.0 | None | Keep license; state changes |
