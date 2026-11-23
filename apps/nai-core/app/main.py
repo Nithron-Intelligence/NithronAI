@@ -48,7 +48,9 @@ async def lifespan(app: FastAPI):
     # Startup
     logger.info(f"Starting {settings.app_name} v{settings.app_version}")
     logger.info(f"Debug mode: {settings.debug}")
-    logger.info(f"Embeddings enabled: {settings.embeddings_enabled} ({settings.embeddings_provider})")
+    from .services import get_embedding_service
+
+    logger.info(f"Semantic search: {get_embedding_service().decision()[1]} ({settings.embeddings_provider})")
     logger.info(f"LLM enabled: {settings.llm_enabled}")
     logger.info(f"Auth enabled: {settings.auth_enabled}")
 

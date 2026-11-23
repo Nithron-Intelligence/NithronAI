@@ -85,6 +85,7 @@ NAI_SOURCES_SCAN_INTERVAL_SECONDS=900     # full incremental rescan (catches wha
 
 # Semantic search (vectors live in SQLite; no vector database)
 NAI_EMBEDDINGS_ENABLED=true
+NAI_EMBEDDINGS=auto                       # auto | on | off: auto runs keyword-only (BM25) below 2.5 GB of memory
 NAI_EMBEDDINGS_PROVIDER=auto              # fastembed (ONNX, CPU) | ollama | sentence-transformers
 NAI_EMBEDDINGS_MODEL=ibm-granite/granite-embedding-97m-multilingual-r2   # until 0.6.0: sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
 NAI_EMBEDDINGS_AUTO_REINDEX=false         # model changed? false: pause semantic search and ask an admin to re-index
@@ -112,9 +113,16 @@ NAI_TRUSTED_PROXIES='["10.0.0.0/8"]'
 
 Memory (0.7.0, granite 97m default, measured on a 2-CPU / 4-GB NAS profile): nai-core peaks at **~1.8 GB**
 (reranker off) and **~3.3 GB** with the reranker forced on. Minimum: a **3g** container limit and a NAS with
-**4 GB** RAM in total; recommended **8 GB** NAS RAM. A 2 GB NAS is too small for the default model (set
-`NAI_EMBEDDINGS_MODEL=sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` there, ~1 GB peak). Forcing
-the reranker on needs a **5g** limit (and is slow on NAS CPUs: ~20 s per search on 2 cores).
+**4 GB** RAM in total; recommended **8 GB** NAS RAM. Forcing the reranker on needs a **5g** limit (and is slow on
+NAS CPUs: ~20 s per search on 2 cores).
+
+**Small boxes run keyword-only.** With `NAI_EMBEDDINGS=auto` (the default) nAI checks its effective memory (the
+container limit, capped by the NAS's RAM) once at start: below **2.5 GB** (e.g. a 2 GB NAS or a 2g limit) it
+never loads the embedding model and searches with keywords (BM25) only. That needs ~150 MB of RAM (measured at a
+2g limit) and still finds most answers: on nai-bench v1 dev keyword-only scores MRR 0.842 / Hit@5 0.894 against
+hybrid 0.834 / 0.915, but questions in another language than the file drop to Hit@5 0.643 (hybrid 0.714). The
+admin panel says when this happened; `NAI_EMBEDDINGS=on` forces semantic search on (give it at least 2.5 GB, 3 GB
+recommended), `off` forces keyword-only anywhere.
 
 
 See [`apps/nai-core/app/config.py`](apps/nai-core/app/config.py) for all options. `GET /system`

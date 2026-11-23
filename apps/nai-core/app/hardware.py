@@ -1,8 +1,8 @@
 """
 nAI Core Hardware Detection
 
-Detects CPU, memory and GPU so nAI can pick sensible defaults (reranker on/off, which
-local LLM to use) and tell the admin what the box can handle.
+Detects CPU, memory and GPU so nAI can pick sensible defaults (semantic search and
+reranker on/off, which local LLM to use) and tell the admin what the box can handle.
 """
 
 import json
@@ -250,6 +250,33 @@ def reranker_auto_decision(hw: HardwareInfo) -> tuple[bool, str]:
         return False, f"{facts}: needs {RERANKER_MIN_MEMORY_GB:g}+ GB RAM"
     if hw.memory_available_gb is not None and hw.memory_available_gb < RERANKER_MIN_AVAILABLE_GB:
         return False, f"{facts}: only {hw.memory_available_gb:g} GB free"
+    return True, facts
+
+
+# ---------------------------------------------------------------------------
+# Embeddings auto policy (keyword-only mode)
+# ---------------------------------------------------------------------------
+
+# granite-embedding-97m-multilingual-r2 (fp32 ONNX) peaks at 1 759 MiB while indexing with the reranker off
+# (2 CPU / 4 GB simulated NAS, evals/results/simulated-nas-granite97-rerank-off-2026-11-23.md). With ~40 %
+# headroom for the OS share of a container, SQLite and spikes that is ~2.5 GB: NithronOS (3g) and TrueNAS (4g)
+# templates stay on, a 2 GB box or a smaller limit runs keyword-only (BM25). There is deliberately no smaller
+# fallback model (decision 2026-11-23).
+EMBEDDINGS_MIN_MEMORY_GB = 2.5
+EMBEDDINGS_RECOMMENDED_MEMORY_GB = 3.0
+
+
+def embeddings_auto_decision(hw: HardwareInfo) -> tuple[bool, str]:
+    """Whether NAI_EMBEDDINGS=auto turns semantic search on for this machine, with a short reason.
+
+    Uses the effective memory (cgroup limit capped by the host's RAM), not what is free right now: a
+    temporarily busy box should not flip between modes from one start to the next."""
+    facts = f"{hw.memory_gb:g} GB RAM"
+    if hw.memory_gb < EMBEDDINGS_MIN_MEMORY_GB:
+        return False, (
+            f"{facts}: semantic search needs {EMBEDDINGS_MIN_MEMORY_GB:g}+ GB "
+            f"({EMBEDDINGS_RECOMMENDED_MEMORY_GB:g}+ recommended), keyword search only"
+        )
     return True, facts
 
 

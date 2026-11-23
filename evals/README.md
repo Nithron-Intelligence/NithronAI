@@ -62,6 +62,9 @@ Variants used for the committed results:
 # reranker on (restarts nai-core with NAI_RERANKER=true)
 NAI_RERANKER=true docker compose -f infra/compose.bench.yaml -f infra/compose.bench.rocm.yaml up -d --wait nai-core
 apps/nai-core/.venv/bin/python evals/run_baseline.py --label baseline-rerank --methods hybrid --no-llm
+# keyword-only mode (BM25 only, what a 2 GB box runs): results/v1-dev-keyword-only-2026-11-23.md
+NAI_EMBEDDINGS=off docker compose -f infra/compose.bench.yaml up -d --wait nai-core
+apps/nai-core/.venv/bin/python evals/run_baseline.py --label keyword-only --methods auto,hybrid,bm25 --no-llm
 # a bigger answering model as a reference
 NAI_LLM_MODEL=qwen2.5:7b docker compose -f infra/compose.bench.yaml -f infra/compose.bench.rocm.yaml up -d --wait nai-core
 apps/nai-core/.venv/bin/python evals/run_baseline.py --label reference-qwen2.5-7b --methods hybrid \
@@ -87,6 +90,9 @@ OLLAMA_IMAGE=ollama/ollama:0.40.17-rocm \
     docker compose -f infra/compose.bench.yaml -f infra/compose.bench.nas-sim.yaml up -d --wait
 apps/nai-core/.venv/bin/python evals/measure_nas.py --label simulated-nas \
     --profile "nai-core 2 CPUs / 4 GB, Ollama 2 CPUs / 4 GB (CPU only) on a Ryzen 9 7950X"
+# keyword-only at a 2g limit (fresh volume): results/simulated-nas-keyword-only-2g-2026-11-23.md
+NAS_SIM_NAI_MEMORY=2g NAS_SIM_DATA=nai-nas-sim-r8-2g-data NAI_LLM_ENABLED=false \
+    docker compose -f infra/compose.bench.yaml -f infra/compose.bench.nas-sim.yaml up -d --wait
 # back to the normal bench stack (the nas-sim data volume is kept)
 docker compose -f infra/compose.bench.yaml -f infra/compose.bench.rocm.yaml up -d --wait
 ```

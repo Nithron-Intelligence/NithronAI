@@ -7,36 +7,30 @@
 ## Status now
 
 - **Updated:** 2026-11-23, round 8 session 2 (keyword-only mode for small NAS boxes, then release 0.7.0). In
-  progress: HANDOFF split done; keyword-only mode next.
+  progress: keyword-only mode implemented and measured, PR to main next; then release 0.7.0.
 - **Round 8 permissions (2026-11-23, restated for session 2 the same day):** commit, push, open and merge PRs as the human (merge commits; no attribution,
   no history rewrite, no force-push, never bypass branch protection); create and push **v0.7.0 once** (never move or
   re-push a tag, no other tags); user-space installs; start/stop bench and ROCm trainer containers (GPU runs ≤ 3 h,
   command and config recorded here first); ask before deleting anything except own test containers. Session 2: start/stop the bench containers only; if
   sudo asks for a password, print the command for the human and wait.
-- **Round 8 state:** lab/stage-0 = `1f6d6fa` + this HANDOFF commit, main = `f671c7b`, both pushed, clean. Nothing of
-  sections 1–3 done yet.
-- **Round 8 next steps (keyword-only mode), from the code read this round:**
-  1. `app/config.py`: new `embeddings: str = "auto"` (auto | on | off, normalized by a `field_validator` like
-     `reranker` at line ~197); keep `embeddings_enabled` as the master switch (false = off).
-  2. `app/hardware.py` (next to `reranker_auto_decision`, line ~241): `EMBEDDINGS_MIN_MEMORY_GB = 2.5` and
-     `embeddings_auto_decision(hw) -> (bool, reason)` on `hw.memory_gb` (effective = cgroup limit capped by host RAM).
-     Reasoning: granite peak 1 759 MiB (round 7) + ~40 % headroom ≈ 2.5 GB; NithronOS 3g and TrueNAS 4g stay on; a
-     2 GB box or a < 2.5g limit gets keyword-only. Unit tests with fake `HardwareInfo` for 2 GB, 3g, 4g.
-  3. Resolve the decision once (cached, like `RerankerService.decision()` in `app/services/reranker.py` line ~25) and
-     use it wherever `settings.embeddings_enabled` is read today: `services/embeddings.py:191` (don't load the model,
-     don't queue work), `services/retriever.py:169` (hybrid → BM25), `routes/health.py:38/67/77`, `main.py:51`.
-     `/system` → `features.embeddings.mode` (`auto-off` / `on` / `off`) and `reason`; web UI admin notice (keyword-only
-     because of memory; forcing on needs ≥ 2.5g / 3g recommended).
-  4. Upgrade tests: (a) 2 GB box with stored MiniLM vectors → keyword-only, no reindex prompt, model never loaded;
-     (b) same data with ≥ 3g → embeddings on → existing ask-before-re-index flow (old vectors kept).
-  5. Measure: nas-sim overlay with `NAS_SIM_NAI_MEMORY=2g` (add a fresh volume) → peak RAM, search median; v1 dev
-     retrieval with `NAI_EMBEDDINGS=off` (BM25 row of `evals/results/v1-dev-emb-granite97-2026-11-23.md` is the
-     expected number: MRR 0.842, Hit@5 0.894).
-  6. Docs: README memory note, settings docs, TrueNAS guide, NithronOS form text + KNOWN_ISSUES hand-over, CHANGELOG
-     Unreleased; PR → main, CI green, merge.
-  7. Then release 0.7.0 per `docs/RELEASING.md` (CHANGELOG date, `app_version`/`__version__`/README badge, TrueNAS
-     compose + this repo's NithronOS template → 0.7.0), PR, build from that main commit, smoke tests (/health 0.7.0;
-     `--user 568:568` semantic query; 2g → keyword-only answers a keyword query; 3g → granite on), tag v0.7.0 once,
+- **Round 8 state:** session 2 started at lab/stage-0 = `622de73`, main = `f671c7b`, both pushed, clean.
+  HANDOFF split into this page + [HANDOFF-history.md](HANDOFF-history.md) (`730e70e`).
+- **Round 8, section 2 (keyword-only mode): implemented.** `NAI_EMBEDDINGS=auto|on|off` (default auto;
+  `NAI_EMBEDDINGS_ENABLED=false` = off); `hardware.embeddings_auto_decision` (threshold **2.5 GB** effective memory,
+  inclusive); `EmbeddingService.decision()/wanted()` cached per process and used by the service, worker, retriever,
+  `/health`, `/system` (`features.embeddings.mode` on/off/auto-on/auto-off + `reason`), startup log; web UI notice for
+  auto-off; `/health/detailed` now always returns embedding stats. Tests: `tests/test_keyword_only.py` (2 GB box, 2g,
+  3g, 4g, overrides, upgrade from 0.6.0 on 2 GB = keyword-only without prompt and model never loaded, upgrade on 3g =
+  ask-before-re-index); conftest pins `NAI_EMBEDDINGS=on` so other tests don't depend on host RAM.
+  Measured (`evals/results/simulated-nas-keyword-only-2g-2026-11-23.md`, 2 CPU / 2g, nai-bench v0 corpus): mode
+  auto-off, **peak 143 MiB**, **search median 0.002 s** (p95 0.002), indexing 4.0 s. v1 dev keyword-only
+  (`evals/results/v1-dev-keyword-only-2026-11-23.md`, PROVISIONAL): **MRR 0.842, Hit@5 0.894**, cross-language
+  Hit@5 0.643 (exactly the expected BM25 row). Test image `nai-core:kwonly-local` (local only); new volume
+  `nai-bench_nai-nas-sim-r8-2g-data`.
+- **Next (section 3, release 0.7.0)** per `docs/RELEASING.md`: CHANGELOG date, `app_version`/`__version__`/README
+  badge, TrueNAS compose + this repo's NithronOS template → 0.7.0, PR, build from that main commit, smoke tests
+  (/health 0.7.0; `--user 568:568` semantic query; 2g → keyword-only answers a keyword query; 3g → Granite on), tag
+  v0.7.0 once, poll release.yml, anonymous pull + repeat, hand-over patch bump.
 - **Earlier rounds (1–7):** full status notes and History moved to [HANDOFF-history.md](HANDOFF-history.md)
   (2026-11-23). Round 7 ended with PR #8 merged as `f671c7b` (Granite memory: peak 1 759 MiB reranker off, 3 340 MiB
   forced on). Open lab work, in order: Vane 1 Granite pilot (`vane-1-rc1`), reranker lineage audit, fusion weights,
@@ -53,9 +47,7 @@
 - **Embedding base:** decided in round 6 (Granite R2 97m, now the default in Unreleased). The old MiniLM base is
   replaced; its pilot `vane-1-rc0` stays a learning run. Upstream CC-BY-SA in Granite's lineage (Wikipedia, Stack
   Exchange) is recorded for lawyer review before any commercial deal (decision 2).
-- **Release 0.7.0:** the default-model change waits in CHANGELOG "Unreleased". Memory: nAI on Granite needs ~1.8 GB
-  (reranker off) → **a 2 GB NAS can't run the new default** (OS + ZFS leave too little); such boxes must stay on the
-  old MiniLM model (~1 GB). Decide whether that is acceptable for 0.7.0.
+- **Release 0.7.0:** decided 2026-11-23 (keyword-only mode on small boxes, then publish); in progress this round.
 - **Hugging Face:** `nithron/vane-1` under Apache-2.0 is a proposal waiting on the human; dataset release open.
 - **Trademark search** for Nithron Vane / Loupe / Tern / Nox before any public release.
 - **NithronOS template sync:** hand the patch in `docs/KNOWN_ISSUES.md` ("Hand-over: NithronOS template sync";

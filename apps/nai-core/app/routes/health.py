@@ -35,7 +35,7 @@ def health_check(
     except Exception:
         components["index"] = False
 
-    if settings.embeddings_enabled:
+    if embeddings.wanted():
         # "loading" counts as healthy: the model may still be downloading on first start
         embeddings.ensure_loading()
         components["embeddings"] = embeddings.state != "error"
@@ -65,6 +65,7 @@ def detailed_health(
         "config": {
             "debug": settings.debug,
             "embeddings_enabled": settings.embeddings_enabled,
+            "embeddings": settings.embeddings,
             "embeddings_provider": settings.embeddings_provider,
             "reranker": settings.reranker,
             "reranker_model": settings.reranker_model,
@@ -74,5 +75,5 @@ def detailed_health(
         },
         "index": indexer.get_stats(),
         "retriever": retriever.get_stats(),
-        "embeddings": embeddings.stats() if settings.embeddings_enabled else None,
+        "embeddings": embeddings.stats(),  # includes mode and reason, also in keyword-only mode
     }
