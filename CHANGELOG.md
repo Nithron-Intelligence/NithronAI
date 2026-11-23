@@ -7,7 +7,7 @@ All notable changes to nAI. Versions follow [semantic versioning](https://semver
 
 Nothing yet.
 
-## [0.5.0] – not tagged yet
+## [0.5.0] – 2026-11-23
 
 Phase 2a: nAI works with other AI apps.
 
@@ -57,6 +57,6 @@ Phase 0: foundation.
 - Relicensed from AGPL-3.0-only to the NithronOS Community License (versions up to `66fa142` remain
   AGPL-3.0-only; see `NOTICE`).
 
-[Unreleased]: https://github.com/Nithron/NithronAI/compare/v0.4.0...HEAD
-[0.5.0]: https://github.com/Nithron/NithronAI/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/Nithron/NithronAI/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/Nithron/NithronAI/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/Nithron/NithronAI/releases/tag/v0.4.0
