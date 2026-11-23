@@ -23,6 +23,7 @@ BASE_ENV = {
     "NAI_DATA_DIR": _SESSION_DATA_DIR,
     "NAI_LLM_ENABLED": "false",
     "NAI_EMBEDDINGS_ENABLED": "false",
+    "NAI_EMBEDDINGS": "on",  # deterministic: no memory-based auto decision unless a test asks for it
     "NAI_AUTH_ENABLED": "false",
     "NAI_RATE_LIMIT_ENABLED": "false",
     # No background threads, model downloads or system binaries unless a test opts in

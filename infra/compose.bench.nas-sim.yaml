@@ -30,3 +30,5 @@ volumes:
   nai-nas-sim-r6-granite97-data:
   nai-nas-sim-r7-off-data:
   nai-nas-sim-r7-on-data:
+  nai-nas-sim-r8-2g-data:  # NAS_SIM_NAI_MEMORY=2g: keyword-only mode
+  nai-nas-sim-r8-3g-data:  # NAS_SIM_NAI_MEMORY=3g: semantic search on
