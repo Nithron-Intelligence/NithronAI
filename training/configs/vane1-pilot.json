@@ -1,0 +1,28 @@
+{
+  "name": "vane-1-pilot",
+  "purpose": "Round-5 pilot: learn whether the pipeline improves cross-language retrieval. Not a release candidate; nothing from it ships until the base-model audit is decided.",
+  "base_model": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+  "teacher": "mistral-small3.1 (Apache-2.0, Ollama Q4_K_M, num_ctx 8192)",
+  "data": {
+    "synthetic_corpus": "training/data/vane1-pilot/synthetic (generate_corpus.py, 20 documents per language, seed 13)",
+    "public_texts": "training/data/vane1-pilot/public (fetch_public.py, sources in training/sources/vane1-pilot-public.json)",
+    "pairs": "training/data/vane1-pilot/pairs-clean.jsonl (generate_pairs.py + check_overlap.py --write-clean)",
+    "rule": "public domain, CC0, CC-BY, EU reuse texts and teacher-generated text only; no CC-BY-SA; nothing from nai-bench"
+  },
+  "train_args": {
+    "epochs": 1,
+    "batch_size": 64,
+    "learning_rate": 2e-05,
+    "max_seq_length": 256,
+    "hard_negatives": 1,
+    "eval_fraction": 0.05,
+    "eval_steps": 100,
+    "eval_distractors": 2000,
+    "seed": 13,
+    "no_export": true
+  },
+  "command": "docker compose -f training/docker/compose.rocm.yaml run --rm trainer sh -c 'timeout 3h python3 training/embed/train.py --pairs training/data/vane1-pilot/pairs-clean.jsonl --output-dir training/runs/vane1-pilot --release vane-1-rc0 --epochs 1 --batch-size 64 --learning-rate 2e-5 --max-seq-length 256 --hard-negatives 1 --eval-steps 100 --seed 13 --no-export > training/runs/vane1-pilot/train.log 2>&1'",
+  "limits": "unattended, capped at 3 hours (timeout 3h), log in training/runs/vane1-pilot/train.log",
+  "evaluation": "evals/embeddings/dense_eval.py on the v1 dev split only (base vs pilot), next to the nAI hybrid baseline",
+  "release_label": "vane-1-rc0 (rc0 = the round-5 pilot, not a release candidate; the naming rules only accept vane-1[-rcN])"
+}

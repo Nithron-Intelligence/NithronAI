@@ -6,8 +6,46 @@
 
 ## Status now
 
-- **Updated:** 2026-11-23, round 4 (lab work → main, release 0.6.0 prep, v1 dev baseline, difficulty rebalance,
-  next-stage plan). **Release 0.5.0 is published; 0.6.0 is being prepared (not tagged).**
+- **Updated:** 2026-11-23, round 5 (publish 0.6.0, Stage 0 baselines, base-model audit, Vane 1 pilot).
+- **Round 5 permissions (2026-11-23):** commit, push, open and merge PRs as the human (merge commits; no
+  attribution trailers, no history rewrite, no force-push, never bypass branch protection); create and push the
+  tag **v0.6.0 once** (never move/re-push a tag, no other tags); user-space installs, pulling Ollama models and
+  Docker images (sudo → the human); start/stop the bench containers, the ROCm trainer container and the TrueNAS
+  VM; ask before deleting anything (images, volumes, build cache, VM files, venvs). NithronOS read-only. Never
+  load the nai-bench test split; no `--final-run` this round.
+- **Round 5, section 1 done: 0.6.0 published.** Tag `v0.6.0` (annotated) on `06c29e0`, pushed once; release.yml
+  run 45207761865 succeeded; GitHub Release v0.6.0 published; GHCR tags `0.6.0`, `0.6`, `sha-06c29e0` (plus the
+  floating tags). Anonymous pull (empty Docker config) of `ghcr.io/nithron/nithronai/nai-core:0.6.0`: `/health`
+  0.6.0; as `--user 568:568` with a throwaway data dir the embedding model downloaded, NLTK readable, 0
+  permission errors, semantic-only query found the right file; test containers and data removed. NithronOS
+  template here bumped to 0.6.0 (default + enum + catalog); the NithronOS-repo change is item 3 of the hand-over
+  in `docs/KNOWN_ISSUES.md`.
+- **Round 5, section 3 done: base-model audit** in `docs/lab/vane1-base-model-audit.md`. Verdict **needs the
+  human's decision**: the base model is Apache-2.0, but its teacher (`paraphrase-MiniLM-L12-v2`) was trained on MS
+  MARCO ("non-commercial research purposes only") and Flickr30k captions ("non-commercial research and/or
+  educational purposes"), both verified on their primary pages, plus CC-BY-SA data (SNLI, Stack Exchange,
+  WikiAtomicEdits, Wikipedia-derived sets, WikiMatrix) and TED2020 (TED usage policy). It applies to nAI's shipped
+  default model too. Until decided: the pilot runs for learning, **nothing from it can ship**. Register updated
+  (teacher `mistral-small3.1` approved, Q4_K_M; `phi4-mini` bench LLM; no-CC-BY-SA data rule; audit link).
+- **Round 5, section 2 done: Stage 0 baselines on v1 dev (62 items, PROVISIONAL):**
+  `evals/results/v1-dev-stage0-2026-11-23.md` (+ run files `v1-dev-baseline-r5`, `v1-dev-rerank`,
+  `v1-dev-phi4-mini`). Hybrid MRR 0.720 → **0.911 with the reranker** (Hit@5 0.894 → 0.936; cross-language Hit@5
+  0.714 → 0.786). Answers: phi4-mini correct 0.596 / refusal 0.533 / judge 0.790 vs qwen2.5:1.5b 0.489 / 0.267 /
+  0.629; phi4-mini's language match is lower (0.541 vs 0.627).
+- **Round 5, section 4.1 done: Vane 1 pilot dataset** (`training/data/vane1-pilot`, git-ignored, 18.9 MB, 126 files;
+  manifest with checksums `training/manifests/vane1-pilot.json`): 16 public files (EU acts 2016/679 + 2019/770 in
+  five languages, ProdHaftG, PAngV, two Swedish statutes, 16 CFR 303 and 1201; licenses EU reuse / public domain) and
+  100 synthetic documents by mistral-small3.1 (CC0). 581 selected passages → overlap check → 570; 1 878 pairs (27 min
+  of teacher time; 39 language-mismatched queries dropped) → overlap check → **1 875 pairs**, 46 % cross-language,
+  queries en 506 / de 362 / sv 339 / pt 350 / fr 318. Training guard passes on passages and pairs. No CC-BY-SA.
+- **Round 5, sections 4.2–4.3 done: Vane 1 pilot `vane-1-rc0`** (label rc0 = pilot; the naming rules only accept
+  `vane-1[-rcN]`): command and config in `training/configs/vane1-pilot.json`; 24 steps, **20 s**, exit 0; checkpoint
+  `training/runs/vane1-pilot/model` (466 MB, git-ignored, no ONNX export). v1 dev, embedding-only, offline harness
+  (`evals/results/vane1-pilot-dev-2026-11-23.md`, PROVISIONAL): overall MRR 0.444 → **0.613**, Hit@5 0.532 →
+  **0.766**; cross-language MRR 0.435 → **0.676**, Hit@5 0.571 → **0.857**; every category and language improves.
+  **Nothing from it can ship** until the base-model audit is decided. (The first attempt with `--release
+  vane-1-pilot` was refused by the naming check before training; rerun as rc0.)
+- **Round 5 next command:** PR `lab/stage-0` → main for rounds-5 commits, merge after CI.
 - **Round 4 permissions (2026-11-23):** the human authorized this session to commit, push, open and merge PRs as
   them (git identity, SSH key, gh auth already configured); no attribution trailers, no history rewrite, no
   force-push, never bypass branch protection; merge PRs with a merge commit (not squash/rebase). Release
@@ -83,6 +121,9 @@
   (each is logged in `evals/results/test-ledger.jsonl`); (6) Hugging Face org/name and license for the Vane 1
   release (`nithron/vane-1`, Apache-2.0 proposed) and whether the training dataset is released too; (7) Loupe 1
   in parallel or after Vane 1.
+- **Round 4 end state:** PR #5 (sections 3–5) merged as `7a2d6d1`, main CI green (run 45193463920). main = `7a2d6d1`;
+  lab/stage-0 = main plus this HANDOFF-only commit, both pushed. v0.6.0 is **not tagged**: the tag goes on
+  `06c29e0` (the commit that was built and smoke-tested; see "Waiting on the human").
 - **Round 4 next command:** none in this session; next round starts with the human's Stage 1 decisions above
   (and the v0.6.0 tag if wanted).
 - **Branches:** `main` = `lab/stage-0` (fast-forwarded after the release merge), both pushed;
@@ -186,22 +227,25 @@
 
 ## Waiting on the human
 
-- **Tag v0.6.0 (release switch was STOP BEFORE TAGGING):** main is at `06c29e0` with CI green. To publish:
-  `git fetch origin && git tag -a v0.6.0 06c29e0 -m "nAI 0.6.0" && git push origin v0.6.0`, then watch
-  release.yml (`gh run list --workflow release.yml --limit 1`), check an anonymous
-  `docker pull ghcr.io/nithron/nithronai/nai-core:0.6.0`, repeat the `--user 568:568` smoke test on it, and do
-  docs/RELEASING.md step 5 (NithronOS template → 0.6.0, here and in the NithronOS repo copy).
+- **NithronOS template → 0.6.0:** hand the patch in `docs/KNOWN_ISSUES.md` (now incl. item 3, the 0.6.0 version
+  bump) to the session that owns NithronOS.
 - **Pushes:** none pending (main = lab/stage-0 pushed).
 - **Licensing direction** for nAI itself (NCL + commercial vs dual license vs open core): not decided.
 - **nai-bench review:** all items are unreviewed: v0 56 (`python evals/nai-bench/review.py`), v1 150 (dev 62:
   `review.py --file evals/nai-bench/v1/questions-dev.jsonl`; test 88 needs `--test-split`).
-- **Stage 1 decisions:** the seven listed under Status ("Decisions needed from the human for Stage 1").
+- **Vane 1 base-model audit decision:** accept the base model's training-data lineage (MS MARCO / Flickr30k
+  non-commercial terms, CC-BY-SA data) or reject it (then a different base or our own student; affects nAI's
+  current default model too). See `docs/lab/vane1-base-model-audit.md`. Until then nothing from Vane 1 ships.
+- **Hugging Face:** `nithron/vane-1` under Apache-2.0 is a proposal waiting on the human; dataset release open.
 - **Trademark search** for Nithron Vane / Loupe / Tern / Nox before any public release.
 - **NithronOS template sync:** hand the patch in `docs/KNOWN_ISSUES.md` ("Hand-over: NithronOS template sync";
   applies cleanly to NithronOS `47def8c`) to the session that owns NithronOS.
 - **Docker disk:** ~50 GB images (ROCm PyTorch ~40 GB) + ~46 GB build cache, plus the local
   `nai-core:lab-stage-0` (1.3 GB, 2026-11-23) and `nai-core:0.6.0-local` (1.3 GB, the 0.6.0 smoke-test build),
-  and the Docker volume `nai-bench_nai-bench-v1-data` (v1 index); prune when not needed (ask first). Build venv for nai-bench rendering:
+  and the Docker volume `nai-bench_nai-bench-v1-data` (v1 index); prune when not needed (ask first). Added in
+  round 5: Ollama models `mistral-small3.1` (15 GB) and `phi4-mini` (2.5 GB) in `nai-bench_ollama-models`, the
+  pulled `ghcr.io/nithron/nithronai/nai-core:0.6.0` (1.3 GB), `training/data/vane1-pilot` (19 MB),
+  `training/runs/vane1-pilot` (1.8 GB incl. trainer checkpoints), `training/.cache` (0.46 GB, base model). Build venv for nai-bench rendering:
   `~/.venvs/nai-bench-build` (user space).
 - **TrueNAS:** adapter and custom app tested on 25.10.8 in a VM (2026-11-23). Still open: the UI menu names
   for certificate import in `packaging/truenas/README.md` (unverified); the guide needs a release after 0.5.0
@@ -215,6 +259,14 @@
 
 | Date | Decision | Reason |
 |---|---|---|
+| 2026-11-23 | **Publish 0.6.0** (tag `v0.6.0` on `06c29e0`). | Prepared and smoke-tested in round 4. |
+| 2026-11-23 | **Vane 1 teacher: `mistral-small3.1`** (corpus and query generation); license and quantization in the register. Deliberately not the bench judge (`qwen2.5:7b`). | Separate teacher and judge models avoid a model grading its own style. |
+| 2026-11-23 | **Data rule: no CC-BY-SA material in Vane 1's training data**; only public domain, CC0, CC-BY, EU reuse texts and teacher-generated text. | Keeps the model and a dataset release free of share-alike obligations. |
+| 2026-11-23 | **Vane 1: pilot now, base-model training-data audit alongside;** no full training run and no public release until the audit passes. | The base model's own training data could restrict commercial use. |
+| 2026-11-23 | **Unattended GPU work** allowed in the ROCm container: each run ≤ 3 h, logs to a file, command and config recorded in HANDOFF first. | Lets long runs proceed without supervision, traceably. |
+| 2026-11-23 | **No `--final-run` on the v1 test split this round;** dev split only. | Test split stays untouched until items are reviewed. |
+| 2026-11-23 | **No Hugging Face publication.** `nithron/vane-1` under Apache-2.0 is a proposal waiting on the human; releasing the training dataset is open. | Release needs the audit, review and a decision. |
+| 2026-11-23 | **Loupe 1 after Vane 1.** | One model at a time. |
 | 2026-11-23 | Second platform after NithronOS: **TrueNAS** (read-only API discovery + custom-app compose first; no permission sync yet). | Compose-native custom apps, big audience, JSON-RPC API with per-user keys, NFSv4 ACLs; Unraid's store asks for an OSI license. |
 | 2026-11-23 | Lab code (`evals/`, `training/`) Apache-2.0; nai-bench items we write CC-BY-4.0 (was CC0); third-party corpus files keep their own licenses. Official texts downloaded byte-exact; scope in `NOTICE`. nAI's own license direction **not decided**. | Model claims must be reproducible by others; core licensing needs a lawyer. |
 | 2026-11-23 | **Embedding-model change:** nAI detects it by model ID, keeps the old vectors, pauses semantic search and asks an admin before re-indexing (`NAI_EMBEDDINGS_AUTO_REINDEX=true` opts back into automatic re-embedding). Vane weights are never replaced under the same ID. | Silent re-embeds took hours on big NAS indexes; a same-name weight swap would mix incompatible vectors. |
@@ -252,9 +304,13 @@
   - Simulated NAS (2 CPUs / 4 GB each, CPU only): index 27 s; search 0.20 s; extractive answer 0.20 s;
     qwen2.5:1.5b answer 4.7 s median (p95 21 s); nai-core 1.1 GB, Ollama 1.6 GB.
   - ROCm smoke: 2 training steps + ONNX export on the RX 7900 XTX in 37 s.
+- **Round 5 (2026-11-23):** permissions/decisions `0c941ad`; **v0.6.0 tagged on `06c29e0` and published** (release
+  run 45207761865); NithronOS template 0.6.0 `bbd8155`; audit `4966ff0`; Stage 0 baselines `5877b1b`; pilot tooling
+  `a5970c5`; pilot dataset `e65d5c2`; pilot run + dev eval in the closing commits. Tests: 218 nai-core, 119
+  evals/training.
 - **Round 4 (2026-11-23):** PR #3 (lab/stage-0 → main, merge `3163618`; CI fix `41facf4`), PR #4 (0.6.0 prep, merge
   `06c29e0`), HANDOFF `3065eda`, v1 baseline tooling `22336af`, v1 dev baseline `09f6cd1`, v1 questions 125
-  `3344685` and 150 `7f146be`, then the closing plan commit. 0.6.0 smoke-tested from `06c29e0` (incl. `--user
+  `3344685` and 150 `7f146be`, plan `b560d2b`, PR #5 merge `7a2d6d1`, then this closing HANDOFF commit. 0.6.0 smoke-tested from `06c29e0` (incl. `--user
   568:568`), **not tagged** (release switch). Tests: 218 nai-core, 106 evals/training.
 - **nai-bench v1 + TrueNAS custom app (2026-11-23, session 3):** split guard `80378af`, training guard `ca4c908`,
   review.py `1532ba4`, v1 corpus `8a6c422` `b34437d` `71957a7` `ece720b` (100 files), v1 questions `139ad72`
@@ -298,8 +354,10 @@ apps/nai-core/.venv/bin/ruff check --config apps/nai-core/pyproject.toml evals t
 # the rest of CI's lint job (added round 4 after a CI-only mypy failure)
 apps/nai-core/.venv/bin/ruff format --config apps/nai-core/pyproject.toml evals training --check
 apps/nai-core/.venv/bin/mypy --ignore-missing-imports evals/*.py evals/retrieval/eval_retrieval.py \
-    evals/answers/eval_answers.py evals/nai-bench/build_corpus.py evals/nai-bench/review.py evals/rerankers/bench_rerankers.py
-(cd training/embed && ../../apps/nai-core/.venv/bin/mypy --ignore-missing-imports common.py check_overlap.py generate_pairs.py train.py)
+    evals/answers/eval_answers.py evals/nai-bench/build_corpus.py evals/nai-bench/review.py evals/rerankers/bench_rerankers.py \
+    evals/embeddings/dense_eval.py
+(cd training/embed && ../../apps/nai-core/.venv/bin/mypy --ignore-missing-imports common.py check_overlap.py generate_pairs.py train.py \
+    fetch_public.py generate_corpus.py select_passages.py)
 
 # Bench stack (kept STOPPED, not removed: volumes hold models + index). AMD GPU -> ROCm overlay.
 export OLLAMA_IMAGE=ollama/ollama:0.40.17-rocm

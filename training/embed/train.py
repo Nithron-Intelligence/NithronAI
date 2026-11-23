@@ -299,6 +299,9 @@ def train_main(args: argparse.Namespace) -> int:
         "fine-tuned model on held-out pairs:",
         {k: round(v, 4) for k, v in evaluator(model).items() if "@" in k},
     )
+    if args.no_export:
+        print(f"saved {final}; ONNX export skipped (--no-export)")
+        return 0
     onnx_dir = export_onnx(str(final), args.output_dir / "fastembed", quantize=True)
     print(f"fastembed export {onnx_dir}: min cosine vs PyTorch {verify_fastembed(onnx_dir, str(final)):.4f}")
     print("next: evaluate on nai-bench (docs/lab/stage1-embedding-finetune.md, 'Evaluation')")
@@ -335,6 +338,9 @@ def main() -> int:
     parser.add_argument("--seed", type=int, default=13)
     parser.add_argument(
         "--dry-run", action="store_true", help="prepare everything, then stop before training"
+    )
+    parser.add_argument(
+        "--no-export", action="store_true", help="save the model but skip the ONNX/int8 export"
     )
     parser.add_argument("--max-steps", type=int, help="stop after N optimizer steps (smoke tests)")
     parser.add_argument(
