@@ -1,6 +1,6 @@
 # nai-bench reference-qwen2.5-7b – 2026-11-22
 
-> **Note (2026-11-23):** this run was recorded at commit `c9de9eb`, which a rebase onto the v0.5.0 release rewrote as `f81d16b` (same content). All nai-bench v0 items were **unreviewed** at the time, so these numbers are **PROVISIONAL** (see evals/nai-bench/README.md, Human review).
+> **Note (2026-11-23):** this run was recorded at commit `c9de9eb`, which a rebase onto the v0.5.0 release rewrote (same content; now "Bench stack: run the LLM at temperature 0", `d880b96` as of the round-3 rebase). All nai-bench v0 items were **unreviewed** at the time, so these numbers are **PROVISIONAL** (see evals/nai-bench/README.md, Human review).
 
 Reference: same stack and retrieval as the baseline, answering LLM qwen2.5:7b (too big for most NAS CPUs; shows the gap a small fine-tuned model should close). The judge is the same model as the answerer here, so its scores are likely biased upward. Stack: infra/compose.bench.yaml at this commit (Tesseract eng+deu, LLM temperature 0), Ollama 0.40.17-rocm on an AMD Radeon RX 7900 XTX (24 GB), host Ryzen 9 7950X. Judge: qwen2.5:7b (Apache-2.0). Latencies are for this GPU, not NAS hardware.
 
