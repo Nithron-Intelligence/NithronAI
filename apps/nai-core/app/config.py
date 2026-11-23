@@ -139,6 +139,14 @@ class Settings(BaseSettings):
         description="Embedding model (multilingual by default). For ollama e.g. 'nomic-embed-text'",
     )
     embeddings_batch_size: int = Field(default=32, description="Chunks embedded per batch")
+    embeddings_auto_reindex: bool = Field(
+        default=False,
+        description=(
+            "Re-embed everything automatically when the embedding model changes. Off: nAI keeps the old "
+            "vectors, pauses semantic search and asks an admin to confirm the re-index (POST "
+            "/system/embeddings/reindex), so vectors from two models are never mixed"
+        ),
+    )
     embeddings_background: bool = Field(
         default=True, description="Embed new chunks in a background thread (disable only for testing)"
     )
