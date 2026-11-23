@@ -8,7 +8,7 @@ so when the files don't contain the answer.
 
 **Version: v0 (2026-11-22)**: 27 files, 56 questions. Baseline:
 [`../results/baseline-2026-11-22.md`](../results/baseline-2026-11-22.md). **v1 in progress** in
-[`v1/`](v1/README.md): 100 files and 100 questions so far (dev/test split, all unreviewed).
+[`v1/`](v1/README.md): 100 files and 150 questions so far (dev/test split, 30/40/30 difficulty, all unreviewed).
 
 ## Goals
 
