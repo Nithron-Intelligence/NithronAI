@@ -25,6 +25,7 @@ services:
       - ${SHARES_PATH:-/srv/shares}:/shares:ro
     environment:
       - NAI_AUTH_ENABLED=true
+      - NAI_NAS_PLATFORM=nithronos
       - NAI_SOURCES_ALLOWED_ROOTS=["/shares"]
       - NAI_EMBEDDINGS_ENABLED=true
       - NAI_RERANKER=${RERANKER:-auto}

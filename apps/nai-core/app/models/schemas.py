@@ -370,6 +370,20 @@ class SourceInfo(BaseModel):
     scanning: bool = False
 
 
+class ShareCandidateInfo(BaseModel):
+    name: str
+    path: str
+    source: str = "mount"
+    already_added: bool = False
+
+
+class ShareDiscovery(BaseModel):
+    platform: str
+    platform_name: str
+    capabilities: dict[str, bool]
+    shares: list[ShareCandidateInfo]
+
+
 class ScanResult(BaseModel):
     source_id: int
     indexed: int = 0
@@ -411,4 +425,6 @@ __all__ = [
     "SourceUpdate",
     "SourceInfo",
     "ScanResult",
+    "ShareCandidateInfo",
+    "ShareDiscovery",
 ]

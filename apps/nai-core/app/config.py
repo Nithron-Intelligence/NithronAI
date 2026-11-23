@@ -104,6 +104,9 @@ class Settings(BaseSettings):
     )
     ocr_languages: str = Field(default="eng+deu", description="Tesseract language codes, '+'-separated")
 
+    # NAS platform adapter (docs/architecture/nas-adapters.md); set by packaging
+    nas_platform: str = Field(default="generic", description="NAS adapter: generic | nithronos")
+
     # Sources (folders on the NAS that are indexed in place and kept in sync)
     sources_allowed_roots: list[str] = Field(
         default=["/shares"],
