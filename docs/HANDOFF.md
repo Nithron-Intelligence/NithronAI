@@ -6,13 +6,24 @@
 
 ## Status now
 
-- **Updated:** 2026-11-23, round 3, end of the second session (it took over mid-step 2 after the first one
-  ran out of tokens). Stopped cleanly at a commit; **no uncommitted work.**
-- **Branch:** `lab/stage-0` (all lab work), on top of local `main` (release 0.5.0, tag `v0.5.0` = `d496d16`).
-  **Nothing is pushed.**
-- **Done in round 3:** steps 0, 1, 2a–2e and 4 (see History). The facts from the old CLAUDE.md are in
-  committed docs (ADR-0003, README roadmap, KNOWN_ISSUES).
-- **Next: step 3, nai-bench v1 (not started).** Do it in this order, closing out (HANDOFF + checks + commit)
+- **Updated:** 2026-11-23, round 3 wrap-up session. **Release 0.5.0 is pushed and published.**
+- **Branches:** `main` = `lab/stage-0` (fast-forwarded after the release merge), both pushed;
+  `lab/stage-0` tracks `origin/lab/stage-0`. Work continues on `lab/stage-0`; push it after each close-out.
+- **Push authorization:** on 2026-11-23 the human authorized this session to commit, merge and push as them
+  (no force-push). The general rule in CONTRIBUTING.md (agents never push) still stands for other sessions.
+- **Done:** round 3 steps 0, 1, 2a–2e, 4; release pushed and verified (see History).
+- **Next 1: TrueNAS manual test in a VM (not started).** Requirements from the human: check disk and
+  `/dev/kvm`; VM files in `~/vms/truenas-test/` (outside the repo); download the current stable TrueNAS
+  Community Edition ISO from truenas.com and verify its SHA-256 against the published checksum; KVM VM with
+  ~8 GB RAM, 4 vCPUs, 32 GB boot disk + 1–2 data disks, user-mode networking with HTTPS forwarded to a
+  localhost port; try a headless install (serial/scripted VNC), else stop at the installer and give the human
+  the VNC address; admin password generated and stored outside the repo (mode 600), never printed or
+  committed; configure via the JSON-RPC API (pool, dataset with self-written sample files, SMB + NFS share,
+  read-only user + API key); test nAI's adapter over wss:// with the CA-file option, the failure without it,
+  version + both shares, the allow-list refusal, no key in logs; fix the adapter and update recorded fixtures
+  if the real API differs; add `scripts/truenas-vm/` (no secrets) and the tested version/date in
+  `packaging/truenas/README.md`; shut the VM down, keep its files.
+- **Next 2: step 3, nai-bench v1 (not started).** Do it in this order, closing out (HANDOFF + checks + commit)
   after each bullet and every 25 files or questions:
   1. **Split rules first.** v1 lives in `evals/nai-bench/v1/`: `questions-dev.jsonl` and
      `questions-test.jsonl` (separate files) plus its own corpus and manifest. Split by hash, never by hand:
@@ -38,31 +49,12 @@
 
 ## Waiting on the human
 
-- **Pushes** (agents never push). Checked 2026-11-23 with `git ls-remote` + `git fetch`: **`origin/main`
-  moved** to `c7d20d4` (PRs #1 and #2 merged on GitHub: the same Nithro→Niro LICENSE/NOTICE sync, LICENSE
-  hash identical). Local `main` (release commits, tag `v0.5.0` = `d496d16`) has **diverged**, so a plain push
-  is rejected. Merging is clean and changes no files (verified with `git merge-tree`); the tag can stay:
-  ```bash
-  git switch main
-  git merge origin/main -m "Merge origin/main (Niro license sync, PRs #1 and #2)"   # no file changes
-  git push origin main
-  git push origin v0.5.0      # runs release.yml: publishes nai-core:0.5.0, moves latest and 0
-  git merge lab/stage-0       # optional: bring the lab work onto main (clean in this order; not ff)
-  git push origin main
-  git push origin lab/stage-0 # optional backup of the branch
-  git push origin --delete phase1-ask-your-nas chore/ncl-add-nithro license-niro   # all merged
-  git branch -D chore/ncl-add-nithro                                               # local copy
-  ```
-  Don't merge `lab/stage-0` straight into `origin/main` first: NOTICE conflicts in that order.
-  GHCR (anonymous check, 2026-11-23): `nai-core` tags `0.4.0`, `0.4`, `0`, `latest`, `sha-6686b59` are
-  public; manifest 0.4.0 → 200.
+- **Pushes:** none pending (release and lab work pushed 2026-11-23; see History).
 - **Licensing direction** for nAI itself (NCL + commercial vs dual license vs open core): not decided.
 - **nai-bench review:** all items are unreviewed (`python evals/nai-bench/review.py`).
 - **Trademark search** for Nithron Vane / Loupe / Tern / Nox before any public release.
 - **NithronOS template sync:** hand the patch in `docs/KNOWN_ISSUES.md` ("Hand-over: NithronOS template sync";
   applies cleanly to NithronOS `47def8c`) to the session that owns NithronOS.
-- **Branch `chore/ncl-add-nithro`** (local + remote) and remote `license-niro`: both already merged into
-  `origin/main` (PRs #1, #2); deletion commands are in the push block above.
 - **Docker disk:** ~50 GB images (ROCm PyTorch ~40 GB) + ~46 GB build cache; prune when not needed.
 - **TrueNAS manual test** on a real TrueNAS (VM) with a read-only API key: `packaging/truenas/README.md`.
 - **Reranker ONNX license:** fastembed's int8 bge build comes from `onnx-community/bge-reranker-v2-m3-ONNX`,
@@ -111,6 +103,12 @@
   - Simulated NAS (2 CPUs / 4 GB each, CPU only): index 27 s; search 0.20 s; extractive answer 0.20 s;
     qwen2.5:1.5b answer 4.7 s median (p95 21 s); nai-core 1.1 GB, Ollama 1.6 GB.
   - ROCm smoke: 2 training steps + ONNX export on the RX 7900 XTX in 37 s.
+- **Round 3 wrap-up (2026-11-23):** merged `origin/main` (PRs #1, #2) into `main` as `ae7cadc` (clean, LICENSE
+  `62f2cf4c…`), CI green; pushed tag `v0.5.0` (`d496d16`): release.yml run `45140589825` succeeded; GHCR now
+  has `0.5.0`, `0.5`, `sha-d496d16` and moved `latest`, `0`; anonymous pull + `/health` smoke test reported
+  version 0.5.0. Merged `lab/stage-0` into `main` (`d307abf`), CI green (all 6 jobs incl. nai-bench with
+  Tesseract); pushed `lab/stage-0` (tracking). Deleted merged remote branches `phase1-ask-your-nas`,
+  `chore/ncl-add-nithro`, `license-niro` and the local `chore/ncl-add-nithro`.
 - **Round 3 (2026-11-23), session 2 commits:** `3222ff6` ask before re-embedding on model change, `2932379`
   docs + version rules, `37381c2` reranker auto policy + cgroup-aware hardware detection, `0f1c251` TrueNAS
   adapter step 1, `255feea` lab code Apache-2.0 / nai-bench CC-BY-4.0, `f054402` licensing options,
