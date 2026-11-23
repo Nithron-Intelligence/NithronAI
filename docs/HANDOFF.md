@@ -216,6 +216,11 @@ cd apps/nai-core && uv venv -p 3.11 .venv && uv pip install -p .venv/bin/python 
     && .venv/bin/ruff format --check app tests && .venv/bin/mypy app)
 apps/nai-core/.venv/bin/python -m pytest -q evals/tests training/tests
 apps/nai-core/.venv/bin/ruff check --config apps/nai-core/pyproject.toml evals training
+# the rest of CI's lint job (added round 4 after a CI-only mypy failure)
+apps/nai-core/.venv/bin/ruff format --config apps/nai-core/pyproject.toml evals training --check
+apps/nai-core/.venv/bin/mypy --ignore-missing-imports evals/*.py evals/retrieval/eval_retrieval.py \
+    evals/answers/eval_answers.py evals/nai-bench/build_corpus.py evals/nai-bench/review.py evals/rerankers/bench_rerankers.py
+(cd training/embed && ../../apps/nai-core/.venv/bin/mypy --ignore-missing-imports common.py check_overlap.py generate_pairs.py train.py)
 
 # Bench stack (kept STOPPED, not removed: volumes hold models + index). AMD GPU -> ROCm overlay.
 export OLLAMA_IMAGE=ollama/ollama:0.40.17-rocm
