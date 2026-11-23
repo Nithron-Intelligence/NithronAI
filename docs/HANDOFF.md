@@ -8,7 +8,7 @@
 
 - **Updated:** 2026-11-23, round 3, step 2a done ("Ask before re-embedding when the embedding model changes"
   `3222ff6`, docs `2932379`), 2b done (`37381c2`), 2c done (`0f1c251`), 2d done (`255feea`), 2e done
-  ("Compare licensing options…"). Next: step 4 (NithronOS template diff), then step 3 (nai-bench v1).
+  (`f054402`), step 4 done ("Hand over the NithronOS template sync…"). Next: step 3 (nai-bench v1).
 - **Session note:** a new session (different account) took over mid-step 2 after the previous one ran out of tokens.
 - **Branch:** `lab/stage-0` (all lab work), based on local `main` (release 0.5.0). **Nothing is pushed.**
 - **Done:** rounds 1–2 (see History). Round 3 steps 0 (handoff doc, `AGENTS.md`) and 1 (LICENSE synced with
@@ -39,7 +39,8 @@
 - **Licensing direction** for nAI itself (NCL + commercial vs dual license vs open core): not decided.
 - **nai-bench review:** all items are unreviewed (`python evals/nai-bench/review.py`).
 - **Trademark search** for Nithron Vane / Loupe / Tern / Nox before any public release.
-- **NithronOS template sync:** hand the step list (round 3 step 4) to the session that owns NithronOS.
+- **NithronOS template sync:** hand the patch in `docs/KNOWN_ISSUES.md` ("Hand-over: NithronOS template sync";
+  applies cleanly to NithronOS `47def8c`) to the session that owns NithronOS.
 - **Branch `chore/ncl-add-nithro`** (local + remote): obsolete since LICENSE was synced with "Niro"; delete
   (`git branch -D chore/ncl-add-nithro && git push origin --delete chore/ncl-add-nithro`) or keep?
 - **Docker disk:** ~50 GB images (ROCm PyTorch ~40 GB) + ~46 GB build cache; prune when not needed.
@@ -92,7 +93,8 @@
   (`evals/results/rerankers-threads-2026-11-23.md`); 2c TrueNAS adapter step 1 (read-only discovery, 10 tests
   with a fake JSON-RPC server, `packaging/truenas/`); 2d `evals/` + `training/` Apache-2.0, nai-bench items
   CC-BY-4.0 (scope in `NOTICE`; root LICENSE unchanged); 2e `docs/business/licensing-options.md` (NCL vs
-  AGPL dual vs open core; Unraid CA needs an OSI license). Rest in progress (see Status).
+  AGPL dual vs open core; Unraid CA needs an OSI license); step 4 NithronOS template patch (reranker off,
+  `NAI_NAS_PLATFORM=nithronos`). Rest in progress (see Status).
 
 ## How to resume
 
