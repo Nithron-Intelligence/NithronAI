@@ -7,6 +7,7 @@ parent folder stays frozen as the smoke set.
 |---|---|
 | `corpus/` | The files nAI indexes (index this folder). |
 | `corpus-manifest.json` | Every corpus file: language, kind, license, source, source URL, author, retrieval date, SHA-256. |
+| `corpus-src/*.src.md` | Fictional documents written for nai-bench (front matter: output path, format, language, author, `use: eval-only`), rendered by `../build_corpus.py --root evals/nai-bench/v1`. |
 | `sources.json` | The third-party downloads (URL, headers, license, author) that `fetch_corpus.py` fetches. |
 | `fetch_corpus.py` | Downloads `sources.json` with curl into `corpus/` and updates the manifest; `--check` verifies the corpus. |
 | `questions-dev.jsonl`, `questions-test.jsonl` | The questions, split by hash of the id ([split rules](../README.md#devtest-split-v1)). The test file is only read in final runs. |
@@ -14,7 +15,19 @@ parent folder stays frozen as the smoke set.
 ```bash
 apps/nai-core/.venv/bin/python evals/nai-bench/v1/fetch_corpus.py --check   # verify (also a test)
 apps/nai-core/.venv/bin/python evals/nai-bench/v1/fetch_corpus.py           # fetch missing sources
+# render the fictional files (build deps: evals/nai-bench/requirements-build.txt, e.g. in their own venv)
+python evals/nai-bench/build_corpus.py --root evals/nai-bench/v1             # byte-reproducible
 ```
+
+## Fictional documents
+
+Same household as v0 (Jonas and Elin Berg, Freiburg; the summer cabin Björkudden in Dalarna; Elin's design
+studio Nordlicht Studio), now with the studio's freelancer in Lyon and clients in Annecy, Porto and Portland
+(OR). Several files point at the official texts (a heating-cost statement and the HeizkostenV, a washer-dryer
+defect and the sale-of-goods directive, a delayed US order and the FTC mail-order rule), which the multi-hop
+questions use. Every person, company, address, phone number (555), account number (00 check digits) and
+e-mail domain (`.example`) is invented. All fictional files were written by Claude (claude-opus-5-5) on
+2026-11-23, are CC-BY-4.0 and `use: eval-only`.
 
 ## Sources and licenses
 
