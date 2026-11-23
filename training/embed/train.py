@@ -29,7 +29,10 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
-from common import check_author, read_jsonl, refuse_bench_path
+from common import NAI_CORE, check_author, read_jsonl, refuse_bench_path
+
+sys.path.insert(0, str(NAI_CORE))
+from app.nithron_models import parse_model_id
 
 DEFAULT_BASE = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"  # Apache-2.0, nAI's default
 CHECK_SENTENCES = [
@@ -168,17 +171,18 @@ def build_trainer(model: Any, dataset: Any, evaluator: Any, args: argparse.Names
     training_args = SentenceTransformerTrainingArguments(
         output_dir=str(args.output_dir / "checkpoints"),
         num_train_epochs=args.epochs,
+        max_steps=args.max_steps if args.max_steps else -1,
         per_device_train_batch_size=args.batch_size,
         learning_rate=args.learning_rate,
         warmup_ratio=0.1,
         bf16=use_bf16,
         batch_sampler=BatchSamplers.NO_DUPLICATES,  # in-batch negatives must not be duplicates
         eval_strategy="steps",
-        eval_steps=args.eval_steps,
+        eval_steps=min(args.eval_steps, args.max_steps) if args.max_steps else args.eval_steps,
         save_strategy="steps",
-        save_steps=args.eval_steps,
+        save_steps=min(args.eval_steps, args.max_steps) if args.max_steps else args.eval_steps,
         save_total_limit=2,
-        logging_steps=max(1, args.eval_steps // 5),
+        logging_steps=1 if args.max_steps else max(1, args.eval_steps // 5),
         seed=args.seed,
         report_to="none",
     )
@@ -265,7 +269,13 @@ def train_main(args: argparse.Namespace) -> int:
     dataset = build_train_dataset(train, model, args)
     print(f"train dataset: {len(dataset)} rows, columns {dataset.column_names}")
     trainer = build_trainer(model, dataset, evaluator, args)
+    release = parse_model_id(args.release)
+    if release is None or release.family != "vane":
+        raise ValueError(
+            f"--release must be a Vane model ID like 'vane-1-rc1' or 'vane-1', got {args.release!r}"
+        )
     plan = {
+        "release": {"id": release.hf_id, "display_name": release.display_name, "label": args.release},
         "base_model": args.base_model,
         "pairs": str(args.pairs),
         "pairs_sha256": data_fingerprint(args.pairs),
@@ -300,6 +310,9 @@ def main() -> int:
     parser.add_argument("--pairs", type=Path, help="pairs.jsonl from generate_pairs.py")
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--base-model", default=DEFAULT_BASE)
+    parser.add_argument(
+        "--release", default="vane-1", help="Nithron model this run is for (docs/lab/MODEL_NAMING.md)"
+    )
     parser.add_argument("--epochs", type=float, default=1.0)
     parser.add_argument("--batch-size", type=int, default=64)
     parser.add_argument("--learning-rate", type=float, default=2e-5)
@@ -323,6 +336,7 @@ def main() -> int:
     parser.add_argument(
         "--dry-run", action="store_true", help="prepare everything, then stop before training"
     )
+    parser.add_argument("--max-steps", type=int, help="stop after N optimizer steps (smoke tests)")
     parser.add_argument(
         "--export-only", metavar="MODEL", help="only export MODEL to ONNX and verify with fastembed"
     )

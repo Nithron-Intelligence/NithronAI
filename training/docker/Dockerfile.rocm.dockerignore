@@ -1,0 +1,4 @@
+# Build context for training/docker/Dockerfile.rocm (BuildKit uses this instead of the root .dockerignore)
+*
+!training/requirements.txt
+!apps/nai-core/requirements.txt
