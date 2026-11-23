@@ -33,6 +33,7 @@ from common import (
     check_author,
     detect_language,
     read_jsonl,
+    read_training_rows,
     refuse_bench_path,
     teacher_license,
     write_jsonl,
@@ -160,7 +161,7 @@ def generate(
 
 def select_passages(args: argparse.Namespace) -> list[dict[str, Any]]:
     """Passages to process: author-checked, shuffled (so a --limit pilot covers all files), minus done ones."""
-    passages = list(read_jsonl(args.passages))
+    passages = list(read_training_rows(args.passages))
     for passage in passages:
         check_author(str(passage.get("author") or ""))
         if not passage.get("author"):

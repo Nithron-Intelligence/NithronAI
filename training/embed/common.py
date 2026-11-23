@@ -77,6 +77,38 @@ def read_jsonl(path: Path) -> Iterator[dict[str, Any]]:
                 yield json.loads(line)
 
 
+# Fields that may name who wrote a row's text, at the top level or under "provenance".
+AUTHOR_FIELDS = ("author", "passage_author", "model", "teacher")
+# Keys only nai-bench items have: such a row is benchmark data, whatever its provenance says.
+BENCH_ITEM_KEYS = ("gold_answer", "gold_facts", "gold_sources", "review_status")
+
+
+def check_training_row(row: dict[str, Any], where: str) -> None:
+    """Raise if a row must not be used for training (lab principle 3): eval-only, Claude or another
+    forbidden author, or a nai-bench item."""
+    provenance = row.get("provenance") if isinstance(row.get("provenance"), dict) else {}
+    for scope in (row, provenance):
+        if str(scope.get("use") or "").lower() == "eval-only":
+            raise ValueError(f"{where}: marked use: eval-only, never training data (lab principle 3)")
+        for name in AUTHOR_FIELDS:
+            if scope.get(name):
+                try:
+                    check_author(str(scope[name]))
+                except ValueError as e:
+                    raise ValueError(f"{where}: {e}") from None
+    if any(key in row for key in BENCH_ITEM_KEYS):
+        raise ValueError(f"{where}: looks like a nai-bench item, which must never be used for training")
+
+
+def read_training_rows(path: Path) -> Iterator[dict[str, Any]]:
+    """``read_jsonl`` for training inputs: refuses nai-bench files and every row ``check_training_row``
+    rejects, so eval-only or Claude-written text can't reach a training step."""
+    refuse_bench_path(path)
+    for number, row in enumerate(read_jsonl(path), start=1):
+        check_training_row(row, f"{path.name} line {number}")
+        yield row
+
+
 def write_jsonl(path: Path, rows: Iterable[dict[str, Any]]) -> int:
     path.parent.mkdir(parents=True, exist_ok=True)
     count = 0

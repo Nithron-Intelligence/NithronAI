@@ -29,7 +29,7 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
-from common import NAI_CORE, check_author, read_jsonl, refuse_bench_path
+from common import NAI_CORE, check_author, read_training_rows, refuse_bench_path
 
 sys.path.insert(0, str(NAI_CORE))
 from app.nithron_models import parse_model_id
@@ -49,7 +49,7 @@ CHECK_SENTENCES = [
 
 def load_pairs(path: Path, limit: int | None) -> list[dict[str, Any]]:
     """Pairs with valid provenance; passage ids made consistent with passage texts."""
-    pairs = [p for p in read_jsonl(path) if p.get("query") and p.get("passage")]
+    pairs = [p for p in read_training_rows(path) if p.get("query") and p.get("passage")]
     for pair in pairs:
         provenance = pair.get("provenance") or {}
         if provenance.get("use") != "training":

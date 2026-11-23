@@ -37,9 +37,9 @@
   `~/vms/truenas-test/secrets.env` (mode 600: admin password, `nai-reader` API key); CA in `pki/`. Restart:
   `scripts/truenas-vm/start-vm.sh`, API on `https://localhost:8443` after ~3 min. `lab/stage-0` has no CI
   (CI runs on main/develop and PRs only); local checks passed before every commit.
-- **Next 1: step 3, nai-bench v1 (in progress: 1 done).** Do it in this order, closing out (HANDOFF + checks +
-  commit) after each bullet and every 25 files or questions. **Next command:** step 2, the training guard in
-  `training/embed/common.py` (see `training/tests/`).
+- **Next 1: step 3, nai-bench v1 (in progress: 1, 2 done).** Do it in this order, closing out (HANDOFF + checks
+  + commit) after each bullet and every 25 files or questions. **Next command:** step 3, `review.py` progress /
+  quit / resume / summary with tests (`evals/tests/test_review.py`).
   1. **Split rules (done):** rules in `evals/nai-bench/README.md` ("Dev/test split"); `naibench.split_of`,
      guard in `load_items`/`load_all_items`, `--final-run` + `--label` in `eval_retrieval.py`,
      `eval_answers.py`, `run_baseline.py` (+ `--bench`), `review.py --test-split`, ledger
@@ -51,7 +51,10 @@
      final run appends a line (date, commit, label, item count, dataset hash) to
      `evals/results/test-ledger.jsonl`. Add a test that `eval_retrieval`/`eval_answers`/`run_baseline` can't
      load test items without the flag. v0 (`evals/nai-bench/questions.jsonl`) stays as the frozen smoke set.
-  2. **Training guard:** `training/embed/check_overlap.py` already rejects nai-bench text; also make
+  2. **Training guard (done):** `common.read_training_rows` (used by `generate_pairs.py` and `train.py`)
+     refuses nai-bench paths, `use: eval-only` rows, forbidden authors (incl. `provenance.model`) and rows
+     with nai-bench item fields; tests in `training/tests/test_guards.py` (8 fail with the check disabled).
+     Original requirement: `training/embed/check_overlap.py` already rejects nai-bench text; also make
      `training/embed/common.py` refuse any input row whose provenance says `use: eval-only` or a Claude
      author, with a test (only `train.py` checks this today).
   3. **review.py for short sessions:** show progress ("23/100 reviewed"), `q`/Ctrl+C keep all decisions,
