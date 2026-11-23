@@ -588,5 +588,60 @@
   "author": "Guy de Maupassant (1850-1893)",
   "source": "Le Horla, Project Gutenberg eBook #10775 (pglaf.org mirror)",
   "provenance": "public-domain-book"
+ },
+ {
+  "file": "Buecher/fr/Maupassant_Pierre-et-Jean.txt",
+  "url": "https://gutenberg.pglaf.org/cache/epub/11131/pg11131.txt",
+  "language": "fr",
+  "kind": "book",
+  "transform": "gutenberg-strip",
+  "license": "public-domain (author died before 1956: public domain in the US and the EU); Project Gutenberg header and licence removed",
+  "author": "Guy de Maupassant (1850-1893)",
+  "source": "Pierre et Jean, Project Gutenberg eBook #11131 (pglaf.org mirror)",
+  "provenance": "public-domain-book"
+ },
+ {
+  "file": "Buecher/fr/Verne_Le-tour-du-monde-en-80-jours.txt",
+  "url": "https://gutenberg.pglaf.org/cache/epub/800/pg800.txt",
+  "language": "fr",
+  "kind": "book",
+  "transform": "gutenberg-strip",
+  "license": "public-domain (author died before 1956: public domain in the US and the EU); Project Gutenberg header and licence removed",
+  "author": "Jules Verne (1828-1905)",
+  "source": "Le tour du monde en quatre-vingts jours, Project Gutenberg eBook #800 (pglaf.org mirror)",
+  "provenance": "public-domain-book"
+ },
+ {
+  "file": "Buecher/pt/Queiros_O-Mandarim.txt",
+  "url": "https://gutenberg.pglaf.org/cache/epub/16384/pg16384.txt",
+  "language": "pt",
+  "kind": "book",
+  "transform": "gutenberg-strip",
+  "license": "public-domain (author died before 1956: public domain in the US and the EU); Project Gutenberg header and licence removed",
+  "author": "Eça de Queirós (1845-1900)",
+  "source": "O Mandarim, Project Gutenberg eBook #16384 (pglaf.org mirror)",
+  "provenance": "public-domain-book"
+ },
+ {
+  "file": "Buecher/pt/Machado-de-Assis_Memorias-Posthumas-de-Braz-Cubas.txt",
+  "url": "https://gutenberg.pglaf.org/cache/epub/54829/pg54829.txt",
+  "language": "pt",
+  "kind": "book",
+  "transform": "gutenberg-strip",
+  "license": "public-domain (author died before 1956: public domain in the US and the EU); Project Gutenberg header and licence removed",
+  "author": "Machado de Assis (1839-1908)",
+  "source": "Memorias Posthumas de Braz Cubas, Project Gutenberg eBook #54829 (pglaf.org mirror)",
+  "provenance": "public-domain-book"
+ },
+ {
+  "file": "Buecher/pt/Machado-de-Assis_A-Mao-e-a-Luva.txt",
+  "url": "https://gutenberg.pglaf.org/cache/epub/53101/pg53101.txt",
+  "language": "pt",
+  "kind": "book",
+  "transform": "gutenberg-strip",
+  "license": "public-domain (author died before 1956: public domain in the US and the EU); Project Gutenberg header and licence removed",
+  "author": "Machado de Assis (1839-1908)",
+  "source": "A Mão e a Luva, Project Gutenberg eBook #53101 (pglaf.org mirror)",
+  "provenance": "public-domain-book"
  }
 ]

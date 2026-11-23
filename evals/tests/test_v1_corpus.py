@@ -67,3 +67,16 @@ def test_gutenberg_strip_removes_header_and_licence() -> None:
 def test_gutenberg_strip_also_drops_the_old_end_of_ebook_line() -> None:
     raw = b"*** START OF X ***\r\nBody line\r\n\r\nEnd of Project Gutenberg's X, by Y\r\n\r\n*** END OF X ***\r\n"
     assert _fetcher().gutenberg_strip(raw) == b"Body line\n"
+
+
+def test_fictional_v1_files_say_they_are_claude_written_and_eval_only(
+    manifest: list[dict[str, object]],
+) -> None:
+    fictional = [e for e in manifest if e.get("source_text")]
+    assert fictional, "no fictional files yet"
+    for entry in fictional:
+        assert "claude" in str(entry.get("author", "")).lower(), entry["file"]
+        assert entry["provenance"] == "claude-authored" and entry["use"] == "eval-only", entry["file"]
+        assert entry["license"] == "CC-BY-4.0" and (nb.V1_DIR / str(entry["source_text"])).is_file(), entry[
+            "file"
+        ]
