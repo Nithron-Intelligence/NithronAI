@@ -53,8 +53,8 @@ jobs:
         run: |
           ruff check --config apps/nai-core/pyproject.toml evals training --output-format=github
           ruff format --config apps/nai-core/pyproject.toml evals training --check
-          mypy --ignore-missing-imports evals/*.py evals/retrieval/eval_retrieval.py evals/answers/eval_answers.py evals/nai-bench/build_corpus.py evals/nai-bench/review.py evals/rerankers/bench_rerankers.py
-          (cd training/embed && mypy --ignore-missing-imports common.py check_overlap.py generate_pairs.py train.py)
+          mypy --ignore-missing-imports evals/*.py evals/retrieval/eval_retrieval.py evals/answers/eval_answers.py evals/nai-bench/build_corpus.py evals/nai-bench/review.py evals/rerankers/bench_rerankers.py evals/embeddings/dense_eval.py
+          (cd training/embed && mypy --ignore-missing-imports common.py check_overlap.py generate_pairs.py train.py fetch_public.py generate_corpus.py select_passages.py)
 
   # ====================
   # Tests

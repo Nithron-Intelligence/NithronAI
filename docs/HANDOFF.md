@@ -32,9 +32,12 @@
   `v1-dev-phi4-mini`). Hybrid MRR 0.720 → **0.911 with the reranker** (Hit@5 0.894 → 0.936; cross-language Hit@5
   0.714 → 0.786). Answers: phi4-mini correct 0.596 / refusal 0.533 / judge 0.790 vs qwen2.5:1.5b 0.489 / 0.267 /
   0.629; phi4-mini's language match is lower (0.541 vs 0.627).
-- **Round 5 next command:** synthetic corpus generation running (`training/embed/generate_corpus.py`, mistral-small3.1,
-  100 docs, log `training/data/vane1-pilot/generate_corpus.log`, `timeout 3h`); then `make_passages.py`,
-  `generate_pairs.py`, `check_overlap.py --write-clean`, then the pilot run per `training/configs/vane1-pilot.json`.
+- **Round 5 pilot data so far:** 16 public files (7.0 MB, `training/data/vane1-pilot/public`, manifest
+  `training/manifests/vane1-pilot-public.json`) → 4 462 passages; 100 synthetic documents by mistral-small3.1 (27 min)
+  → 575 passages; pilot selection 581 → overlap check removed 11 → 570 clean passages.
+- **Round 5 running (unattended GPU run, decision 5):** `timeout 3h apps/nai-core/.venv/bin/python training/embed/generate_pairs.py --passages training/data/vane1-pilot/passages-pilot-clean.jsonl --output training/data/vane1-pilot/pairs.jsonl --model mistral-small3.1 --api-base http://localhost:11434/v1 --languages en,de,sv,fr,pt --languages-per-passage 2 --per-passage 3 --seed 13 --resume > training/data/vane1-pilot/generate_pairs.log 2>&1` (started 17:27).
+- **Round 5 next command:** when it finishes: `check_overlap.py training/data/vane1-pilot/pairs.jsonl --write-clean
+  training/data/vane1-pilot/pairs-clean.jsonl`, then the pilot run per `training/configs/vane1-pilot.json`.
 - **Round 4 permissions (2026-11-23):** the human authorized this session to commit, push, open and merge PRs as
   them (git identity, SSH key, gh auth already configured); no attribution trailers, no history rewrite, no
   force-push, never bypass branch protection; merge PRs with a merge commit (not squash/rebase). Release
@@ -336,8 +339,10 @@ apps/nai-core/.venv/bin/ruff check --config apps/nai-core/pyproject.toml evals t
 # the rest of CI's lint job (added round 4 after a CI-only mypy failure)
 apps/nai-core/.venv/bin/ruff format --config apps/nai-core/pyproject.toml evals training --check
 apps/nai-core/.venv/bin/mypy --ignore-missing-imports evals/*.py evals/retrieval/eval_retrieval.py \
-    evals/answers/eval_answers.py evals/nai-bench/build_corpus.py evals/nai-bench/review.py evals/rerankers/bench_rerankers.py
-(cd training/embed && ../../apps/nai-core/.venv/bin/mypy --ignore-missing-imports common.py check_overlap.py generate_pairs.py train.py)
+    evals/answers/eval_answers.py evals/nai-bench/build_corpus.py evals/nai-bench/review.py evals/rerankers/bench_rerankers.py \
+    evals/embeddings/dense_eval.py
+(cd training/embed && ../../apps/nai-core/.venv/bin/mypy --ignore-missing-imports common.py check_overlap.py generate_pairs.py train.py \
+    fetch_public.py generate_corpus.py select_passages.py)
 
 # Bench stack (kept STOPPED, not removed: volumes hold models + index). AMD GPU -> ROCm overlay.
 export OLLAMA_IMAGE=ollama/ollama:0.40.17-rocm
