@@ -3,7 +3,7 @@
 [![License: NCL v1.0](https://img.shields.io/badge/License-Nithron_Community_License-blue.svg)](./LICENSE)
 [![Backend](https://img.shields.io/badge/Backend-FastAPI-informational.svg)](apps/nai-core)
 [![Status](https://img.shields.io/badge/status-beta-green.svg)](#)
-[![Release](https://img.shields.io/badge/nAI-v0.5.0-blue)](https://github.com/Nithron/NithronAI/releases)
+[![Release](https://img.shields.io/badge/nAI-v0.6.0-blue)](https://github.com/Nithron/NithronAI/releases)
 [![Built by Nithron](https://img.shields.io/badge/built_by-Nithron-0b8fe0.svg)](https://nithron.com/projects/)
 
 **nAI** lets you search and ask questions about the files on your NAS, privately, on your own
@@ -271,7 +271,7 @@ The goal: nAI as **the AI that knows your NAS**, on any NAS OS, with NithronOS a
 becoming a small lab that builds private, local models for NAS-class hardware, starting with the models nAI
 uses: see the **[lab roadmap](docs/lab/ROADMAP.md)** and [ADR-0002](docs/ADRs/0002-nithron-ai-lab-direction.md).
 
-Releases: **v0.5.0** (2026-11-23) is the latest release; see [CHANGELOG.md](CHANGELOG.md).
+Releases: **v0.6.0** (2026-11-23) is the latest version (published once its tag is pushed; v0.5.0 before that); see [CHANGELOG.md](CHANGELOG.md).
 
 - [x] **Phase 0 — Foundation** (v0.3): auth on every endpoint, SQLite storage, persistent chat,
       SSRF-safe URL ingestion, green CI
@@ -282,7 +282,7 @@ Releases: **v0.5.0** (2026-11-23) is the latest release; see [CHANGELOG.md](CHAN
       The 0.4.0 image is published; the template is in the NithronOS repo, waiting to be merged there.
   - Still open: map NithronOS share permissions to nAI groups automatically; Docling for complex layouts
     (tables in PDFs)
-- [ ] **Phase 2 — Assistant**: done so far (0.5.0, on `main`, not tagged): API keys, OpenAI-compatible API,
+- [ ] **Phase 2 — Assistant**: done so far (0.5.0): API keys, OpenAI-compatible API,
       MCP server for nAI's own documents. Next: MCP server for the NithronOS API (read-only first, then
       confirmed actions), tool use, NithronOS sign-in, share permissions → nAI groups
 - [ ] **Phase 3 — Everywhere**: NithronOS desktop/mobile clients, photo search, an eval suite built from real

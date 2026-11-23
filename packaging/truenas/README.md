@@ -14,8 +14,9 @@ permissions yet (manage nAI groups in nAI). Design: [docs/architecture/nas-adapt
 
 ## 2. Install the app
 
-Use an image newer than 0.5.0: 0.5.0 predates the TrueNAS adapter, and when TrueNAS runs it as the `apps`
-user it can't download its embedding model (fixed after 0.5.0, see CHANGELOG "Image runs as any user").
+Use nai-core **0.6.0** or later (the compose file does): 0.5.0 predates the TrueNAS adapter, and when TrueNAS
+runs it as the `apps` user it can't download its embedding model (fixed in 0.6.0, see CHANGELOG "Image runs
+as any user").
 
 1. If Apps were never used on this TrueNAS: **Apps > Configuration > Choose Pool** (e.g. `tank`) first.
 2. **Apps > Discover Apps**, open the menu next to **Custom App**, choose **Install via YAML**.

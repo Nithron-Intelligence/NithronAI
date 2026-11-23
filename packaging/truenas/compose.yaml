@@ -1,10 +1,10 @@
 # nAI as a TrueNAS custom app (Apps > Discover Apps > menu next to "Custom App" > Install via YAML).
 # Edit the dataset paths below first: see README.md in this folder.
-# Use a release after 0.5.0: 0.5.0 has no TrueNAS API adapter and, run as the apps user, can't download its
-# embedding model (keyword search only). Tested 2026-11-23 with a local build of lab/stage-0.
+# 0.6.0 or later: 0.5.0 has no TrueNAS API adapter and, run as the apps user, can't download its embedding
+# model (keyword search only). Tested 2026-11-23 with a local build of what became 0.6.0.
 services:
   nai:
-    image: ghcr.io/nithron/nithronai/nai-core:0.5.0
+    image: ghcr.io/nithron/nithronai/nai-core:0.6.0
     restart: unless-stopped
     user: "568:568"                 # TrueNAS's built-in apps user/group
     ports:

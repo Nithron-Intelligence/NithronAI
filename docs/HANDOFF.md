@@ -15,8 +15,14 @@
   (sudo commands go to the human). May start/stop the bench containers and the TrueNAS VM. Ask before deleting
   anything (Docker images, build cache, VM files, `~/.venvs/nai-bench-build`). NithronOS repo read-only. Never
   load the nai-bench test split; `--final-run` is the human's decision.
-- **Round 4 next command:** `gh pr create --base main --head lab/stage-0` (section 1: lab/stage-0 → main through
-  CI), then release prep (section 2), v1 dev baseline (3), difficulty rebalance (4), next-stage plan (5).
+- **Round 4, section 1 done:** PR #3 (lab/stage-0 → main, 19 commits) merged with a merge commit as `3163618`;
+  its first CI run failed only on mypy over `training/embed/common.py` (CI type-checks training/embed, the local
+  commands didn't), fixed in `41facf4`; PR CI then green. main CI on `3163618` green incl. nai-bench evaluation
+  (run 45189836839). main = lab/stage-0 = `3163618` (local and origin) before this close-out.
+- **Round 4 next command:** merge the 0.6.0 prep PR (CHANGELOG `## [0.6.0] – 2026-11-23`, version 0.6.0 in
+  config/`__init__`/README badge, TrueNAS guide → `nai-core:0.6.0`), then build the image from that main commit and
+  smoke-test it (`/health` = 0.6.0; `--user 568:568` with a throwaway data dir → semantic search). No tag
+  (release switch: STOP BEFORE TAGGING).
 - **Branches:** `main` = `lab/stage-0` (fast-forwarded after the release merge), both pushed;
   `lab/stage-0` tracks `origin/lab/stage-0`. Work continues on `lab/stage-0`; push it after each close-out.
 - **Push authorization:** on 2026-11-23 the human authorized this session to commit, merge and push as them
