@@ -6,7 +6,37 @@
 
 ## Status now
 
-- **Updated:** 2026-11-23, round 7 (Granite memory limits, Vane 1 Granite pilot, reranker audit, fusion, quantization).
+- **Updated:** 2026-11-23, round 8 (keyword-only mode for small NAS boxes, then release 0.7.0). **Stopped before any code
+  change: the session's context was nearly exhausted; the plan below is ready to execute.**
+- **Round 8 permissions (2026-11-23):** commit, push, open and merge PRs as the human (merge commits; no attribution,
+  no history rewrite, no force-push, never bypass branch protection); create and push **v0.7.0 once** (never move or
+  re-push a tag, no other tags); user-space installs; start/stop bench and ROCm trainer containers (GPU runs ≤ 3 h,
+  command and config recorded here first); ask before deleting anything except own test containers.
+- **Round 8 state:** lab/stage-0 = `1f6d6fa` + this HANDOFF commit, main = `f671c7b`, both pushed, clean. Nothing of
+  sections 1–3 done yet.
+- **Round 8 next steps (keyword-only mode), from the code read this round:**
+  1. `app/config.py`: new `embeddings: str = "auto"` (auto | on | off, normalized by a `field_validator` like
+     `reranker` at line ~197); keep `embeddings_enabled` as the master switch (false = off).
+  2. `app/hardware.py` (next to `reranker_auto_decision`, line ~241): `EMBEDDINGS_MIN_MEMORY_GB = 2.5` and
+     `embeddings_auto_decision(hw) -> (bool, reason)` on `hw.memory_gb` (effective = cgroup limit capped by host RAM).
+     Reasoning: granite peak 1 759 MiB (round 7) + ~40 % headroom ≈ 2.5 GB; NithronOS 3g and TrueNAS 4g stay on; a
+     2 GB box or a < 2.5g limit gets keyword-only. Unit tests with fake `HardwareInfo` for 2 GB, 3g, 4g.
+  3. Resolve the decision once (cached, like `RerankerService.decision()` in `app/services/reranker.py` line ~25) and
+     use it wherever `settings.embeddings_enabled` is read today: `services/embeddings.py:191` (don't load the model,
+     don't queue work), `services/retriever.py:169` (hybrid → BM25), `routes/health.py:38/67/77`, `main.py:51`.
+     `/system` → `features.embeddings.mode` (`auto-off` / `on` / `off`) and `reason`; web UI admin notice (keyword-only
+     because of memory; forcing on needs ≥ 2.5g / 3g recommended).
+  4. Upgrade tests: (a) 2 GB box with stored MiniLM vectors → keyword-only, no reindex prompt, model never loaded;
+     (b) same data with ≥ 3g → embeddings on → existing ask-before-re-index flow (old vectors kept).
+  5. Measure: nas-sim overlay with `NAS_SIM_NAI_MEMORY=2g` (add a fresh volume) → peak RAM, search median; v1 dev
+     retrieval with `NAI_EMBEDDINGS=off` (BM25 row of `evals/results/v1-dev-emb-granite97-2026-11-23.md` is the
+     expected number: MRR 0.842, Hit@5 0.894).
+  6. Docs: README memory note, settings docs, TrueNAS guide, NithronOS form text + KNOWN_ISSUES hand-over, CHANGELOG
+     Unreleased; PR → main, CI green, merge.
+  7. Then release 0.7.0 per `docs/RELEASING.md` (CHANGELOG date, `app_version`/`__version__`/README badge, TrueNAS
+     compose + this repo's NithronOS template → 0.7.0), PR, build from that main commit, smoke tests (/health 0.7.0;
+     `--user 568:568` semantic query; 2g → keyword-only answers a keyword query; 3g → granite on), tag v0.7.0 once,
+     poll release.yml, anonymous pull + repeat, hand-over patch bump.
 - **Round 7 permissions (2026-11-23):** commit, push, open and merge PRs as the human (merge commits; no attribution,
   no history rewrite, no force-push, never bypass branch protection); **no tags**; delete the three empty
   `v1-dev-*.err` files (done); ask before deleting anything else; user-space installs and model downloads; start/stop
@@ -329,6 +359,8 @@
 
 | Date | Decision | Reason |
 |---|---|---|
+| 2026-11-23 | **Small boxes get keyword-only mode:** where memory can't fit Granite, nAI turns embeddings off and searches with BM25 only (`NAI_EMBEDDINGS=auto|on|off`); no second embedding model, MiniLM is not a fallback. | 2 GB NAS boxes can't fit Granite's 1.8 GB peak; MiniLM's lineage has non-commercial data. |
+| 2026-11-23 | **Publish 0.7.0** once keyword-only mode is merged and every check passes. | |
 | 2026-11-23 | **Embedding base → IBM `granite-embedding-97m-multilingual-r2`** (Apache-2.0, trained without MS MARCO) if it holds up on nai-bench v1 dev; it becomes Vane 1's base and nAI's default. | The old default's lineage has non-commercial data (audit). |
 | 2026-11-23 | **Upstream CC-BY-SA in a base model's lineage is accepted** and recorded in the audit for lawyer review before any commercial deal; data nAI trains on directly stays CC-BY-SA-free. | Most open bases use Wikipedia/StackExchange; non-commercial terms are the hard blocker. |
 | 2026-11-23 | **No release in round 6;** a default-model change goes into "Unreleased" for 0.7.0. | |
@@ -377,6 +409,7 @@
   - Simulated NAS (2 CPUs / 4 GB each, CPU only): index 27 s; search 0.20 s; extractive answer 0.20 s;
     qwen2.5:1.5b answer 4.7 s median (p95 21 s); nai-core 1.1 GB, Ollama 1.6 GB.
   - ROCm smoke: 2 training steps + ONNX export on the RX 7900 XTX in 37 s.
+- **Round 8 (2026-11-23):** decisions and permissions recorded, implementation plan written; no code changed (context).
 - **Round 7 (2026-11-23):** `.err` files deleted; Granite peak-RAM measurements and memory docs `5a982ef`, PR #8 merge `f671c7b`;
   sections 2–5 not started (context).
 - **Round 6 (2026-11-23):** permissions/decisions + Granite vetting `ef1f971`; Granite vs MiniLM on v1 dev + NAS `7dd7a0e`;
