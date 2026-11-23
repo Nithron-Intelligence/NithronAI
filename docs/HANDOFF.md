@@ -16,9 +16,17 @@
   main, no tags, no branch deletion, no force-push) and user-space installs; ask before deleting anything
   outside `~/vms/truenas-test/`. Checks done: main CI for `c9d3d05` green (run 45142725988); 437 GB free in
   `~`; `/dev/kvm` usable by `nox`; `qemu-system-x86_64` and `qemu-img` installed, `expect` and a VNC client
-  not. The previous long conversation ran out of context here: **start the VM test in a fresh session**,
-  first command: find the current stable TrueNAS Community Edition ISO and its SHA-256 on truenas.com.
-- **Next 1: TrueNAS manual test in a VM (not started).** Requirements from the human: check disk and
+  not. A second session the same day (2026-11-23) got the same permissions again from the human (commit and
+  push `lab/stage-0` as them, no attribution trailers, no history rewrite/force-push, no push to main, no
+  tags, no branch deletion; user-space installs; ask before deleting outside the VM directory).
+- **TrueNAS VM test, in progress (2026-11-23, session 2):** main CI for `c9d3d05` green. ISO
+  TrueNAS-SCALE-25.10.8 (current stable; 27.0.0 is RC) downloaded, SHA-256 `af5c8cea…f419d7bc` matches the
+  `.sha256` file and the download page. **VM installed** headless over the serial console and **configured**
+  with `scripts/truenas-vm/` (pool `tank` mirror, `tank/documents` with sample files, `tank/photos`, SMB +
+  NFS shares, user `nai-reader` in `truenas_readonly_administrators`, API key; own CA via `make-cert.sh`
+  imported as the UI certificate). Secrets: `~/vms/truenas-test/secrets.env` (mode 600). Restart:
+  `scripts/truenas-vm/start-vm.sh`; API on `https://localhost:8443`.
+- **Next 1: TrueNAS manual test in a VM (in progress, see above).** Requirements from the human: check disk and
   `/dev/kvm`; VM files in `~/vms/truenas-test/` (outside the repo); download the current stable TrueNAS
   Community Edition ISO from truenas.com and verify its SHA-256 against the published checksum; KVM VM with
   ~8 GB RAM, 4 vCPUs, 32 GB boot disk + 1–2 data disks, user-mode networking with HTTPS forwarded to a
