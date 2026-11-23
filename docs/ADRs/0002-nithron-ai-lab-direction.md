@@ -1,6 +1,9 @@
 # ADR-0002: Nithron AI lab direction
 
-- Status: accepted (2026-11-22; direction set by the maintainer)
+- Status: accepted (2026-11-22; direction set by the maintainer). Amended 2026-11-23 by
+  [ADR-0004](0004-nas-adapter-layer.md): nAI and the models are NAS-agnostic, NithronOS is the reference
+  platform; Stage 3 is a NAS agent model on a common tool interface. Model names:
+  [MODEL_NAMING.md](../lab/MODEL_NAMING.md).
 - Supersedes: nothing; extends the product direction in the README roadmap
 
 ## Context
@@ -12,15 +15,16 @@ English cross-encoder reranker, any LLM via LiteLLM/Ollama). Its retrieval eval 
 questions and there was no answer-quality eval, so we could not say whether a change made answers better.
 
 The models that matter for nAI are small: an embedding model, a reranker, a 1–4B answering model and,
-later, an agent model for NithronOS. They must run on NAS-class hardware (a few GB of RAM, often no GPU)
+later, an agent model for the NAS. They must run on NAS-class hardware (a few GB of RAM, often no GPU)
 and handle private, multilingual files. Large labs don't optimize for that.
 
 ## Decision
 
 1. Nithron AI becomes a small lab that builds private, local models for NAS-class hardware, starting with
-   the models nAI uses. nAI is the product; NithronOS is the distribution channel.
+   the models nAI uses. nAI is the product (for any NAS OS); NithronOS is the reference platform.
 2. Work follows the staged path in [docs/lab/ROADMAP.md](../lab/ROADMAP.md): measurement (nai-bench) first,
-   then an embedding model, then a small answering model, then a NithronOS agent model.
+   then an embedding model and a reranker (Vane, Loupe), then answering models (Tern, Nox), then a NAS
+   agent model.
 3. Four principles are binding (see the roadmap for the full text): no training on users' data without
    explicit opt-in; every model, dataset and tool license is checked and recorded before use; no training
    data from services whose terms forbid it (including Claude), with a `provenance` field on every item;
@@ -39,5 +43,5 @@ and handle private, multilingual files. Large labs don't optimize for that.
 - nAI's own product roadmap (README) continues; the lab roadmap feeds it models.
 - Costs: Stage 1 fits on the existing workstation GPU; Stage 2 may need rented GPU time; Stage 4 needs
   someone to own releases on Hugging Face.
-- Risk: the lab could pull time away from shipping nAI to NithronOS users. Mitigation: each stage must ship
+- Risk: the lab could pull time away from shipping nAI to NAS users. Mitigation: each stage must ship
   something nAI uses (a model it can switch to, or a measurement it relies on).
