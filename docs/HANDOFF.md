@@ -6,7 +6,17 @@
 
 ## Status now
 
-- **Updated:** 2026-11-23, session 3 end (nai-bench v1 first round and TrueNAS custom-app test done). **Release 0.5.0 is pushed and published.**
+- **Updated:** 2026-11-23, round 4 (lab work → main, release 0.6.0 prep, v1 dev baseline, difficulty rebalance,
+  next-stage plan). **Release 0.5.0 is published; 0.6.0 is being prepared (not tagged).**
+- **Round 4 permissions (2026-11-23):** the human authorized this session to commit, push, open and merge PRs as
+  them (git identity, SSH key, gh auth already configured); no attribution trailers, no history rewrite, no
+  force-push, never bypass branch protection; merge PRs with a merge commit (not squash/rebase). Release
+  switch: **STOP BEFORE TAGGING** (no tags this session; never move or re-push a tag). User-space installs
+  (sudo commands go to the human). May start/stop the bench containers and the TrueNAS VM. Ask before deleting
+  anything (Docker images, build cache, VM files, `~/.venvs/nai-bench-build`). NithronOS repo read-only. Never
+  load the nai-bench test split; `--final-run` is the human's decision.
+- **Round 4 next command:** `gh pr create --base main --head lab/stage-0` (section 1: lab/stage-0 → main through
+  CI), then release prep (section 2), v1 dev baseline (3), difficulty rebalance (4), next-stage plan (5).
 - **Branches:** `main` = `lab/stage-0` (fast-forwarded after the release merge), both pushed;
   `lab/stage-0` tracks `origin/lab/stage-0`. Work continues on `lab/stage-0`; push it after each close-out.
 - **Push authorization:** on 2026-11-23 the human authorized this session to commit, merge and push as them
