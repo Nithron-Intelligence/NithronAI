@@ -12,7 +12,7 @@ version: '3.9'
 
 services:
   app:
-    image: ghcr.io/nithron/nithronai/nai-core:${NAI_VERSION:-0.4.0}
+    image: ghcr.io/nithron/nithronai/nai-core:${NAI_VERSION:-0.6.0}
     container_name: nos-app-nai-app-1
     restart: unless-stopped
     user: "${PUID:-1000}:${PGID:-1000}"
@@ -53,7 +53,7 @@ services:
     labels:
       - "nos.app.id=nai"
       - "nos.app.name=nAI"
-      - "nos.app.version=${NAI_VERSION:-0.4.0}"
+      - "nos.app.version=${NAI_VERSION:-0.6.0}"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s

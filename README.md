@@ -271,7 +271,7 @@ The goal: nAI as **the AI that knows your NAS**, on any NAS OS, with NithronOS a
 becoming a small lab that builds private, local models for NAS-class hardware, starting with the models nAI
 uses: see the **[lab roadmap](docs/lab/ROADMAP.md)** and [ADR-0002](docs/ADRs/0002-nithron-ai-lab-direction.md).
 
-Releases: **v0.6.0** (2026-11-23) is the latest version (published once its tag is pushed; v0.5.0 before that); see [CHANGELOG.md](CHANGELOG.md).
+Releases: **v0.6.0** (2026-11-23) is the latest release; see [CHANGELOG.md](CHANGELOG.md).
 
 - [x] **Phase 0 — Foundation** (v0.3): auth on every endpoint, SQLite storage, persistent chat,
       SSRF-safe URL ingestion, green CI
