@@ -5,6 +5,11 @@ All notable changes to nAI. Versions follow [semantic versioning](https://semver
 
 ## [Unreleased]
 
+## [0.7.0] – 2026-11-23
+
+A new default embedding model without non-commercial data in its lineage (IBM Granite Embedding R2), and a
+keyword-only mode so small NAS boxes keep working.
+
 ### Added
 - **Keyword-only mode for small boxes:** `NAI_EMBEDDINGS=auto|on|off` (default `auto`). Below 2.5 GB of effective
   memory (container limit, capped by the NAS's RAM) nAI doesn't load the embedding model and searches with keywords
@@ -141,7 +146,8 @@ Phase 0: foundation.
 - Relicensed from AGPL-3.0-only to the NithronOS Community License (versions up to `66fa142` remain
   AGPL-3.0-only; see `NOTICE`).
 
-[Unreleased]: https://github.com/Nithron/NithronAI/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/Nithron/NithronAI/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/Nithron/NithronAI/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/Nithron/NithronAI/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/Nithron/NithronAI/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/Nithron/NithronAI/releases/tag/v0.4.0
