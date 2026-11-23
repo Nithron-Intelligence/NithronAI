@@ -19,10 +19,16 @@
   its first CI run failed only on mypy over `training/embed/common.py` (CI type-checks training/embed, the local
   commands didn't), fixed in `41facf4`; PR CI then green. main CI on `3163618` green incl. nai-bench evaluation
   (run 45189836839). main = lab/stage-0 = `3163618` (local and origin) before this close-out.
-- **Round 4 next command:** merge the 0.6.0 prep PR (CHANGELOG `## [0.6.0] – 2026-11-23`, version 0.6.0 in
-  config/`__init__`/README badge, TrueNAS guide → `nai-core:0.6.0`), then build the image from that main commit and
-  smoke-test it (`/health` = 0.6.0; `--user 568:568` with a throwaway data dir → semantic search). No tag
-  (release switch: STOP BEFORE TAGGING).
+- **Round 4, section 2 done (release 0.6.0 prepared, NOT tagged):** PR #4 merged as `06c29e0` (CHANGELOG
+  `## [0.6.0] – 2026-11-23`, version 0.6.0, TrueNAS guide → `nai-core:0.6.0`); PR CI and main CI (run 45190939370) green.
+  Image built from `06c29e0` with `git archive 06c29e0 | docker build -f apps/nai-core/Dockerfile -t
+  nai-core:0.6.0-local -`: `/health` reports 0.6.0 (default user `nai`); as `--user 568:568` with a throwaway data
+  dir (`HOME=/`) the embedding model downloaded into `/app/data/.cache/huggingface`, NLTK data readable, 0
+  permission errors, an embedding-only query with no shared keywords found the right file (the auto reranker
+  policy also turned on and loaded on this 32-core host). Test containers removed. Tag commands are under
+  "Waiting on the human".
+- **Round 4 next command:** section 3, v1 dev baseline: `NAI_IMAGE=nai-core:0.6.0-local` bench stack with the v1
+  corpus and its own data volume, then `run_baseline.py --bench evals/nai-bench/v1/questions-dev.jsonl` (dev only).
 - **Branches:** `main` = `lab/stage-0` (fast-forwarded after the release merge), both pushed;
   `lab/stage-0` tracks `origin/lab/stage-0`. Work continues on `lab/stage-0`; push it after each close-out.
 - **Push authorization:** on 2026-11-23 the human authorized this session to commit, merge and push as them
@@ -124,7 +130,12 @@
 
 ## Waiting on the human
 
-- **Pushes:** none pending (release and lab work pushed 2026-11-23; see History).
+- **Tag v0.6.0 (release switch was STOP BEFORE TAGGING):** main is at `06c29e0` with CI green. To publish:
+  `git fetch origin && git tag -a v0.6.0 06c29e0 -m "nAI 0.6.0" && git push origin v0.6.0`, then watch
+  release.yml (`gh run list --workflow release.yml --limit 1`), check an anonymous
+  `docker pull ghcr.io/nithron/nithronai/nai-core:0.6.0`, repeat the `--user 568:568` smoke test on it, and do
+  docs/RELEASING.md step 5 (NithronOS template → 0.6.0, here and in the NithronOS repo copy).
+- **Pushes:** none pending (main = lab/stage-0 pushed).
 - **Licensing direction** for nAI itself (NCL + commercial vs dual license vs open core): not decided.
 - **nai-bench review:** all items are unreviewed: v0 56 (`python evals/nai-bench/review.py`), v1 100
   (`--file evals/nai-bench/v1/questions-dev.jsonl`; the test split needs `--test-split`).
