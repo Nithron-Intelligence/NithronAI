@@ -1,5 +1,10 @@
 # Vane 1 base-model training-data audit
 
+> **Round 6 (2026-11-23): the human decided to move the base to IBM Granite Embedding R2** (decision log) and that
+> upstream CC-BY-SA in a base model's lineage is accepted and recorded for lawyer review before any commercial deal
+> (data nAI trains on directly stays CC-BY-SA-free). The Granite section is at the end; the MiniLM section below is
+> kept as the record of why.
+
 > Audit of `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`, nAI's default embedding model and the
 > chosen base for Nithron Vane 1 ([stage 1 plan](stage1-embedding-finetune.md) §1). Written 2026-11-23 (round 5,
 > decision 4: no full Vane 1 training run and no public release until this audit passes). Not legal advice.
@@ -88,3 +93,27 @@ Until the human decides, the round-5 pilot runs as planned (decision 4) but **no
 The unverified rows above (COCO, Quora, Yahoo Answers, S2ORC, sentence-compression, GlobalVoices, Europarl,
 OpenSubtitles, UNPC, JW300, the TED policy), and the student checkpoint's pre-training data. None of them can
 turn the verdict into a clean pass, because MS MARCO and Flickr30k are verified non-commercial.
+
+## Granite Embedding Multilingual R2 (97m and 311m), round 6
+
+Sources: the model cards ([97m](https://huggingface.co/ibm-granite/granite-embedding-97m-multilingual-r2),
+[311m](https://huggingface.co/ibm-granite/granite-embedding-311m-multilingual-r2), both `license: apache-2.0`, not
+gated) and IBM's report "Granite Embedding Multilingual R2 Models" ([arXiv 2605.13521](https://arxiv.org/abs/2605.13521)).
+
+- **Non-commercial data excluded, stated explicitly:** "Notably, we exclude the popular MS-MARCO dataset due to its
+  non-commercial license" (report, §1). Card: "All training data is sourced under permissive, commercial-friendly
+  licenses, making Granite Embedding R2 suitable for unrestricted enterprise deployment", with a data clearance
+  process covering "licensing information, usage restrictions".
+- **Training data (card):** (1) unsupervised title–body pairs scraped from the web, (2) "publicly available paired
+  data with permissive, enterprise-friendly licenses", (3) IBM-internal paired data for technical domains, (4)
+  IBM-generated multilingual synthetic data. The report adds: encoder pre-training on filtered FineWeb-Edu plus
+  "multilingual Wikipedia, Stack Exchange, and arXiv data" and Granite Code data; synthetic reasoning queries
+  "generated with gpt-oss-120b" (an Apache-2.0 open-weight model).
+- **Upstream CC-BY-SA (decision 2, recorded for lawyer review):** Wikipedia and Stack Exchange text in the encoder's
+  pre-training (and possibly in title–body pairs). Accepted by decision; nAI's own training data stays CC-BY-SA-free.
+- **Not enumerable:** the exact public paired datasets and IBM's internal data are not listed; we rely on IBM's
+  statement and clearance process. arXiv papers carry mixed licenses (to note for the lawyer).
+- **The 97m is derived from the 311m** by layer pruning and vocabulary selection (card), so the same lineage applies.
+
+**Verdict: passes** under decision 2: no non-commercial data in the stated lineage (MS MARCO explicitly excluded),
+Apache-2.0 weights, no trust_remote_code; upstream CC-BY-SA recorded for lawyer review. Vane 1 may be built on it.

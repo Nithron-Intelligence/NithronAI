@@ -214,8 +214,17 @@ def export_onnx(model_dir: str, out_dir: Path, quantize: bool) -> Path:
     return out_dir
 
 
-def verify_fastembed(model_dir: Path, reference_model: str, min_cosine: float = 0.99) -> float:
-    """Load the export with fastembed (what nAI runs) and compare with sentence-transformers."""
+def verify_fastembed(
+    model_dir: Path,
+    reference_model: str,
+    min_cosine: float = 0.99,
+    pooling: str = "MEAN",
+    model_file: str = "onnx/model.onnx",
+) -> float:
+    """Load the export with fastembed (what nAI runs) and compare with sentence-transformers.
+
+    ``pooling`` must match the model (MEAN for the MiniLM base, CLS for Granite R2); ``model_file`` picks the fp32
+    or the int8 file. Returns the lowest cosine similarity over the check sentences."""
     import numpy as np
     from fastembed import TextEmbedding
     from fastembed.common.model_description import ModelSource, PoolingType
@@ -223,15 +232,15 @@ def verify_fastembed(model_dir: Path, reference_model: str, min_cosine: float = 
 
     reference = SentenceTransformer(reference_model, device="cpu")
     expected = reference.encode(CHECK_SENTENCES, normalize_embeddings=True)
-    name = "nithron-local/export-check"
+    name = f"nithron-local/export-check-{pooling.lower()}-{Path(model_file).stem}"
     try:
         TextEmbedding.add_custom_model(
             model=name,
-            pooling=PoolingType.MEAN,
+            pooling=PoolingType[pooling],
             normalization=True,
             sources=ModelSource(hf="nithron/export-check"),  # not downloaded: specific_model_path wins
             dim=int(expected.shape[1]),
-            model_file="onnx/model.onnx",
+            model_file=model_file,
         )
     except ValueError:
         pass  # already registered in this process
