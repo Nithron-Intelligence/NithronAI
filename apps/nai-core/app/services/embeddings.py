@@ -43,6 +43,44 @@ class EmbeddingProvider(Protocol):
     def embed_query(self, text: str) -> np.ndarray: ...
 
 
+# Embedding models fastembed doesn't list itself: registered as custom ONNX models before loading. Pooling and
+# dimension come from the model card; neither Granite R2 model uses a query/passage prefix. int8 is not used: its
+# vectors drift (min cosine 0.972 vs PyTorch, docs/lab/MODEL_AND_DATA_LICENSES.md).
+CUSTOM_FASTEMBED_MODELS: dict[str, dict[str, Any]] = {
+    "ibm-granite/granite-embedding-97m-multilingual-r2": {
+        "pooling": "CLS",
+        "dim": 384,
+        "model_file": "onnx/model.onnx",
+    },
+    "ibm-granite/granite-embedding-311m-multilingual-r2": {
+        "pooling": "CLS",
+        "dim": 768,
+        "model_file": "onnx/model.onnx",
+    },
+}
+
+
+def register_custom_fastembed_model(text_embedding: Any, model: str) -> bool:
+    """Register ``model`` with fastembed if it is one of CUSTOM_FASTEMBED_MODELS; True if it is custom."""
+    spec = CUSTOM_FASTEMBED_MODELS.get(model)
+    if spec is None:
+        return False
+    from fastembed.common.model_description import ModelSource, PoolingType
+
+    try:
+        text_embedding.add_custom_model(
+            model=model,
+            pooling=PoolingType[spec["pooling"]],
+            normalization=True,
+            sources=ModelSource(hf=model),
+            dim=spec["dim"],
+            model_file=spec["model_file"],
+        )
+    except ValueError:
+        pass  # already registered in this process
+    return True
+
+
 class FastEmbedProvider:
     name = "fastembed"
 
@@ -51,6 +89,7 @@ class FastEmbedProvider:
 
         self.model = settings.embeddings_model
         self._batch = settings.embeddings_batch_size
+        register_custom_fastembed_model(TextEmbedding, self.model)
         logger.info(f"Loading fastembed model {self.model} (downloads on first use)")
         self._model = TextEmbedding(model_name=self.model, cache_dir=settings.models_path)
 
