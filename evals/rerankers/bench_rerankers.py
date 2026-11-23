@@ -125,7 +125,7 @@ def st_scorer(model_id: str, threads: int) -> Callable[[str, list[str]], list[fl
     from sentence_transformers import CrossEncoder
 
     torch.set_num_threads(threads)
-    model = CrossEncoder(model_id, device="cpu", trust_remote_code=True, max_length=512)
+    model = CrossEncoder(model_id, device="cpu", max_length=512)  # never trust_remote_code
     return lambda query, docs: [float(s) for s in model.predict([(query, d) for d in docs], batch_size=16)]
 
 

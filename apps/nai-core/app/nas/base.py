@@ -9,6 +9,10 @@ import os
 from dataclasses import dataclass
 from typing import Protocol
 
+from ..utils.logging import get_logger
+
+logger = get_logger(__name__)
+
 # Folders NAS systems keep inside shares that are never sources of their own
 SKIPPED_SHARE_NAMES = {
     "@eaDir",
@@ -54,23 +58,33 @@ class NasAdapter(Protocol):
     def discover_shares(self, roots: list[str], existing: list[str]) -> list[ShareCandidate]: ...
 
 
+def _inside(path: str, root: str) -> bool:
+    return path == root or path.startswith(root.rstrip(os.sep) + os.sep)
+
+
 def _covered(path: str, existing: list[str]) -> bool:
-    """True if an existing source is this folder or contains it."""
+    """True if an existing source overlaps this folder (contains it, or lies inside it); such a
+    folder can't be added, because sources may not overlap (SourceService.create)."""
     real = os.path.realpath(path)
     for source in existing:
         root = os.path.realpath(source)
-        if real == root or real.startswith(root.rstrip(os.sep) + os.sep):
+        if _inside(real, root) or _inside(root, real):
             return True
     return False
 
 
 def discover_mounted_shares(roots: list[str], existing: list[str]) -> list[ShareCandidate]:
-    """First-level folders under the allowed roots (how NAS shares appear inside the container)."""
+    """First-level folders under the allowed roots (how NAS shares appear inside the container).
+
+    Symlinked folders are not suggested (they can still be added by path if they resolve inside a root).
+    """
     found: list[ShareCandidate] = []
     for root in roots:
         try:
-            entries = sorted(os.scandir(root), key=lambda e: e.name.lower())
-        except OSError:
+            with os.scandir(root) as it:
+                entries = sorted(it, key=lambda e: e.name.lower())
+        except OSError as e:
+            logger.warning(f"Can't list allowed root {root}: {e}")
             continue
         for entry in entries:
             if entry.name.startswith(".") or entry.name in SKIPPED_SHARE_NAMES:

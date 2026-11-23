@@ -11,7 +11,7 @@ Measures, on the nai-bench corpus:
 - /search latency (hybrid) over all answerable questions (median, p95)
 - extractive answers (/ask/stream, no LLM): time to first token and total
 - LLM answers (/ask/stream with the configured Ollama model): time to first token, total, tokens/s
-- memory and CPU of the containers (docker stats, sampled every 0.5 s): peak and after indexing
+- memory and CPU of the containers (docker stats, polled continuously): peak and after indexing
 
     python evals/measure_nas.py --label simulated-nas \\
         --profile "nai-core 2 CPUs / 4 GB, Ollama 2 CPUs / 4 GB, Ryzen 9 7950X host"
@@ -39,7 +39,7 @@ UNITS = {"B": 1, "KiB": 1024, "MiB": 1024**2, "GiB": 1024**3, "kB": 1000, "MB": 
 
 
 def parse_mem(text: str) -> float:
-    """'512.3MiB' -> MB (10^6 bytes would be confusing; we report MiB)."""
+    """'512.3MiB' or '1.2GiB' -> MiB."""
     for unit in sorted(UNITS, key=len, reverse=True):
         if text.endswith(unit):
             return float(text[: -len(unit)]) * UNITS[unit] / 1024**2
@@ -56,21 +56,31 @@ class StatsSampler(threading.Thread):
         self.phase = "startup"
         self.samples: list[dict[str, Any]] = []
         self._halt = threading.Event()
+        self.errors: list[str] = []
 
     def run(self) -> None:
         fmt = "{{.Name}}\t{{.MemUsage}}\t{{.CPUPerc}}"
         while not self._halt.is_set():
-            out = subprocess.run(
-                ["docker", "stats", "--no-stream", "--format", fmt, *self.containers],
-                capture_output=True,
-                text=True,
-            ).stdout
+            try:
+                out = subprocess.run(
+                    ["docker", "stats", "--no-stream", "--format", fmt, *self.containers],
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
+                ).stdout
+            except (OSError, subprocess.TimeoutExpired) as e:
+                self.errors.append(str(e))
+                self._halt.wait(self.interval)
+                continue
             for line in out.strip().splitlines():
-                name, mem, cpu = line.split("\t")
-                used = parse_mem(mem.split("/")[0].strip())
-                self.samples.append(
-                    {"phase": self.phase, "name": name, "mem_mib": used, "cpu": float(cpu.rstrip("%") or 0)}
-                )
+                try:
+                    name, mem, cpu = line.split("\t")
+                    used = parse_mem(mem.split("/")[0].strip())
+                    cpu_percent = float(cpu.rstrip("%"))
+                except ValueError:  # container gone, '--' values, unexpected format
+                    self.errors.append(f"unparsed docker stats line: {line!r}")
+                    continue
+                self.samples.append({"phase": self.phase, "name": name, "mem_mib": used, "cpu": cpu_percent})
             self._halt.wait(self.interval)
 
     def stop(self) -> None:
@@ -80,6 +90,9 @@ class StatsSampler(threading.Thread):
         result: dict[str, Any] = {}
         for name in self.containers:
             rows = [s for s in self.samples if s["name"] == name]
+            if not rows:
+                result[name] = {"no-samples": {"peak_mem_mib": 0, "mean_cpu_percent": 0}}
+                continue
             phases = sorted({s["phase"] for s in rows})
             result[name] = {
                 phase: {
@@ -203,6 +216,7 @@ def measure(args: argparse.Namespace) -> dict[str, Any]:
             else None
         ),
         "containers": sampler.summary(),
+        "sampler_errors": sampler.errors[:20],
     }
 
 
@@ -235,7 +249,7 @@ def markdown(r: dict[str, Any]) -> str:
             f"| LLM answer: total, median / p95 | {llm['median_total']} s / {llm['p95_total']} s |",
             f"| LLM streaming speed, median | {llm['median_token_events_per_s']} token events/s |",
         ]
-    lines += ["", "Memory and CPU per phase (docker stats, sampled every 0.5 s):", ""]
+    lines += ["", "Memory and CPU per phase (docker stats, polled continuously, about every 1–2 s):", ""]
     lines += ["| Container | Phase | Peak memory (MiB) | Mean CPU % |", "|---|---|---|---|"]
     for name, phases in r["containers"].items():
         for phase, v in phases.items():

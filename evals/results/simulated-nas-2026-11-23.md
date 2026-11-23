@@ -15,7 +15,7 @@ nAI 0.5.0, embeddings `sentence-transformers/paraphrase-multilingual-MiniLM-L12-
 | LLM answer: total, median / p95 | 4.693 s / 21.301 s |
 | LLM streaming speed, median | 6.4 token events/s |
 
-Memory and CPU per phase (docker stats, sampled every 0.5 s):
+Memory and CPU per phase (docker stats, polled continuously, about every 1–2 s):
 
 | Container | Phase | Peak memory (MiB) | Mean CPU % |
 |---|---|---|---|

@@ -26,6 +26,10 @@ def test_discovery_lists_first_level_folders_and_skips_nas_internals(tmp_path) -
 
     assert [(s.name, s.already_added) for s in shares] == [("Arbeit", True), ("Familie", False)]
 
+    # A folder that contains an existing source overlaps it too, so it can't be added either.
+    nested = discover_mounted_shares([str(tmp_path)], [str(tmp_path / "Familie" / "Fotos")])
+    assert {s.name: s.already_added for s in nested}["Familie"] is True
+
 
 def test_discover_endpoint_is_admin_only_and_marks_added_sources(share, make_client) -> None:
     root, env = share
