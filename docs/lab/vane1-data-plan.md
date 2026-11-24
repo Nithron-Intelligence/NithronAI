@@ -38,8 +38,14 @@ license, author, date, size and SHA-256 (`fetch_public.py` → `training/manifes
 
 Not used: **Europarl** ("We are not aware of any copyright restrictions", [statmt.org/europarl](https://www.statmt.org/europarl/):
 no license is granted, so treated as unlicensed); anything CC-BY-SA (Wikipedia, Wikisource, Stack Exchange),
-NC or ND; French Légifrance and Portuguese Diário da República texts until their reuse terms are verified (both
-are likely fine and would add real fr/pt text; to check next).
+NC or ND; French and Portuguese official texts until their terms are fully verified. Checked 2026-11-24: the
+LEGI dataset (consolidated French codes and laws) is listed under "Licence Ouverte / Open Licence" on
+[data.gouv.fr](https://www.data.gouv.fr/fr/datasets/legi-codes-lois-et-reglements-consolides/), but the licence
+text (Licence Ouverte 2.0) and Légifrance's own reuse page (HTTP 403) were not read. Portugal: CDADC art. 7.º does
+not cover laws; art. 8.º n.º 1 says compiled or annotated official texts (art. 3.º n.º 1 c)) "não beneficiam de
+protecção" ([CDADC, PGD Lisboa](https://www.pgdlisboa.pt/leis/lei_mostra_articulado.php?nid=484&tabela=leis));
+the Diário da República terms page returned nothing. Both would add real fr/pt text (today's real fr/pt
+passages come only from EU texts); finish the check before using them.
 
 **Excluded by identifier, not only by text:** every document nai-bench uses (v0 and v1, both splits: the CELEX
 numbers, CFR parts, SFS numbers, German statutes and Gutenberg book IDs listed in
@@ -81,7 +87,8 @@ gets the manifests (`training/manifests/`) with sizes, checksums and row counts.
    (v0, v1 dev and v1 test read as raw text), query similarity to every nai-bench question.
 7. **Hard negatives** – `mine_negatives.py` (ROCm container) with Granite R2 97m: ranks 3–50, never the positive
    or another passage of the same source document, score < 0.95 × the positive's (likely false negatives
-   dropped); 3 negatives per pair.
+   dropped); 3 negatives per pair. `train.py --file-negatives --hard-negatives N` trains on them instead of
+   mining during training.
 8. **Manifest** – `data_manifest.py`: path, bytes, SHA-256, rows for every data file → `training/manifests/`.
 9. **Training guard** – `train.load_pairs` refuses rows not marked `use: training`, eval-only rows, forbidden
    authors (Claude, GPT, Gemini …) and anything under `evals/nai-bench`.

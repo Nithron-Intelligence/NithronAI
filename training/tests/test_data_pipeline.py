@@ -197,3 +197,15 @@ def test_holdout_keeps_all_language_versions_of_a_document_together() -> None:
     for n in range(400):
         versions = {common.is_holdout(f"CELEX_3{n:04d}R0001_{lang}.html", 0.2) for lang in ("EN", "DE", "SV")}
         assert len(versions) == 1
+
+
+def test_train_uses_negatives_stored_by_mine_negatives() -> None:
+    import train
+
+    rows = [
+        {"query": "q1", "passage": "p1", "negatives": ["n1", "n2", "n3"]},
+        {"query": "q2", "passage": "p2", "negatives": ["n4"]},
+        {"query": "q3", "passage": "p3"},
+    ]
+    columns = train.file_negative_columns(rows, 2)
+    assert columns == {"anchor": ["q1"], "positive": ["p1"], "negative_1": ["n1"], "negative_2": ["n2"]}
