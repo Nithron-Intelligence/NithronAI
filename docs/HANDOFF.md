@@ -51,6 +51,19 @@
   - Vane 1 rc1 training (GPU, ≤ 3 h): config [`training/configs/vane1-rc1-granite.json`](../training/configs/vane1-rc1-granite.json),
     command = its `command` field (granite 97m, seed 13, 1 epoch, batch 64, lr 2e-5, max length 256, 1 hard
     negative, `--no-export`, `timeout 3h`, log `training/runs/vane1-rc1/train.log`).
+  - Throughput measurement (done, 2026-11-24): 180 sampled real passages
+    (`training/data/vane1/throughput/`), `generate_pairs.py --prompt-version pairs-v2 --concurrency 1|4|8` and
+    `generate_corpus.py --prompt-version corpus-v2 --per-language 5 --concurrency 8`; Ollama started with
+    `infra/compose.bench.gen.yaml` (`OLLAMA_NUM_PARALLEL=8` for the c8 run).
+  - **Generation batch 1 (≤ 8 h, started 2026-11-24):** queries for 6,743 real passages
+    (`training/data/vane1/passages-real-b1.jsonl` = `select_passages.py --seed 13 passages-eu.jsonl:5000
+    passages-de.jsonl:1000 passages-se.jsonl:800 passages-us.jsonl:700`). Ollama: `OLLAMA_NUM_PARALLEL=8
+    docker compose -f infra/compose.bench.yaml -f infra/compose.bench.rocm.yaml -f infra/compose.bench.gen.yaml up
+    -d --wait ollama` (image `ollama/ollama:0.40.17-rocm`). Command (from `training/embed`): `timeout 8h
+    ../../apps/nai-core/.venv/bin/python generate_pairs.py --passages ../data/vane1/passages-real-b1.jsonl
+    --output ../data/vane1/pairs-raw-b1.jsonl --model mistral-small3.1 --prompt-version pairs-v2 --concurrency 8
+    --seed 13 --resume > ../data/vane1/generate-b1.log 2>&1`. Rows are appended and flushed one at a time;
+    re-running the same command resumes.
 - **Updated:** 2026-11-23, round 8 session 2 (keyword-only mode for small NAS boxes, then release 0.7.0). In
   **Round 8 finished:** sections 2 (keyword-only mode) and 3 (release 0.7.0) done; nothing else started.
 - **Round 8 permissions (2026-11-23, restated for session 2 the same day):** commit, push, open and merge PRs as the human (merge commits; no attribution,

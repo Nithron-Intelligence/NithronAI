@@ -18,8 +18,8 @@ changing the pipeline. Every pair is (query, positive passage, up to 3 mined har
 | Query style | ~40 % question, ~30 % keywords, ~30 % "find the file" | Prompt `pairs-v2`; "find" queries are how people look for a file on a NAS. |
 | Per passage | at most 6 queries (filter cap), 3 requested | Breadth over depth. |
 
-At ~2.6 kept pairs per passage (pilot: 1,875 pairs from ~720 passages) the target needs about **23,000
-passages**: ~12,500 real, ~10,500 synthetic (≈ 3,500 synthetic documents of ~3 chunks each).
+Planning figure before measuring was ~2.6 kept pairs per passage (the pilot); measured with pairs-v2 it is ~4.4,
+so the target needs ~13,600 passages (see "Throughput" below).
 
 ## Sources and licenses
 
@@ -99,4 +99,30 @@ gets the manifests (`training/manifests/`) with sizes, checksums and row counts.
 
 ## Throughput and time to target
 
-THROUGHPUT_PLACEHOLDER
+Measured 2026-11-24 on the RX 7900 XTX (24 GB), `mistral-small3.1` Q4_K_M in Ollama 0.40.17-rocm, context 4096,
+sample of 180 real passages (`training/data/vane1/throughput/`):
+
+| Step | Setting | Throughput |
+|---|---|---|
+| Queries (`generate_pairs.py`, pairs-v2) | 1 request at a time | 864 passages/h, 4,666 raw pairs/h |
+| | 4 in flight, `OLLAMA_NUM_PARALLEL=4` | 2,107 passages/h, 10,660 raw pairs/h |
+| | 8 in flight, `OLLAMA_NUM_PARALLEL=8` (19 GB VRAM) | **2,295 passages/h, 12,292 raw pairs/h** |
+| Synthetic documents (`generate_corpus.py`, corpus-v2) | 8 in flight | **268 documents/h** (avg. 340 words → ~5 passages each with nAI's chunker) |
+
+Yield: the teacher writes ~5.1 queries per passage (3 per requested language); `filter_pairs.py` keeps 88 %
+(drops: copied queries 11 %, query inside passage, cap) and `check_overlap.py` drops another ~2 % (EU
+boilerplate shared with v1's EU texts) → **~4.4 clean pairs per passage, ~10,000 clean pairs per GPU hour**.
+Measured mix in the sample: question 37 %, keywords 34 %, find 29 %; 57 % cross-language (above the 45 % target:
+`--languages-per-passage` can lower it).
+
+Because a passage yields ~4.4 pairs rather than the pilot's ~2.6, the 60,000 target needs **~13,600 passages**
+(not 23,000): ~6,700–7,500 real and ~6,100 synthetic (~1,220 documents).
+
+| Work | GPU time |
+|---|---|
+| Batch 1: queries for 6,743 real passages (running since 2026-11-24) | ~2.9 h |
+| ~1,220 synthetic documents | ~4.6 h |
+| Queries for their ~6,100 passages | ~2.7 h |
+| **Total to 60,000 pairs** | **~10 h** (two 8-hour runs at most) |
+
+Hard-negative mining (Granite 97m on the GPU) and filtering take minutes.
