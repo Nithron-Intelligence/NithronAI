@@ -18,6 +18,29 @@
   volume `nai-bench_nai-nas-sim-r8-2g-data`) after checking no running container uses them; ask before deleting
   anything else. User-space installs (sudo → print the command for the human). Check free disk before every large
   download or generation run.
+- **Round 9, section 1 done:** state checked (as above). Docker cleanup: deleted `nai-core:0.7.0-local`,
+  `:granite-local`, `:0.6.0-local`, `:lab-stage-0`, `ghcr.io/nithron/nithronai/nai-core:0.7.0`, then
+  `nai-core:kwonly-local` once the bench stack was recreated on a new image, and the volume
+  `nai-bench_nai-nas-sim-r8-2g-data`. The images share most layers: the first five deletions freed **0.95 GB**; the
+  image store went 54.16 → 53.21 GB net, after also adding `nai-core:r9-bench` and deleting `kwonly-local`; the
+  volume was negligible (volumes stayed at 30.14 GB). Docker still holds ~53 GB of images and
+  ~49 GB of build cache (pruning those needs the human's go).
+- **Round 9, section 2 done: reranker lineage audit** ([reranker-audit.md](lab/reranker-audit.md), commit `5d09e94`).
+  bge-reranker-v2-m3 **fails** (MS MARCO in bge-m3's and its own fine-tuning data); its int8 ONNX repo states no
+  license (low risk, unverifiable provenance); Qwen3-Reranker-0.6B **fails** (MS MARCO in the supervised data).
+  No clean multilingual reranker with a training-data statement exists; the closest, Horizon-Labs
+  multilingual-reranker-small/-base (permissive data, labels distilled from Qwen3-Reranker-4B), measured on v1
+  dev with the reranker-on setup (top 10, 8 threads): MRR none 0.834, bge 0.896 (0.81 s), Horizon-small 0.886
+  (0.42 s), Horizon-base 0.905 (0.98 s); all tied within ±0.09
+  ([results](../evals/results/v1-dev-rerankers-r9-2026-11-24.md)). Defaults unchanged; decisions under "Waiting on
+  the human".
+- **Round 9, section 3 done: Vane 1 rc1 on Granite** ([results](../evals/results/v1-dev-vane1-rc1-2026-11-24.md)).
+  Pilot pairs re-checked (1,875 rows, 0 nai-bench overlap, guard passed); config committed first (`c44e19b`);
+  trained 22 steps in 13 s. v1 dev, embedding-only MRR / Hit@5: granite 0.854 / 0.979, **rc1 0.853 / 0.936**,
+  rc0 (MiniLM pilot) 0.613 / 0.766, MiniLM 0.444 / 0.532; cross-language MRR granite 0.735, rc1 0.759; offline
+  hybrid MRR granite 0.843, rc1 0.853. **No measurable gain** (all inside ±0.09); the pilot data's closeness to
+  v1's fictional files would have inflated a gain, so the flat result says 1,875 pairs are too few for Granite.
+  `training/runs/vane1-rc1/model` stays local (not exported, not published, no default change).
 - **Round 9 run log (commands recorded before each run):**
   - Reranker comparison (CPU, done): `docker compose -f training/docker/compose.rocm.yaml run --rm -e
     HIP_VISIBLE_DEVICES= trainer python3 evals/rerankers/bench_rerankers.py run --candidates
