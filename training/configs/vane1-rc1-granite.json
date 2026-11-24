@@ -1,0 +1,28 @@
+{
+  "name": "vane-1-rc1",
+  "purpose": "Round-9 baseline: the round-5 pilot setup (vane-1-rc0) on the new base, Granite R2 97m. Learns whether the same 1,875 pairs move Granite on v1 dev. Not a release candidate: no export, no publication, no default change.",
+  "base_model": "ibm-granite/granite-embedding-97m-multilingual-r2",
+  "teacher": "mistral-small3.1 (Apache-2.0, Ollama Q4_K_M, num_ctx 8192)",
+  "data": {
+    "synthetic_corpus": "training/data/vane1-pilot/synthetic (generate_corpus.py, 20 documents per language, seed 13)",
+    "public_texts": "training/data/vane1-pilot/public (fetch_public.py, sources in training/sources/vane1-pilot-public.json)",
+    "pairs": "training/data/vane1-pilot/pairs-clean.jsonl (reused from the pilot; 2026-11-24: 1,875 rows, check_overlap.py 0 overlap with all of nai-bench, train.load_pairs guard passed: authors mistral-small3.1 + EU/US/SE/DE official texts)",
+    "rule": "public domain, CC0, CC-BY, EU reuse texts and teacher-generated text only; no CC-BY-SA; nothing from nai-bench"
+  },
+  "train_args": {
+    "epochs": 1,
+    "batch_size": 64,
+    "learning_rate": 2e-05,
+    "max_seq_length": 256,
+    "hard_negatives": 1,
+    "eval_fraction": 0.05,
+    "eval_steps": 100,
+    "eval_distractors": 2000,
+    "seed": 13,
+    "no_export": true
+  },
+  "command": "docker compose -f training/docker/compose.rocm.yaml run --rm trainer sh -c 'mkdir -p training/runs/vane1-rc1 && timeout 3h python3 training/embed/train.py --pairs training/data/vane1-pilot/pairs-clean.jsonl --output-dir training/runs/vane1-rc1 --base-model ibm-granite/granite-embedding-97m-multilingual-r2 --release vane-1-rc1 --epochs 1 --batch-size 64 --learning-rate 2e-5 --max-seq-length 256 --hard-negatives 1 --eval-steps 100 --seed 13 --no-export > training/runs/vane1-rc1/train.log 2>&1'",
+  "limits": "unattended, capped at 3 hours (timeout 3h), log in training/runs/vane1-rc1/train.log",
+  "evaluation": "evals/embeddings/dense_eval.py on the v1 dev split only: rc1 vs plain granite97, the MiniLM pilot (rc0) and MiniLM base, embedding-only; hybrid via RRF with nAI's BM25 order; per category, language and cross-language",
+  "release_label": "vane-1-rc1 (baseline on Granite; not a release candidate in the release sense)"
+}
