@@ -208,7 +208,8 @@ apps/nai-core/.venv/bin/mypy --ignore-missing-imports evals/*.py evals/retrieval
     evals/answers/eval_answers.py evals/nai-bench/build_corpus.py evals/nai-bench/review.py evals/rerankers/bench_rerankers.py \
     evals/embeddings/dense_eval.py
 (cd training/embed && ../../apps/nai-core/.venv/bin/mypy --ignore-missing-imports common.py check_overlap.py generate_pairs.py train.py \
-    fetch_public.py generate_corpus.py select_passages.py)
+    fetch_public.py generate_corpus.py select_passages.py filter_pairs.py mine_negatives.py data_manifest.py \
+    make_passages.py)
 
 # Bench stack (kept STOPPED, not removed: volumes hold models + index). AMD GPU -> ROCm overlay.
 export OLLAMA_IMAGE=ollama/ollama:0.40.17-rocm

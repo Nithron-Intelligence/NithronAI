@@ -1,0 +1,11 @@
+# Training-data generation overlay (Vane 1 teacher runs, round 9): lets Ollama serve several requests at once.
+# Not for benchmark runs (they keep Ollama's defaults).
+#
+#   docker compose -f infra/compose.bench.yaml -f infra/compose.bench.rocm.yaml -f infra/compose.bench.gen.yaml \
+#       up -d --wait ollama
+services:
+  ollama:
+    environment:
+      - OLLAMA_NUM_PARALLEL=${OLLAMA_NUM_PARALLEL:-4}
+      - OLLAMA_CONTEXT_LENGTH=${OLLAMA_CONTEXT_LENGTH:-4096}
+      - OLLAMA_KEEP_ALIVE=30m
