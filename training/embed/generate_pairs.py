@@ -10,7 +10,12 @@ are accepted (lab principle 3), and every pair records its provenance.
     python training/embed/generate_pairs.py --passages data/passages.jsonl \\
         --output data/pairs.jsonl --model qwen2.5:7b --limit 1000
 
-Then run check_overlap.py before training.
+Then run filter_pairs.py, check_overlap.py and mine_negatives.py before training.
+
+``--concurrency N`` keeps N teacher requests in flight (Ollama serves them in parallel with
+``OLLAMA_NUM_PARALLEL``); rows are appended and flushed one by one, so a stopped run loses at most the
+passages in flight, and ``--resume`` continues. ``--prompt-version pairs-v2`` adds file-finding queries
+("the roofer's quote from last spring") to questions and keyword searches.
 """
 
 from __future__ import annotations
@@ -23,6 +28,7 @@ import sys
 import time
 from collections import Counter
 from collections.abc import Iterator
+from concurrent.futures import ThreadPoolExecutor
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -40,6 +46,7 @@ from common import (
 )
 
 PROMPT_VERSION = "pairs-v1"
+PROMPT_VERSIONS = ("pairs-v1", "pairs-v2")
 LANGUAGE_NAMES = {"en": "English", "de": "German", "sv": "Swedish", "fr": "French", "pt": "Portuguese"}
 MIN_QUERY_CHARS, MAX_QUERY_CHARS = 8, 200
 
@@ -51,13 +58,33 @@ Rules:
 - Never invent facts that are not in the passage.
 Reply with JSON only: {"queries": [{"text": "...", "language": "<code>", "style": "question|keywords"}]}"""
 
+# pairs-v2 (round 9): also file-finding queries, which is how people search a NAS ("where is ...").
+SYSTEM_PROMPT_V2 = """You write search queries for a private file search engine on a home or small-office NAS.
+Given one passage from a user's files, write queries that this passage answers well.
+Query styles:
+- question: a natural question answered by the passage ("how long is the notice period for the flat").
+- keywords: a short keyword search (2-6 words), as typed into a search box.
+- find: a request to find the document itself by what it is about, without quoting it ("the letter about the
+  heating repair", "contract with the cleaning company").
+Rules:
+- Each query must be answerable from the passage alone, and must not copy long phrases from it.
+- Write like a real user: short, specific, sometimes informal; vary the wording between queries.
+- Never invent facts that are not in the passage.
+Reply with JSON only: {"queries": [{"text": "...", "language": "<code>", "style": "question|keywords|find"}]}"""
 
-def user_prompt(passage: dict[str, Any], languages: list[str], per_passage: int) -> str:
+
+def user_prompt(
+    passage: dict[str, Any], languages: list[str], per_passage: int, version: str = PROMPT_VERSION
+) -> str:
     wanted = ", ".join(f"{LANGUAGE_NAMES.get(code, code)} ({code})" for code in languages)
+    styles = (
+        "Use each style (question, keywords, find) at least once if you can."
+        if version == "pairs-v2"
+        else "At least one should be a keyword-style search, the rest natural questions."
+    )
     return (
         f"Passage (from the file {passage.get('file')}):\n<<<\n{passage['text']}\n>>>\n\n"
-        f"Write {per_passage} queries in these languages: {wanted}. "
-        "At least one should be a keyword-style search, the rest natural questions."
+        f"Write {per_passage} queries in these languages: {wanted}. {styles}"
     )
 
 
@@ -109,54 +136,82 @@ def generate(
     seen: set[str] = set()
     created = date.today().isoformat()
     stats = args.stats
-    system = SYSTEM_PROMPT + ("\n/no_think" if args.no_think else "")
-    for index, passage in enumerate(passages, 1):
-        wanted = pick_languages(passage, languages, rng, args.languages_per_passage)
+    version = args.prompt_version
+    system = (SYSTEM_PROMPT_V2 if version == "pairs-v2" else SYSTEM_PROMPT) + (
+        "\n/no_think" if args.no_think else ""
+    )
+    # Languages are drawn up front, in passage order, so results don't depend on --concurrency.
+    jobs = [(p, pick_languages(p, languages, rng, args.languages_per_passage)) for p in passages]
+
+    def call(job: tuple[dict[str, Any], list[str]]) -> tuple[dict[str, Any], str | None]:
+        passage, wanted = job
         messages = [
             {"role": "system", "content": system},
-            {"role": "user", "content": user_prompt(passage, wanted, args.per_passage)},
+            {"role": "user", "content": user_prompt(passage, wanted, args.per_passage, version)},
         ]
-        content = ask_teacher(http, args, messages)
-        if content is None:
-            stats["failed_passages"] += 1
+        return passage, ask_teacher(http, args, messages)
+
+    started = time.monotonic()
+    with ThreadPoolExecutor(max_workers=max(1, args.concurrency)) as pool:
+        for index, (passage, content) in enumerate(pool.map(call, jobs), 1):
+            if content is None:
+                stats["failed_passages"] += 1
+                continue
+            yield from pairs_from(content, passage, seen, stats, args, license_id, created)
+            if index % 50 == 0:
+                rate = index / (time.monotonic() - started)
+                print(
+                    f"  {index}/{len(passages)} passages, {stats['kept']} pairs, {rate * 3600:.0f} passages/h",
+                    file=sys.stderr,
+                )
+    stats["seconds"] = int(time.monotonic() - started)
+
+
+def pairs_from(
+    content: str,
+    passage: dict[str, Any],
+    seen: set[str],
+    stats: Counter[str],
+    args: argparse.Namespace,
+    license_id: str,
+    created: str,
+) -> Iterator[dict[str, Any]]:
+    for query in parse_queries(content):
+        text = " ".join(query["text"].split())
+        key = text.lower()
+        if (
+            not MIN_QUERY_CHARS <= len(text) <= MAX_QUERY_CHARS
+            or key in seen
+            or key in passage["text"].lower()
+        ):
             continue
-        for query in parse_queries(content):
-            text = " ".join(query["text"].split())
-            key = text.lower()
-            if (
-                not MIN_QUERY_CHARS <= len(text) <= MAX_QUERY_CHARS
-                or key in seen
-                or key in passage["text"].lower()
-            ):
-                continue
-            claimed, detected = query.get("language"), detect_language(text)
-            if detected and claimed and detected != claimed:
-                stats["language_mismatch"] += 1  # teachers mislabel languages; keep labels trustworthy
-                continue
-            seen.add(key)
-            stats["kept"] += 1
-            yield {
-                "query": text,
-                "query_language": query.get("language"),
-                "style": query.get("style"),
-                "passage_id": passage["id"],
-                "passage": passage["text"],
-                "passage_language": passage.get("language"),
-                # Same keys as nai-bench provenance (author, use) plus generation details.
-                "provenance": {
-                    "author": args.model,
-                    "author_license": license_id,
-                    "teacher_model": args.model,
-                    "prompt_version": PROMPT_VERSION,
-                    "created": created,
-                    "passage_author": passage.get("author"),
-                    "passage_license": passage.get("license"),
-                    "passage_source": passage.get("source"),
-                    "use": "training",
-                },
-            }
-        if index % 50 == 0:
-            print(f"  {index}/{len(passages)} passages", file=sys.stderr)
+        claimed, detected = query.get("language"), detect_language(text)
+        if detected and claimed and detected != claimed:
+            stats["language_mismatch"] += 1  # teachers mislabel languages; keep labels trustworthy
+            continue
+        seen.add(key)
+        stats["kept"] += 1
+        yield {
+            "query": text,
+            "query_language": query.get("language"),
+            "style": query.get("style"),
+            "passage_id": passage["id"],
+            "passage": passage["text"],
+            "passage_language": passage.get("language"),
+            "passage_file": f"{passage.get('source')}:{passage.get('file')}",
+            # Same keys as nai-bench provenance (author, use) plus generation details.
+            "provenance": {
+                "author": args.model,
+                "author_license": license_id,
+                "teacher_model": args.model,
+                "prompt_version": args.prompt_version,
+                "created": created,
+                "passage_author": passage.get("author"),
+                "passage_license": passage.get("license"),
+                "passage_source": passage.get("source"),
+                "use": "training",
+            },
+        }
 
 
 def select_passages(args: argparse.Namespace) -> list[dict[str, Any]]:
@@ -197,6 +252,8 @@ def main() -> int:
         "--resume", action="store_true", help="append to --output, skipping passages already done"
     )
     parser.add_argument("--seed", type=int, default=13)
+    parser.add_argument("--concurrency", type=int, default=1, help="teacher requests in flight")
+    parser.add_argument("--prompt-version", choices=PROMPT_VERSIONS, default=PROMPT_VERSION)
     args = parser.parse_args()
 
     for path in (args.passages, args.output):
@@ -212,6 +269,9 @@ def main() -> int:
         f"wrote {count} pairs from {len(passages)} passages to {args.output} (teacher {args.model}, {license_id})"
     )
     print(f"dropped {args.stats['language_mismatch']} queries whose language did not match their label")
+    if passages and args.stats["seconds"]:
+        hours = args.stats["seconds"] / 3600
+        print(f"throughput: {len(passages) / hours:.0f} passages/h, {count / hours:.0f} pairs/h")
     if args.stats["failed_passages"]:
         print(f"{args.stats['failed_passages']} passages failed after retries; run again with --resume")
     return 0

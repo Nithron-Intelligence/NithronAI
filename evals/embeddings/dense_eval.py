@@ -12,6 +12,15 @@ to ONNX yet, e.g. the Vane 1 pilot). Three steps:
     apps/nai-core/.venv/bin/python evals/embeddings/dense_eval.py score --data training/runs/vane1-pilot/eval \
         --names base,pilot
 
+Hybrid approximation (no ONNX export needed): collect nAI's BM25 file ranking once, then fuse it with a dense
+ranking by reciprocal-rank fusion at file level (k = 60, nAI's ``rrf_k``). nAI fuses chunks, not files, so compare
+the fused number for plain granite with nAI's real hybrid run before trusting a difference:
+
+    # host, bench stack up with the v1 corpus: nAI's BM25 order per dev question
+    apps/nai-core/.venv/bin/python evals/embeddings/dense_eval.py bm25 --data training/runs/vane1-pilot/eval
+    apps/nai-core/.venv/bin/python evals/embeddings/dense_eval.py fuse --data training/runs/vane1-pilot/eval \
+        --dense granite97 --name hybrid-granite97
+
 Only the dev split is loaded (``naibench.load_items`` refuses the test split). Ranking is by cosine similarity
 of nAI's chunk input ("<context header>\\n<text>"), best chunk per file, no 0.3 cutoff, no BM25; it measures
 the embedding model alone, so compare it with nAI's embedding-only numbers, not with hybrid.
@@ -90,6 +99,58 @@ def rank(data: Path, model_name: str, name: str, top: int = 20) -> None:
     print(f"ranked {len(out)} questions with {model_name} over {len(passages)} passages")
 
 
+RRF_K = 60  # nAI's retriever default (rrf_k)
+TOP_FILES = 20
+
+
+def bm25(data: Path, api_url: str, top_chunks: int = 50) -> None:
+    """nAI's BM25 file order per dev question (best chunk per file), from a running bench stack."""
+    sys.path.insert(0, str(EVALS))
+    import naibench as nb
+
+    client = nb.NaiClient(api_url, None)
+    client.wait_until_up()
+    questions = [json.loads(line) for line in (data / "questions.jsonl").read_text("utf-8").splitlines()]
+    out: dict[str, list[str]] = {}
+    for row in questions:
+        results = client.search(row["question"], top_k=top_chunks, method="bm25")["results"]
+        out[row["id"]] = dedupe_files([r["doc_path"] for r in results])[:TOP_FILES]
+    (data / "rankings-bm25.json").write_text(
+        json.dumps({"model": "nAI bm25", "rankings": out}, indent=1), "utf-8"
+    )
+    print(f"saved nAI BM25 rankings for {len(out)} questions")
+
+
+def dedupe_files(paths: list[str]) -> list[str]:
+    """First occurrence of every file, in order; nAI's doc_path may carry a /shares/... prefix."""
+    seen: list[str] = []
+    for path in paths:
+        name = path.split("/shares/nai-bench/", 1)[-1]
+        if name not in seen:
+            seen.append(name)
+    return seen
+
+
+def rrf(rankings: list[list[str]], k: int = RRF_K) -> list[str]:
+    """Reciprocal-rank fusion of file rankings (ties keep the order of first appearance)."""
+    scores: dict[str, float] = {}
+    for ranking in rankings:
+        for rank_index, name in enumerate(ranking, start=1):
+            scores[name] = scores.get(name, 0.0) + 1.0 / (k + rank_index)
+    return sorted(scores, key=lambda name: -scores[name])
+
+
+def fuse(data: Path, dense: str, sparse: str, name: str) -> None:
+    load = lambda n: json.loads((data / f"rankings-{n}.json").read_text("utf-8"))  # noqa: E731
+    d, s = load(dense), load(sparse)
+    out = {qid: rrf([d["rankings"][qid], s["rankings"].get(qid, [])])[:TOP_FILES] for qid in d["rankings"]}
+    model = f"RRF(k={RRF_K}) of {d['model']} + {s['model']} (file level)"
+    (data / f"rankings-{name}.json").write_text(
+        json.dumps({"model": model, "rankings": out}, indent=1), "utf-8"
+    )
+    print(f"fused {len(out)} questions: {model}")
+
+
 def score(data: Path, names: list[str]) -> str:
     sys.path.insert(0, str(EVALS))
     import naibench as nb
@@ -139,6 +200,14 @@ def main() -> int:
     r.add_argument("--data", type=Path, required=True)
     r.add_argument("--model", required=True)
     r.add_argument("--name", required=True)
+    b = sub.add_parser("bm25")
+    b.add_argument("--data", type=Path, required=True)
+    b.add_argument("--api-url", default="http://localhost:8000")
+    f = sub.add_parser("fuse")
+    f.add_argument("--data", type=Path, required=True)
+    f.add_argument("--dense", required=True)
+    f.add_argument("--sparse", default="bm25")
+    f.add_argument("--name", required=True)
     s = sub.add_parser("score")
     s.add_argument("--data", type=Path, required=True)
     s.add_argument("--names", required=True)
@@ -147,6 +216,10 @@ def main() -> int:
         export(args.out)
     elif args.cmd == "rank":
         rank(args.data, args.model, args.name)
+    elif args.cmd == "bm25":
+        bm25(args.data, args.api_url)
+    elif args.cmd == "fuse":
+        fuse(args.data, args.dense, args.sparse, args.name)
     else:
         print(score(args.data, [n.strip() for n in args.names.split(",")]))
     return 0
