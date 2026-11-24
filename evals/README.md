@@ -82,6 +82,19 @@ apps/nai-core/.venv/bin/python evals/rerankers/bench_rerankers.py collect --outp
     --output evals/results/rerankers-$(date +%F).json
 ```
 
+v1 dev with nAI's reranker-on setup (top 10 re-scored, as `NAI_RERANKER_CANDIDATES=10`), as in round 9's reranker
+audit ([`results/v1-dev-rerankers-r9-2026-11-24.md`](results/v1-dev-rerankers-r9-2026-11-24.md)); `run` can also
+go in the ROCm trainer container (`docker compose -f training/docker/compose.rocm.yaml run --rm -e
+HIP_VISIBLE_DEVICES= trainer python3 …`), which has the training requirements:
+
+```bash
+apps/nai-core/.venv/bin/python evals/rerankers/bench_rerankers.py collect \
+    --bench evals/nai-bench/v1/questions-dev.jsonl --output training/runs/rerank-r9/candidates-v1dev.json
+python3 evals/rerankers/bench_rerankers.py run --candidates training/runs/rerank-r9/candidates-v1dev.json \
+    --bench evals/nai-bench/v1/questions-dev.jsonl --rerank-top 10 --threads 8 \
+    --output evals/results/v1-dev-rerankers-r9-$(date +%F).json
+```
+
 ### Simulated NAS
 
 ```bash

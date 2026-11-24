@@ -6,6 +6,28 @@
 
 ## Status now
 
+- **Round 9 (2026-11-24), in progress:** reranker audit, Vane 1 pilot on Granite, data scaling. Started at
+  lab/stage-0 = `2e8e425`, main = `38c5ddd`, both pushed, clean (untracked local-only: `.claude/`, `CLAUDE.md`,
+  `.gitattributes`, `graphify-out/`).
+- **Round 9 permissions (2026-11-24):** commit, push, open and merge PRs as the human with the configured git
+  identity (merge commits; no attribution trailers, no history rewrite, no force-push, never bypass branch
+  protection; no tags). Start/stop the bench containers, Ollama and the ROCm trainer container; training runs
+  ≤ 3 h unattended, data-generation runs ≤ 8 h unattended, each with its command and config recorded here first
+  and generation writing incrementally. Delete only the listed leftovers (images `nai-core:kwonly-local`,
+  `:0.7.0-local`, `:granite-local`, `:0.6.0-local`, `:lab-stage-0`, `ghcr.io/nithron/nithronai/nai-core:0.7.0`,
+  volume `nai-bench_nai-nas-sim-r8-2g-data`) after checking no running container uses them; ask before deleting
+  anything else. User-space installs (sudo → print the command for the human). Check free disk before every large
+  download or generation run.
+- **Round 9 run log (commands recorded before each run):**
+  - Reranker comparison (CPU, done): `docker compose -f training/docker/compose.rocm.yaml run --rm -e
+    HIP_VISIBLE_DEVICES= trainer python3 evals/rerankers/bench_rerankers.py run --candidates
+    training/runs/rerank-r9/candidates-v1dev.json --bench evals/nai-bench/v1/questions-dev.jsonl --rerank-top 10
+    --threads 8 --models "…" --output evals/results/v1-dev-rerankers-r9-2026-11-24.json` (candidates from
+    `bench_rerankers.py collect` against the bench stack: image `nai-core:r9-bench` = local build of `2e8e425`,
+    volume `nai-bench-v1-granite97-data`, reranker off).
+  - Vane 1 rc1 training (GPU, ≤ 3 h): config [`training/configs/vane1-rc1-granite.json`](../training/configs/vane1-rc1-granite.json),
+    command = its `command` field (granite 97m, seed 13, 1 epoch, batch 64, lr 2e-5, max length 256, 1 hard
+    negative, `--no-export`, `timeout 3h`, log `training/runs/vane1-rc1/train.log`).
 - **Updated:** 2026-11-23, round 8 session 2 (keyword-only mode for small NAS boxes, then release 0.7.0). In
   **Round 8 finished:** sections 2 (keyword-only mode) and 3 (release 0.7.0) done; nothing else started.
 - **Round 8 permissions (2026-11-23, restated for session 2 the same day):** commit, push, open and merge PRs as the human (merge commits; no attribution,
@@ -53,6 +75,23 @@
 
 ## Waiting on the human
 
+- **Reranker lineage audit failed (2026-11-24, [reranker-audit.md](lab/reranker-audit.md)):** both
+  `bge-reranker-v2-m3` (shipped) and `Qwen3-Reranker-0.6B` (Loupe 1 teacher) have MS MARCO (non-commercial) in
+  their stated training data. Decisions needed:
+  1. **Shipped auto-enable (0.6.0, 0.7.0):** on 8+ core / 8+ GB boxes nAI downloads and runs bge-reranker-v2-m3.
+     Options: (a) accept and record for the lawyer, as MiniLM was until 0.7.0; (b) make `NAI_RERANKER=auto`
+     resolve to off in the next release until a clean reranker exists (explicit `on` keeps working); (c) switch the
+     default to a cleaner model. No default was changed.
+  2. **Loupe 1:** its planned base and teacher both fail. Proposal: a cross-encoder from a clean encoder (Granite
+     R2 multilingual, audited; or mmBERT, MIT) trained on Vane 1's licensed data with `mistral-small3.1` labels,
+     instead of distilling from a reranker with MS MARCO in its lineage. Needs your go.
+  3. **Closest third-party alternative:** `Horizon-Labs/multilingual-reranker-small` (Apache-2.0, 141M,
+     permissive data list, but labels distilled from Qwen3-Reranker-4B): v1 dev MRR 0.886 vs bge 0.896 (tied
+     within ±0.09) at half the latency (0.42 s vs 0.81 s per question, 8 cores). Whether "clean data, distilled
+     labels" passes is your call.
+  4. The int8 ONNX nAI downloads (`onnx-community/bge-reranker-v2-m3-ONNX`) states no license (an automatic
+     conversion of Apache-2.0 weights): low risk, but provenance is unverifiable.
+  5. Quora question pairs' terms (in bge-reranker's data) could not be read (site 403); check by hand if needed.
 - **NithronOS template → 0.7.0:** hand the patch in `docs/KNOWN_ISSUES.md` (items 1–4; item 3 is now the 0.7.0
   version bump, item 4 the memory text with keyword-only below 2.5g) to the session that owns NithronOS.
 - **Pushes:** none pending (main and lab/stage-0 pushed; lab/stage-0 is one HANDOFF commit ahead).
@@ -90,6 +129,8 @@
 
 | Date | Decision | Reason |
 |---|---|---|
+| 2026-11-24 | **Scale Vane 1's training data** to tens of thousands of pairs or more, from sources that meet the data rules, with `mistral-small3.1` as the teacher for now. | The pilot's 1,875 pairs are far too few for Vane 1. Plan: [vane1-data-plan.md](lab/vane1-data-plan.md). |
+| 2026-11-24 | **No AirLLM.** A bigger teacher is evaluated later only with llama.cpp GPU+RAM offload or a rented GPU, and only Apache-2.0 or similarly permissive models; proposed with numbers, no switch without the human's decision. | |
 | 2026-11-23 | **Small boxes get keyword-only mode:** where memory can't fit Granite, nAI turns embeddings off and searches with BM25 only (`NAI_EMBEDDINGS=auto|on|off`); no second embedding model, MiniLM is not a fallback. | 2 GB NAS boxes can't fit Granite's 1.8 GB peak; MiniLM's lineage has non-commercial data. |
 | 2026-11-23 | **Publish 0.7.0** once keyword-only mode is merged and every check passes. | |
 | 2026-11-23 | **Embedding base → IBM `granite-embedding-97m-multilingual-r2`** (Apache-2.0, trained without MS MARCO) if it holds up on nai-bench v1 dev; it becomes Vane 1's base and nAI's default. | The old default's lineage has non-commercial data (audit). |
