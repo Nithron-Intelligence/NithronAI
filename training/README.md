@@ -37,6 +37,30 @@ python training/embed/train.py --pairs data/pairs.jsonl --output-dir runs/embed-
 python training/embed/train.py --export-only runs/embed-v1/model --output-dir runs/embed-v1/fastembed
 ```
 
+### Scaled Vane 1 data (round 9)
+
+Plan, sources, licenses and targets: [docs/lab/vane1-data-plan.md](../docs/lab/vane1-data-plan.md). Data stays in
+git-ignored `training/data/vane1/`; manifests with checksums go to `training/manifests/`.
+
+```bash
+cd training/embed
+# public texts (license per file, SHA-256, refuses CC-BY-SA/NC/ND and every nai-bench document)
+python fetch_public.py --sources ../sources/vane1-data-v1.json --out ../data/vane1/public \
+    --manifest ../manifests/vane1-data-v1-public.json
+# chunk per source group; 5 % of whole documents (all language versions together) held out, eval-only
+python make_passages.py --input ../data/vane1/public/eu --output ../data/vane1/passages-eu.jsonl \
+    --holdout-output ../data/vane1/holdout-eu.jsonl --holdout-share 0.05 --license "…" --source "…" --author "…"
+# varied synthetic documents (Ollama with infra/compose.bench.gen.yaml: 4 requests in parallel)
+python generate_corpus.py --prompt-version corpus-v2 --per-language 700 --concurrency 4 --out ../data/vane1/synthetic
+# queries, filter, overlap check, hard negatives (container), manifest
+python generate_pairs.py --passages ../data/vane1/passages.jsonl --output ../data/vane1/pairs-raw.jsonl \
+    --model mistral-small3.1 --prompt-version pairs-v2 --concurrency 4 --resume
+python filter_pairs.py --input ../data/vane1/pairs-raw.jsonl --output ../data/vane1/pairs-filtered.jsonl
+python check_overlap.py ../data/vane1/pairs-filtered.jsonl --write-clean ../data/vane1/pairs-clean.jsonl
+python3 mine_negatives.py --input ../data/vane1/pairs-clean.jsonl --output ../data/vane1/pairs-mined.jsonl
+python data_manifest.py --data ../data/vane1 --out ../manifests/vane1-data.json
+```
+
 ### On an AMD GPU (ROCm) in Docker
 
 PyTorch with ROCm runs in a container, the same way Ollama uses the GPU; nothing GPU-related is installed

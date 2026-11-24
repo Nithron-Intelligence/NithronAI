@@ -7,7 +7,9 @@ nai-bench out of every training input (no-contamination rule).
 
 from __future__ import annotations
 
+import hashlib
 import json
+import re
 import sys
 from collections.abc import Iterable, Iterator
 from pathlib import Path
@@ -129,3 +131,14 @@ def append_jsonl(path: Path, rows: Iterable[dict[str, Any]]) -> int:
             handle.flush()  # a crash loses at most the current row; --resume continues from here
             count += 1
     return count
+
+
+def document_key(rel: str) -> str:
+    """One key for all language versions of a document: ``CELEX_32015L2366_DE.html`` -> ``CELEX_32015L2366``."""
+    return re.sub(r"_[A-Z]{2}(_TXT)?(\.[^./]+)?$", "", rel)
+
+
+def is_holdout(rel: str, share: float) -> bool:
+    """Stable per-document choice (all language versions together): True for about ``share`` of documents."""
+    key = document_key(rel)
+    return share > 0 and int(hashlib.sha256(key.encode()).hexdigest()[:8], 16) / 0x100000000 < share
