@@ -33,3 +33,10 @@ results.json
 .vscode/
 .DS_Store
 Thumbs.db
+
+# Internal working notes, business documents and audits: local only, never in this public repository
+docs/HANDOFF.md
+docs/HANDOFF-history.md
+docs/business/
+docs/lab/reranker-audit.md
+docs/lab/vane1-base-model-audit.md
