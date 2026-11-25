@@ -7,7 +7,7 @@ follow. How the code works: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Known 
 ## Handoff rule
 
 Work here is shared between people and AI agents across sessions. **Every agent session must update
-[docs/HANDOFF.md](docs/HANDOFF.md) before it ends**: Status (including half-finished work and the next
+`docs/HANDOFF.md` (a local working file, never committed) before it ends**: Status (including half-finished work and the next
 command), History, and Waiting on the human. Start every session by reading it.
 
 ## Development setup

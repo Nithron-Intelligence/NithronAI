@@ -86,7 +86,7 @@ model see but users don't; the embedding input is `"{context}\n{text}"`
 - Providers: fastembed (default, ONNX on CPU), Ollama, sentence-transformers. Default model (from 0.7.0)
   `ibm-granite/granite-embedding-97m-multilingual-r2` (384-d, CLS pooling, no prefix), loaded as a custom fastembed ONNX model
   (`embeddings.CUSTOM_FASTEMBED_MODELS`, fp32: int8 drifts to cosine 0.972); until 0.6.0 the default was
-  `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` (its training lineage has non-commercial data, see `docs/lab/vane1-base-model-audit.md`).
+  `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` (its training lineage has non-commercial data).
   Changing the model ID triggers the "ask before re-indexing" flow. The 0.3 `embeddings_min_score` below was tuned
   for MiniLM; Granite passed nai-bench v1 dev with it, but re-check it when tuning.
 - **Keyword-only mode** (`NAI_EMBEDDINGS=auto|on|off`, default auto; `NAI_EMBEDDINGS_ENABLED=false` is the

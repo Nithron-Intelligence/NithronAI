@@ -71,8 +71,7 @@ Claude-written or nai-bench rows) and `check_overlap.py` against all nai-bench f
 
 ## Training-data lineage of base models
 
-Vane 1's base, `paraphrase-multilingual-MiniLM-L12-v2`: audited in [vane1-base-model-audit.md](vane1-base-model-audit.md)
-(2026-11-23). Verdict: **needs the human's decision**: its teacher was trained on MS MARCO and Flickr30k captions
+Vane 1's base, `paraphrase-multilingual-MiniLM-L12-v2`: audited on 2026-11-23. Verdict: **needs the human's decision**: its teacher was trained on MS MARCO and Flickr30k captions
 (non-commercial terms) and on CC-BY-SA data.
 
 

@@ -33,5 +33,4 @@ containers, but they differ in packaging, accounts, share permissions and manage
 - Each new platform needs packaging, docs and a test install on that platform before it is advertised.
 - Permission sync and NAS sign-in are per-platform work; OIDC is preferred where available so one
   implementation covers several platforms.
-- Licensing for other platforms (vendors bundling nAI) needs review; see
-  `docs/business/product-and-licensing.md`.
+- Licensing for other platforms (vendors bundling nAI) needs review.

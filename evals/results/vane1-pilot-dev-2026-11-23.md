@@ -1,7 +1,7 @@
 # Vane 1 pilot (vane-1-rc0) on nai-bench v1 dev – 2026-11-23
 
 **PROVISIONAL, and nothing from this pilot can ship:** the base model's training-data audit needs the human's
-decision ([vane1-base-model-audit.md](../../docs/lab/vane1-base-model-audit.md)). v1 **dev split only** (47
+decision. v1 **dev split only** (47
 answerable questions), no item reviewed, one seed, one small run. With 47 questions the 95 % margin on MRR is
 about ±0.1, so read the direction, not the decimals.
 

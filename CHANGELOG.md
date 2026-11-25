@@ -23,7 +23,7 @@ keyword-only mode so small NAS boxes keep working.
 ### Changed
 - **New default embedding model: `ibm-granite/granite-embedding-97m-multilingual-r2`** (IBM Granite Embedding R2, Apache-2.0, trained without MS MARCO or other
   non-commercial data). The old default, `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`, was distilled from a teacher trained on
-  non-commercial data (`docs/lab/vane1-base-model-audit.md`). On nai-bench v1 dev (PROVISIONAL) hybrid MRR rises from
+  non-commercial data. On nai-bench v1 dev (PROVISIONAL) hybrid MRR rises from
   0.720 to 0.834 and every language holds or improves (Swedish most); on a 2-CPU / 4-GB NAS profile search gets
   faster (0.2 s) at about 0.6 GB more RAM and slower indexing. nAI loads it as a custom fastembed ONNX model (CLS
   pooling, no prefix, fp32).
