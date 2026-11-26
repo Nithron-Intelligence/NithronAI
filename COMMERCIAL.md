@@ -1,13 +1,13 @@
-# NithronAI — Commercial & Binary Licensing
+# nAI — Commercial & Binary Licensing
 
-This document explains how companies, MSPs, and resellers can use NithronAI commercially and how Official Build Artifacts (container images, packages, update repos) are licensed.
+This document explains how companies, MSPs, and resellers can use nAI commercially and how Official Build Artifacts (container images, packages, update repos) are licensed.
 
 > **Summary**
 > - Source code: available under the Nithron Community License (NCL) for **non-commercial** use and contributions.
 > - Commercial use, hosting, resale, or binary redistribution requires a **Commercial License**.
 > - Official Build Artifacts are licensed under a **Binary EULA** and may not be mirrored or resold.
 
-## Ways to Use NithronAI
+## Ways to Use nAI
 
 ### 1) Personal / Non-Commercial (Free)
 - Read/modify source, compile locally for personal lab use.
@@ -20,7 +20,7 @@ This document explains how companies, MSPs, and resellers can use NithronAI comm
 - No redistribution or hosting for third parties.
 
 ### 3) Service Provider / Reseller (Commercial + Addendum)
-- Host NithronAI for clients, manage deployments, or bundle it in your product.
+- Host nAI for clients, manage deployments, or bundle it in your product.
 - Requires an MSP/Reseller addendum (per-node pricing or revenue share).
 
 ## License Channels
@@ -46,7 +46,7 @@ We offer:
 
 ## Compliance Notes
 - Do not mirror or redistribute Official Build Artifacts, keys, or the update repo.
-- Do not offer NithronAI as a service without a Commercial/MSP license.
+- Do not offer nAI as a service without a Commercial/MSP license.
 - Keep license notices intact; don’t remove attributions in source.
 
 ## Contact

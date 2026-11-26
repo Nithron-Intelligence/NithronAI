@@ -128,9 +128,22 @@ def ir_evaluator(pairs: list[dict[str, Any]], corpus: dict[str, str], name: str)
     )
 
 
+def file_negative_columns(train: list[dict[str, Any]], count: int) -> dict[str, list[str]]:
+    """anchor/positive/negative_1..N columns from negatives stored in the rows (mine_negatives.py); rows with
+    fewer than ``count`` stored negatives are left out."""
+    rows = [p for p in train if len(p.get("negatives") or []) >= count]
+    columns = {"anchor": [p["query"] for p in rows], "positive": [p["passage"] for p in rows]}
+    for n in range(count):
+        columns[f"negative_{n + 1}"] = [p["negatives"][n] for p in rows]
+    return columns
+
+
 def build_train_dataset(train: list[dict[str, Any]], model: Any, args: argparse.Namespace) -> Any:
     from datasets import Dataset
     from sentence_transformers.util import mine_hard_negatives
+
+    if args.file_negatives:
+        return Dataset.from_dict(file_negative_columns(train, args.hard_negatives))
 
     dataset = Dataset.from_dict(
         {"anchor": [p["query"] for p in train], "positive": [p["passage"] for p in train]}
@@ -331,6 +344,11 @@ def main() -> int:
     parser.add_argument("--max-seq-length", type=int, default=256)
     parser.add_argument(
         "--hard-negatives", type=int, default=1, help="mined negatives per pair (0: in-batch only)"
+    )
+    parser.add_argument(
+        "--file-negatives",
+        action="store_true",
+        help="use the negatives stored in the pairs file (mine_negatives.py) instead of mining during training",
     )
     parser.add_argument("--negative-range-min", type=int, default=5)
     parser.add_argument("--negative-range-max", type=int, default=50)

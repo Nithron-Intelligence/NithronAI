@@ -56,7 +56,11 @@ NithronOS's copy of the nAI template (`usr/share/nithronos/apps/templates/nai/`,
    5g if you turn reranking on. Below 2.5g nAI runs keyword-only (no semantic search)." (default stays `3g`;
    the second sentence is 0.7.0's keyword-only mode, `NAI_EMBEDDINGS=auto`, the image default, so
    `compose.yaml` needs no new variable).
-5. Nothing else differs in `compose.yaml` or `schema.json` (the template README is NithronOS's own catalog
+5. `compose.yaml` header comment: update `Source:` URL to `https://github.com/Nithron-Intelligence/nAI`
+   (repo transferred 2026-11-24). Keep `image: ghcr.io/nithron/nithronai/nai-core:...` for 0.7.0 and earlier
+   unless those tags are mirrored to `ghcr.io/nithron-intelligence/nai/nai-core`; switch to the new
+   registry path once the next release (0.8.0+) publishes there.
+6. Nothing else differs in `compose.yaml` or `schema.json` (the template README is NithronOS's own catalog
    text and isn't synced).
 
 Safe with today's images: nai-core 0.4.0/0.5.0 ignore `NAI_NAS_PLATFORM` and treat `off` as off; existing

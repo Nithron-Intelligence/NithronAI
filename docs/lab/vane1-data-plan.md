@@ -38,8 +38,14 @@ license, author, date, size and SHA-256 (`fetch_public.py` → `training/manifes
 
 Not used: **Europarl** ("We are not aware of any copyright restrictions", [statmt.org/europarl](https://www.statmt.org/europarl/):
 no license is granted, so treated as unlicensed); anything CC-BY-SA (Wikipedia, Wikisource, Stack Exchange),
-NC or ND; French Légifrance and Portuguese Diário da República texts until their reuse terms are verified (both
-are likely fine and would add real fr/pt text; to check next).
+NC or ND; French and Portuguese official texts until their terms are fully verified. Checked 2026-11-24: the
+LEGI dataset (consolidated French codes and laws) is listed under "Licence Ouverte / Open Licence" on
+[data.gouv.fr](https://www.data.gouv.fr/fr/datasets/legi-codes-lois-et-reglements-consolides/), but the licence
+text (Licence Ouverte 2.0) and Légifrance's own reuse page (HTTP 403) were not read. Portugal: CDADC art. 7.º does
+not cover laws; art. 8.º n.º 1 says compiled or annotated official texts (art. 3.º n.º 1 c)) "não beneficiam de
+protecção" ([CDADC, PGD Lisboa](https://www.pgdlisboa.pt/leis/lei_mostra_articulado.php?nid=484&tabela=leis));
+the Diário da República terms page returned nothing. Both would add real fr/pt text (today's real fr/pt
+passages come only from EU texts); finish the check before using them.
 
 **Excluded by identifier, not only by text:** every document nai-bench uses (v0 and v1, both splits: the CELEX
 numbers, CFR parts, SFS numbers, German statutes and Gutenberg book IDs listed in
@@ -79,9 +85,12 @@ gets the manifests (`training/manifests/`) with sizes, checksums and row counts.
    Jaccard ≥ 0.8, merged), cap 6 queries per passage; a report of every drop reason.
 6. **Overlap check** – `check_overlap.py --write-clean`: 8-gram overlap with all nai-bench texts and questions
    (v0, v1 dev and v1 test read as raw text), query similarity to every nai-bench question.
-7. **Hard negatives** – `mine_negatives.py` (ROCm container) with Granite R2 97m: ranks 3–50, never the positive
-   or another passage of the same source document, score < 0.95 × the positive's (likely false negatives
-   dropped); 3 negatives per pair.
+7. **Hard negatives** – `mine_negatives.py` (ROCm container) with Granite R2 97m: never the positive or another
+   passage of the same document (all its language versions: a translation of the positive is a positive), ranks
+   3–50 among passages of *other* documents, score < 0.95 × the positive's (likely false negatives dropped);
+   3 negatives per pair. Each row also gets `positive_rank` (passages the base model scores above the positive)
+   for a later consistency filter. `train.py --file-negatives --hard-negatives N` trains on them instead of
+   mining during training (rows with fewer than N are left out; see batch 1 below).
 8. **Manifest** – `data_manifest.py`: path, bytes, SHA-256, rows for every data file → `training/manifests/`.
 9. **Training guard** – `train.load_pairs` refuses rows not marked `use: training`, eval-only rows, forbidden
    authors (Claude, GPT, Gemini …) and anything under `evals/nai-bench`.
@@ -120,9 +129,33 @@ Because a passage yields ~4.4 pairs rather than the pilot's ~2.6, the 60,000 tar
 
 | Work | GPU time |
 |---|---|
-| Batch 1: queries for 6,743 real passages (running since 2026-11-24) | ~2.9 h |
-| ~1,220 synthetic documents | ~4.6 h |
-| Queries for their ~6,100 passages | ~2.7 h |
-| **Total to 60,000 pairs** | **~10 h** (two 8-hour runs at most) |
+| Batch 1: queries for 6,743 real passages (done 2026-11-24) | 2.8 h |
+| ~1,420 synthetic documents | ~5.3 h |
+| Queries for their ~7,100 passages | ~3.0 h |
+| **Total to 60,000 pairs** | **~11 h** (batch 1 done; ~8.3 h left) |
 
 Hard-negative mining (Granite 97m on the GPU) and filtering take minutes.
+
+### Batch 1 (real passages, 2026-11-24 → 26)
+
+6,743 real passages (`select_passages.py --seed 13`: EU 5,000, DE 1,000, SE 800, US 700) → 35,142 raw pairs at
+2,393 passages/h → `filter_pairs.py` 31,035 (copied queries 3,726, passage cap 227, query in passage 129,
+duplicates 25, merged near-duplicate passages 19) → `check_overlap.py` **29,180 clean pairs** (1,855 dropped:
+5.3 %, more than the sample's 2 %, mostly queries naming the same EU directives as nai-bench questions). That is
+**4.33 clean pairs per passage**, so the 60,000 target needs ~7,100 more passages (synthetic, since the real
+sources are the larger share already). Checksums: `training/manifests/vane1-data-b1.json`.
+
+**Hard negatives: only a third of the pairs get them.** Rows per number of negatives: 0: 19,371, 1: 72, 2: 61,
+3: 9,676. Granite's cosine scores are compressed (positive: median 0.858; 4th-best passage of another document:
+median 0.855), and the positive is often not the base model's top passage: rank 0 for 23.8 % of pairs, top 10
+for 53.1 %, top 50 for 72.5 % (median rank 7). The 0.95 margin therefore removes most candidates. It errs on the
+safe side (no near-positive passages as negatives), but `--file-negatives --hard-negatives 1` would train on
+only 9,809 of 29,180 pairs. Options, to choose before training:
+
+1. **Keep every pair, hard negatives where they exist:** train with in-batch negatives for all pairs plus mined
+   negatives for the third that has them (`train.py` change: rows without negatives stay in).
+2. **Consistency filter first:** keep pairs whose positive is in the base model's top *k* (`positive_rank < k`;
+   k = 20 keeps 61.7 %, k = 50 keeps 72.5 %) – drops ambiguous queries ("what is the directive about") and
+   pushes the target out by the same share.
+3. **Looser margin** (0.98–1.0): more negatives, but they score almost like the positive, which is where false
+   negatives are; no multilingual reranker with a clean training-data lineage is available to check them.

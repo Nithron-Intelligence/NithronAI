@@ -4,12 +4,16 @@ Mine hard negatives for Vane 1 pairs with the base model (Granite R2 97m), offli
 For every query, ranks all passages of the dataset and keeps ``--negatives`` passages that are hard (high rank)
 but safely not positives:
 
-- never the positive itself and never a passage from the same source document (``passage_file``): neighbours
-  in one file are often relevant too (false negatives);
-- ranks ``--range-min``..``--range-max`` only (the very top is skipped: often unlabeled positives);
+- never the positive itself and never a passage from the same document (``passage_file`` with all its language
+  versions grouped by ``document_key``): neighbours in one law are often relevant too, and a translation of the
+  positive is a positive (false negatives);
+- ranks ``--range-min``..``--range-max`` among passages of *other* documents only (the very top is skipped: often
+  unlabeled positives). Ranking past the excluded passages matters: a long law fills the top 50 with its own
+  passages, and a window over the raw ranking left 21,448 of 29,180 batch-1 queries without negatives;
 - score below ``--margin`` × the positive's score (positive-aware filter, as in NV-Retriever's TopK-PercPos).
 
-Writes the rows with a ``negatives`` list (passage texts) and ``negative_ids``. Needs PyTorch and
+Writes the rows with a ``negatives`` list (passage texts), ``negative_ids`` and ``positive_rank`` (how many
+passages the base model scores above the positive). Needs PyTorch and
 sentence-transformers: run it in the ROCm trainer container. Pure-Python selection logic lives in
 ``pick_negatives`` (tested without PyTorch).
 
@@ -21,11 +25,13 @@ from __future__ import annotations
 
 import argparse
 import sys
-from collections import defaultdict
+from collections import Counter, defaultdict
+from collections.abc import Iterable
+from itertools import islice
 from pathlib import Path
 from typing import Any
 
-from common import read_training_rows, refuse_bench_path, write_jsonl
+from common import document_key, read_training_rows, refuse_bench_path, write_jsonl
 
 DEFAULT_MODEL = "ibm-granite/granite-embedding-97m-multilingual-r2"
 NEGATIVES = 3
@@ -62,20 +68,32 @@ def passage_file(row: dict[str, Any]) -> str:
     return str(row.get("passage_file") or provenance.get("passage_file") or row["passage_id"])
 
 
+def document_of(row: dict[str, Any]) -> str:
+    """One key per document across its language versions (``CELEX_…_DE.html`` and ``_SV.html`` share it)."""
+    return document_key(passage_file(row))
+
+
+def other_documents(
+    ranked: Iterable[tuple[str, float]], excluded: set[str], *, limit: int
+) -> list[tuple[str, float]]:
+    """The first ``limit`` entries of a ranking (best first) that are not in ``excluded``."""
+    return list(islice(((pid, score) for pid, score in ranked if pid not in excluded), limit))
+
+
 def mine(rows: list[dict[str, Any]], args: argparse.Namespace) -> list[dict[str, Any]]:
     import numpy as np
     import torch
     from sentence_transformers import SentenceTransformer
 
     texts: dict[str, str] = {}
-    files: dict[str, str] = {}
+    documents: dict[str, str] = {}
     for row in rows:
         texts.setdefault(row["passage_id"], row["passage"])
-        files.setdefault(row["passage_id"], passage_file(row))
+        documents.setdefault(row["passage_id"], document_of(row))
     ids = list(texts)
-    by_file: dict[str, set[str]] = defaultdict(set)
+    by_document: dict[str, set[str]] = defaultdict(set)
     for passage_id in ids:
-        by_file[files[passage_id]].add(passage_id)
+        by_document[documents[passage_id]].add(passage_id)
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     model = SentenceTransformer(args.model, device=device)  # never trust_remote_code
@@ -90,21 +108,32 @@ def mine(rows: list[dict[str, Any]], args: argparse.Namespace) -> list[dict[str,
     out: list[dict[str, Any]] = []
     for start in range(0, len(rows), 1024):
         block = q[start : start + 1024] @ p.T
-        top = np.argsort(-block, axis=1)[:, : args.range_max + 1]
+        order = np.argsort(-block, axis=1)
         for offset, row in enumerate(rows[start : start + 1024]):
             scores = block[offset]
-            ranked = [(ids[j], float(scores[j])) for j in top[offset]]
-            excluded = by_file[files[row["passage_id"]]] | {row["passage_id"]}
+            excluded = by_document[documents[row["passage_id"]]] | {row["passage_id"]}
+            ranked = other_documents(
+                ((ids[j], float(scores[j])) for j in order[offset]), excluded, limit=args.range_max
+            )
+            positive_score = float(scores[index[row["passage_id"]]])
             negative_ids = pick_negatives(
                 ranked,
-                float(scores[index[row["passage_id"]]]),
+                positive_score,
                 excluded,
                 count=args.negatives,
                 range_min=args.range_min,
                 range_max=args.range_max,
                 margin=args.margin,
             )
-            out.append({**row, "negative_ids": negative_ids, "negatives": [texts[i] for i in negative_ids]})
+            out.append(
+                {
+                    **row,
+                    "negative_ids": negative_ids,
+                    "negatives": [texts[i] for i in negative_ids],
+                    # 0 = the positive is the base model's top passage; kept for a later consistency filter
+                    "positive_rank": int((scores > positive_score).sum()),
+                }
+            )
     return out
 
 
@@ -126,9 +155,11 @@ def main() -> int:
     rows = list(read_training_rows(args.input))
     mined = mine(rows, args)
     count = write_jsonl(args.output, mined)
-    short = sum(len(r["negatives"]) < args.negatives for r in mined)
+    by_count = Counter(len(r["negatives"]) for r in mined)
+    ranks = sorted(r["positive_rank"] for r in mined)
     print(
-        f"wrote {count} rows with negatives to {args.output} ({short} with fewer than {args.negatives})",
+        f"wrote {count} rows to {args.output}; rows per number of negatives: {dict(sorted(by_count.items()))}; "
+        f"positive at rank 0: {sum(rank == 0 for rank in ranks)}, median rank {ranks[len(ranks) // 2] if ranks else '-'}",
         file=sys.stderr,
     )
     return 0
