@@ -87,6 +87,8 @@ def test_near_duplicate_passages_are_merged_onto_the_first_id() -> None:
     kept, stats = run([pair("plumber hourly rate"), pair("when is the plumbing invoice due", almost, "p2")])
     assert [r["passage_id"] for r in kept] == ["p1", "p1"]
     assert stats["near_duplicate_passage_merged"] == 1
+    # one id, one text: the merged row takes the kept passage's text (train.py refuses an id with two texts)
+    assert kept[1]["passage"] == PASSAGE and kept[1]["merged_from_passage_id"] == "p2"
 
 
 def test_different_passages_stay_separate() -> None:
@@ -227,5 +229,25 @@ def test_train_uses_negatives_stored_by_mine_negatives() -> None:
         {"query": "q2", "passage": "p2", "negatives": ["n4"]},
         {"query": "q3", "passage": "p3"},
     ]
-    columns = train.file_negative_columns(rows, 2)
-    assert columns == {"anchor": ["q1"], "positive": ["p1"], "negative_1": ["n1"], "negative_2": ["n2"]}
+    groups = train.file_negative_datasets(rows, 2)
+    assert groups == {
+        # mined negatives where a pair has enough of them ...
+        "mined": {"anchor": ["q1"], "positive": ["p1"], "negative_1": ["n1"], "negative_2": ["n2"]},
+        # ... and every other pair still trains, on in-batch negatives only
+        "in_batch": {"anchor": ["q2", "q3"], "positive": ["p2", "p3"]},
+    }
+    assert set(train.file_negative_datasets(rows[:1], 2)) == {"mined"}  # no empty group
+
+
+def test_consistency_filter_drops_pairs_the_base_model_cannot_find() -> None:
+    import train
+
+    rows = [
+        {"query": "q1", "positive_rank": 0},
+        {"query": "q2", "positive_rank": 49},
+        {"query": "q3", "positive_rank": 50},
+        {"query": "q4"},  # not mined: kept
+    ]
+    kept = train.consistency_filter(rows, max_positive_rank=49)
+    assert [r["query"] for r in kept] == ["q1", "q2", "q4"]
+    assert train.consistency_filter(rows, max_positive_rank=None) == rows

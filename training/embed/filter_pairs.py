@@ -89,6 +89,9 @@ def query_problem(row: dict[str, Any], max_copied: float = MAX_COPIED_WORDS) -> 
     return None
 
 
+PASSAGE_FIELDS = ("passage", "passage_file", "passage_language")
+
+
 @dataclass
 class PassageDeduper:
     """Maps near-duplicate passages (same language) to the first kept passage id."""
@@ -97,8 +100,10 @@ class PassageDeduper:
     kept: dict[str, list[tuple[str, frozenset[tuple[str, ...]]]]] = field(default_factory=dict)
     alias: dict[str, str] = field(default_factory=dict)
     exact: dict[str, str] = field(default_factory=dict)
+    rows: dict[str, dict[str, Any]] = field(default_factory=dict)  # passage fields of each kept id
 
     def canonical(self, passage_id: str, text: str, language: str | None) -> str:
+        """The kept id for this passage (its own id if it is the first of its kind)."""
         if passage_id in self.alias:
             return self.alias[passage_id]
         key = normalize(text)
@@ -139,15 +144,27 @@ def filter_rows(
             stats["duplicate_query"] += 1
             continue
         passage_id = deduper.canonical(str(row["passage_id"]), row["passage"], row.get("passage_language"))
-        if passage_id != row["passage_id"]:
+        merged = passage_id != row["passage_id"]
+        if merged:
             stats["near_duplicate_passage_merged"] += 1
+        else:
+            deduper.rows.setdefault(passage_id, {k: row[k] for k in PASSAGE_FIELDS if k in row})
         if per_passage[passage_id] >= max_per_passage:
             stats["passage_cap"] += 1
             continue
         seen_queries.add(key)
         per_passage[passage_id] += 1
         stats["kept"] += 1
-        yield {**row, "passage_id": passage_id} if passage_id != row["passage_id"] else row
+        if not merged:
+            yield row
+            continue
+        # The kept passage's text and file go with its id: one id must never carry two texts.
+        yield {
+            **row,
+            **deduper.rows.get(passage_id, {}),
+            "passage_id": passage_id,
+            "merged_from_passage_id": row["passage_id"],
+        }
 
 
 def main() -> int:

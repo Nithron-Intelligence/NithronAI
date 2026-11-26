@@ -128,22 +128,49 @@ def ir_evaluator(pairs: list[dict[str, Any]], corpus: dict[str, str], name: str)
     )
 
 
-def file_negative_columns(train: list[dict[str, Any]], count: int) -> dict[str, list[str]]:
-    """anchor/positive/negative_1..N columns from negatives stored in the rows (mine_negatives.py); rows with
-    fewer than ``count`` stored negatives are left out."""
-    rows = [p for p in train if len(p.get("negatives") or []) >= count]
-    columns = {"anchor": [p["query"] for p in rows], "positive": [p["passage"] for p in rows]}
-    for n in range(count):
-        columns[f"negative_{n + 1}"] = [p["negatives"][n] for p in rows]
-    return columns
+def consistency_filter(pairs: list[dict[str, Any]], max_positive_rank: int | None) -> list[dict[str, Any]]:
+    """Drop pairs whose positive the base model ranks below ``max_positive_rank`` (``positive_rank`` from
+    mine_negatives.py): such queries are usually ambiguous ("what is the directive about"). Pairs without the
+    field are kept."""
+    if max_positive_rank is None:
+        return pairs
+    return [p for p in pairs if p.get("positive_rank", 0) <= max_positive_rank]
+
+
+def file_negative_datasets(train: list[dict[str, Any]], count: int) -> dict[str, dict[str, list[str]]]:
+    """Columns from negatives stored in the rows (mine_negatives.py), in two groups: ``mined``
+    (anchor/positive/negative_1..N, rows with at least ``count`` negatives) and ``in_batch`` (anchor/positive,
+    all other rows, trained on in-batch negatives only). Empty groups are left out."""
+    mined = [p for p in train if len(p.get("negatives") or []) >= count]
+    rest = [p for p in train if len(p.get("negatives") or []) < count]
+    groups: dict[str, dict[str, list[str]]] = {}
+    if mined:
+        columns = {"anchor": [p["query"] for p in mined], "positive": [p["passage"] for p in mined]}
+        for n in range(count):
+            columns[f"negative_{n + 1}"] = [p["negatives"][n] for p in mined]
+        groups["mined"] = columns
+    if rest:
+        groups["in_batch"] = {"anchor": [p["query"] for p in rest], "positive": [p["passage"] for p in rest]}
+    return groups
+
+
+def dataset_rows(dataset: Any) -> int:
+    """Rows in a Dataset or a DatasetDict (one batch always comes from one of its datasets)."""
+    if hasattr(dataset, "num_rows") and isinstance(dataset.num_rows, dict):
+        return int(sum(dataset.num_rows.values()))
+    return len(dataset)
 
 
 def build_train_dataset(train: list[dict[str, Any]], model: Any, args: argparse.Namespace) -> Any:
-    from datasets import Dataset
+    from datasets import Dataset, DatasetDict
     from sentence_transformers.util import mine_hard_negatives
 
     if args.file_negatives:
-        return Dataset.from_dict(file_negative_columns(train, args.hard_negatives))
+        groups = file_negative_datasets(train, args.hard_negatives)
+        if len(groups) == 1:
+            return Dataset.from_dict(next(iter(groups.values())))
+        # one loss for both; the trainer draws each batch from one dataset, in proportion to their sizes
+        return DatasetDict({name: Dataset.from_dict(columns) for name, columns in groups.items()})
 
     dataset = Dataset.from_dict(
         {"anchor": [p["query"] for p in train], "positive": [p["passage"] for p in train]}
@@ -281,6 +308,12 @@ def train_main(args: argparse.Namespace) -> int:
             f"--release must be a Vane model ID like 'vane-1-rc1' or 'vane-1', got {args.release!r}"
         )
     pairs = load_pairs(args.pairs, args.limit)
+    loaded = len(pairs)
+    pairs = consistency_filter(pairs, args.max_positive_rank)
+    if args.max_positive_rank is not None:
+        print(
+            f"consistency filter (positive_rank <= {args.max_positive_rank}): kept {len(pairs)} of {loaded}"
+        )
     train, held_out = split_by_passage(pairs, args.eval_fraction, args.seed)
     corpus = eval_corpus(train, held_out, args.eval_distractors, args.seed)
     print(
@@ -294,14 +327,15 @@ def train_main(args: argparse.Namespace) -> int:
     print("base model on held-out pairs:", {k: round(v, 4) for k, v in evaluator(model).items() if "@" in k})
 
     dataset = build_train_dataset(train, model, args)
-    print(f"train dataset: {len(dataset)} rows, columns {dataset.column_names}")
+    print(f"train dataset: {dataset_rows(dataset)} rows, columns {dataset.column_names}")
     trainer = build_trainer(model, dataset, evaluator, args)
     plan = {
         "release": {"id": release.hf_id, "display_name": release.display_name, "label": args.release},
         "base_model": args.base_model,
         "pairs": str(args.pairs),
         "pairs_sha256": data_fingerprint(args.pairs),
-        "train_rows": len(dataset),
+        "train_rows": dataset_rows(dataset),
+        "pairs_before_consistency_filter": loaded,
         "held_out_pairs": len(held_out),
         "loss": "CachedMultipleNegativesRankingLoss" if args.cached_loss else "MultipleNegativesRankingLoss",
         "teachers": sorted({(p.get("provenance") or {}).get("author", "?") for p in pairs}),
@@ -348,7 +382,13 @@ def main() -> int:
     parser.add_argument(
         "--file-negatives",
         action="store_true",
-        help="use the negatives stored in the pairs file (mine_negatives.py) instead of mining during training",
+        help="use the negatives stored in the pairs file (mine_negatives.py) instead of mining during training; pairs with fewer than --hard-negatives train on in-batch negatives only",
+    )
+    parser.add_argument(
+        "--max-positive-rank",
+        type=int,
+        default=None,
+        help="drop pairs whose positive the base model ranked below this (positive_rank from mine_negatives.py)",
     )
     parser.add_argument("--negative-range-min", type=int, default=5)
     parser.add_argument("--negative-range-max", type=int, default=50)

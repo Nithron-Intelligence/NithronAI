@@ -132,7 +132,7 @@ Because a passage yields ~4.4 pairs rather than the pilot's ~2.6, the 60,000 tar
 | Batch 1: queries for 6,743 real passages (done 2026-11-24) | 2.8 h |
 | ~1,420 synthetic documents | ~5.3 h |
 | Queries for their ~7,100 passages | ~3.0 h |
-| **Total to 60,000 pairs** | **~11 h** (batch 1 done; ~8.3 h left) |
+| **Total to 60,000 pairs** | **~11 h** (batch 1 done; ~8.3 h left; ~14.5 h with the consistency filter, see below) |
 
 Hard-negative mining (Granite 97m on the GPU) and filtering take minutes.
 
@@ -150,12 +150,22 @@ sources are the larger share already). Checksums: `training/manifests/vane1-data
 median 0.855), and the positive is often not the base model's top passage: rank 0 for 23.8 % of pairs, top 10
 for 53.1 %, top 50 for 72.5 % (median rank 7). The 0.95 margin therefore removes most candidates. It errs on the
 safe side (no near-positive passages as negatives), but `--file-negatives --hard-negatives 1` would train on
-only 9,809 of 29,180 pairs. Options, to choose before training:
+only 9,809 of 29,180 pairs if rows without negatives were left out.
 
-1. **Keep every pair, hard negatives where they exist:** train with in-batch negatives for all pairs plus mined
-   negatives for the third that has them (`train.py` change: rows without negatives stay in).
-2. **Consistency filter first:** keep pairs whose positive is in the base model's top *k* (`positive_rank < k`;
-   k = 20 keeps 61.7 %, k = 50 keeps 72.5 %) – drops ambiguous queries ("what is the directive about") and
-   pushes the target out by the same share.
-3. **Looser margin** (0.98–1.0): more negatives, but they score almost like the positive, which is where false
-   negatives are; no multilingual reranker with a clean training-data lineage is available to check them.
+**Decided 2026-11-26** (the human asked for the recommendation):
+
+1. **Consistency filter:** `train.py --max-positive-rank 49` keeps pairs whose positive is in the base model's
+   top 50 (72.5 % of batch 1, ~21,150 pairs). It drops mostly ambiguous queries ("what is the directive
+   about") while keeping hard ones; a stricter cut (top 20: 61.7 %) would teach the model only what Granite
+   already finds. Pairs without `positive_rank` (not mined) are kept.
+2. **Every remaining pair trains:** `--file-negatives --hard-negatives 1` trains pairs that have a mined
+   negative on (anchor, positive, negative) and all others on in-batch negatives only, as two datasets
+   under one MNRL loss (each batch comes from one of them, in proportion to their sizes). Smoke-tested on
+   3,000 batch-1 pairs (2 steps in the ROCm container).
+3. **Margin stays at 0.95.** A looser one gives negatives that score almost like the positive, which is where
+   false negatives are, and no multilingual reranker with a clean training-data lineage is available to
+   check them.
+
+Because the filter drops ~27.5 %, 60,000 pairs *after* it need ~82,800 clean pairs: batch 1 gives 29,180, so
+~53,600 more, ~12,400 passages (~2,480 synthetic documents ≈ 9.3 h, plus their queries ≈ 5.2 h; three
+8-hour runs at most). The filter's share on synthetic passages may differ; measure it on batch 2.

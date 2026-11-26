@@ -59,6 +59,10 @@ python filter_pairs.py --input ../data/vane1/pairs-raw.jsonl --output ../data/va
 python check_overlap.py ../data/vane1/pairs-filtered.jsonl --write-clean ../data/vane1/pairs-clean.jsonl
 python3 mine_negatives.py --input ../data/vane1/pairs-clean.jsonl --output ../data/vane1/pairs-mined.jsonl
 python data_manifest.py --data ../data/vane1 --out ../manifests/vane1-data.json
+# training (ROCm container): pairs whose positive is outside Granite's top 50 dropped, mined negatives where
+# a pair has one, in-batch negatives for the rest
+python3 train.py --pairs ../data/vane1/pairs-mined.jsonl --file-negatives --hard-negatives 1 \
+    --max-positive-rank 49 --output-dir ../runs/vane-1-rc2 --release vane-1-rc2
 ```
 
 ### On an AMD GPU (ROCm) in Docker
