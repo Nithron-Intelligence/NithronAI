@@ -5,6 +5,12 @@ All notable changes to nAI. Versions follow [semantic versioning](https://semver
 
 ## [Unreleased]
 
+### Changed
+- **Project and repository renamed to nAI:** the GitHub repository moved to `Nithron-Intelligence` (2026-11-24) and is
+  now `Nithron-Intelligence/nAI` (2026-11-26; old URLs redirect). The license texts (EULA, commercial terms,
+  trademark policy, NOTICE) name the product nAI. Releases from 0.8.0 publish to
+  `ghcr.io/nithron-intelligence/nai/nai-core`; 0.4.0–0.7.0 stay at `ghcr.io/nithron/nithronai/nai-core`.
+
 ## [0.7.0] – 2026-11-23
 
 A new default embedding model without non-commercial data in its lineage (IBM Granite Embedding R2), and a
@@ -146,8 +152,8 @@ Phase 0: foundation.
 - Relicensed from AGPL-3.0-only to the NithronOS Community License (versions up to `66fa142` remain
   AGPL-3.0-only; see `NOTICE`).
 
-[Unreleased]: https://github.com/Nithron-Intelligence/NithronAI/compare/v0.7.0...HEAD
-[0.7.0]: https://github.com/Nithron-Intelligence/NithronAI/compare/v0.6.0...v0.7.0
-[0.6.0]: https://github.com/Nithron-Intelligence/NithronAI/compare/v0.5.0...v0.6.0
-[0.5.0]: https://github.com/Nithron-Intelligence/NithronAI/compare/v0.4.0...v0.5.0
-[0.4.0]: https://github.com/Nithron-Intelligence/NithronAI/releases/tag/v0.4.0
+[Unreleased]: https://github.com/Nithron-Intelligence/nAI/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/Nithron-Intelligence/nAI/compare/v0.6.0...v0.7.0
+[0.6.0]: https://github.com/Nithron-Intelligence/nAI/compare/v0.5.0...v0.6.0
+[0.5.0]: https://github.com/Nithron-Intelligence/nAI/compare/v0.4.0...v0.5.0
+[0.4.0]: https://github.com/Nithron-Intelligence/nAI/releases/tag/v0.4.0

@@ -1,9 +1,9 @@
-# NithronAI Trademark Policy (v1.0)
+# nAI Trademark Policy (v1.0)
 
 This policy governs use of Nithron’s trademarks: “Nithron”, “NithronOS”, “nOS”, “NithronAI”, “nAI”, the N-mark, related wordmarks, and logos (“Trademarks”).
 
 ## Allowed (without asking)
-- Truthful, nominative references: “X is a fork of NithronAI” (plain text only).
+- Truthful, nominative references: “X is a fork of nAI” (plain text only).
 - Links to https://nithron.com or the GitHub repo.
 - Screenshots in reviews/tutorials with attribution.
 
@@ -16,7 +16,7 @@ This policy governs use of Nithron’s trademarks: “Nithron”, “NithronOS�
 
 ## Forks & Distributions
 - Remove all Nithron logos and replace names with your own brand.
-- Include: “This project is not affiliated with Nithron. It is an independent fork of NithronAI.” in README/about.
+- Include: “This project is not affiliated with Nithron. It is an independent fork of nAI.” in README/about.
 - Keep copyright and license notices intact.
 
 ## Merch, Events, Services

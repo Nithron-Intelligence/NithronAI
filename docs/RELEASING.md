@@ -1,10 +1,10 @@
 # Releasing nAI
 
 Tags `vX.Y.Z` trigger `.github/workflows/release.yml`, which builds and pushes
-`ghcr.io/nithron-intelligence/nithronai/nai-core:X.Y.Z` (amd64 + arm64) and creates the GitHub Release.
+`ghcr.io/nithron-intelligence/nai/nai-core:X.Y.Z` (amd64 + arm64) and creates the GitHub Release.
 (Releases `0.4.0`–`0.7.0` were published under `ghcr.io/nithron/nithronai/nai-core` before the 2026-11-24
-move to `Nithron-Intelligence`; keep or update compose templates accordingly once images are published or
-mirrored under `ghcr.io/nithron-intelligence/nithronai/nai-core` and make sure the new package is set to
+move to `Nithron-Intelligence` and the 2026-11-26 rename of the repository to `nAI`; keep or update compose templates accordingly once images are published or
+mirrored under `ghcr.io/nithron-intelligence/nai/nai-core` and make sure the new package is set to
 public.) The Release
 body is the commit list since the previous tag plus GitHub's generated notes, not the CHANGELOG entry;
 paste the CHANGELOG section into the Release by hand if you want it there.

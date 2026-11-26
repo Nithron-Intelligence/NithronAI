@@ -3,7 +3,7 @@
 [![License: NCL v1.0](https://img.shields.io/badge/License-Nithron_Community_License-blue.svg)](./LICENSE)
 [![Backend](https://img.shields.io/badge/Backend-FastAPI-informational.svg)](apps/nai-core)
 [![Status](https://img.shields.io/badge/status-beta-green.svg)](#)
-[![Release](https://img.shields.io/badge/nAI-v0.7.0-blue)](https://github.com/Nithron-Intelligence/NithronAI/releases)
+[![Release](https://img.shields.io/badge/nAI-v0.7.0-blue)](https://github.com/Nithron-Intelligence/nAI/releases)
 [![Built by Nithron](https://img.shields.io/badge/built_by-Nithron-0b8fe0.svg)](https://nithron.com/projects/)
 
 **nAI** lets you search and ask questions about the files on your NAS, privately, on your own
@@ -336,7 +336,7 @@ relicense it (LICENSE, section 4).
 ## 📞 Support
 
 - 📖 [Documentation](docs/)
-- 🐛 [Issue Tracker](https://github.com/Nithron-Intelligence/NithronAI/issues)
+- 🐛 [Issue Tracker](https://github.com/Nithron-Intelligence/nAI/issues)
 
 ---
 

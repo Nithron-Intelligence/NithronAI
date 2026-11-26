@@ -1,7 +1,7 @@
 version: '3.9'
 
 # nAI: "the AI that knows your NAS". Indexes NithronOS shares (read-only) and answers
-# questions about them with citations. Source: https://github.com/Nithron-Intelligence/NithronAI
+# questions about them with citations. Source: https://github.com/Nithron-Intelligence/nAI
 #
 # NithronOS specifics:
 # - The service is named `app` so the generated Caddy snippet (nos-app-<id>-app-1) reaches it.
