@@ -1,13 +1,13 @@
 # nAI as a NithronOS app
 
 This folder is a NithronOS app catalog template, in the same format as the templates in the
-NithronOS repo (`usr/share/nithronos/apps/templates/<id>/`).
+NithronOS repo (`usr/share/nos/apps/templates/<id>/`).
 
 | File | Goes to (NithronOS repo) |
 |------|--------------------------|
-| `nai/compose.yaml`, `nai/schema.json` | `usr/share/nithronos/apps/templates/nai/` |
-| `catalog-entry.yaml` | an entry under `entries:` in `usr/share/nithronos/apps/catalog.yaml` |
-| `icon.svg` | `usr/share/nithronos/apps/templates/nai/icon.svg` |
+| `nai/compose.yaml`, `nai/schema.json` | `usr/share/nos/apps/templates/nai/` |
+| `catalog-entry.yaml` | an entry under `entries:` in `usr/share/nos/apps/catalog.yaml` |
+| `icon.svg` | `usr/share/nos/apps/templates/nai/icon.svg` |
 
 ## What the app does
 

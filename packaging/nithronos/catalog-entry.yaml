@@ -1,5 +1,5 @@
-# Entry to add under `entries:` in NithronOS usr/share/nithronos/apps/catalog.yaml.
-# Copy nai/ (with icon.svg) to usr/share/nithronos/apps/templates/nai/.
+# Entry to add under `entries:` in NithronOS usr/share/nos/apps/catalog.yaml.
+# Copy nai/ (with icon.svg) to usr/share/nos/apps/templates/nai/.
   - id: nai
     name: nAI
     version: "0.7.0"

@@ -8,7 +8,7 @@
 
 **nAI** lets you search and ask questions about the files on your NAS, privately, on your own
 hardware. It runs on any NAS that can run containers (TrueNAS, Unraid, Synology, QNAP, OpenMediaVault or
-plain Docker on Linux), and it is the built-in AI of [NithronOS](https://github.com/Nithron/NithronOS),
+plain Docker on Linux), and it is the built-in AI of [nOS](https://github.com/Nithron/nOS) (NithronOS),
 the reference platform.
 
 Ask *"the insurance contract for the car"* and get `scan_0042.pdf`, page 2, even though the file

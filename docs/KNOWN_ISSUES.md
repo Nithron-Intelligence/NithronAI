@@ -38,7 +38,7 @@ Recorded 2026-11-21 in NithronOS's `NAI_INTEGRATION.md` (owned by the NithronOS 
 
 ## Hand-over: NithronOS template sync (for the session that owns NithronOS)
 
-NithronOS's copy of the nAI template (`usr/share/nithronos/apps/templates/nai/`, added in NithronOS commit
+NithronOS's copy of the nAI template (`usr/share/nos/apps/templates/nai/`, added in NithronOS commit
 `47def8c`) lags behind `packaging/nithronos/nai/` here (checked 2026-11-23; items 1–5 sent as one patch to the
 NithronOS session on 2026-11-26, open until NithronOS has them). Changes needed:
 
@@ -48,7 +48,7 @@ NithronOS session on 2026-11-26, open until NithronOS has them). Changes needed:
 2. `schema.json`: `RERANKER` default `off`, enum `off`/`auto`/`on`, new description.
 3. **Version 0.7.0 (published 2026-11-23; was 0.6.0 in round 5):** point the template at the 0.7.0 image (TrueNAS
    adapter, runs as another uid, Granite default model, keyword-only mode below 2.5g). From the NithronOS repo root:
-   `sed -i 's/NAI_VERSION:-0.4.0/NAI_VERSION:-0.7.0/g' usr/share/nithronos/apps/templates/nai/compose.yaml`
+   `sed -i 's/NAI_VERSION:-0.4.0/NAI_VERSION:-0.7.0/g' usr/share/nos/apps/templates/nai/compose.yaml`
    (image tag and the `nos.app.version` label); in `schema.json` set `NAI_VERSION` `"default": "0.7.0"` and the
    enum to `"0.7.0", "0.7", "0.6.0", "0.6", "0.5.0", "0.4.0", "latest"`; set the catalog entry's
    `version: "0.7.0"`. This repo's copy (`packaging/nithronos/`) has these values since round 8.
@@ -69,8 +69,8 @@ installs that stored `true`/`false` keep working with newer nAI versions too. Ap
 root with `git apply nithronos-nai.patch` (it applies cleanly to NithronOS `47def8c`):
 
 ```diff
---- a/usr/share/nithronos/apps/templates/nai/compose.yaml
-+++ b/usr/share/nithronos/apps/templates/nai/compose.yaml
+--- a/usr/share/nos/apps/templates/nai/compose.yaml
++++ b/usr/share/nos/apps/templates/nai/compose.yaml
 @@ -25,9 +25,10 @@
        - ${SHARES_PATH:-/srv/shares}:/shares:ro
      environment:
@@ -83,8 +83,8 @@ root with `git apply nithronos-nai.patch` (it applies cleanly to NithronOS `47de
        - NAI_OCR_ENABLED=${OCR_ENABLED:-true}
        - NAI_OCR_LANGUAGES=${OCR_LANGUAGES:-eng+deu}
        # Generated answers (optional). Without a model, nAI answers with exact quotes.
---- a/usr/share/nithronos/apps/templates/nai/schema.json
-+++ b/usr/share/nithronos/apps/templates/nai/schema.json
+--- a/usr/share/nos/apps/templates/nai/schema.json
++++ b/usr/share/nos/apps/templates/nai/schema.json
 @@ -69,12 +69,12 @@
      "RERANKER": {
        "type": "string",
