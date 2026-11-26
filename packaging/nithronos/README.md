@@ -24,8 +24,11 @@ NithronOS repo (`usr/share/nos/apps/templates/<id>/`).
 
 ## Permissions
 
-The container runs as `PUID:PGID` (default 1000:1000). That user needs read access to the shares
-you add as sources; files it cannot read are skipped and logged. `/srv/apps/nai/data` must be writable by it
+The container runs as `PUID:PGID` (default 1000:1000) plus the supplementary group `NOS_APP_GID`. From nOS
+phase 5, nOS writes that variable on every install and update as the GID of the system group `nos-app-nai`, and
+a per-share switch (off by default) gives that group read-only access (`g:nos-app-nai:r-x`, inherited). So nAI
+can read exactly the shares the admin opened to it. Older nOS doesn't set it; the template then falls back to
+1000 (the PGID), which changes nothing. Files nAI cannot read are skipped and logged. `/srv/apps/nai/data` must be writable by it
 (NithronOS currently chowns app folders to `nos:nos`; see `NAI_INTEGRATION.md` in the NithronOS repo).
 
 Added to the NithronOS repo on 2026-11-21 (uncommitted there; see its `NAI_INTEGRATION.md`).

@@ -5,6 +5,11 @@ All notable changes to nAI. Versions follow [semantic versioning](https://semver
 
 ## [Unreleased]
 
+### Added
+- **nOS template: share access through `nos-app-nai`.** The container joins the group nOS passes as
+  `NOS_APP_GID`, so it reads exactly the shares the admin opened to nAI (read-only; needs nOS phase 5). Without
+  the variable it falls back to GID 1000, the current PGID, so older nOS behaves as before.
+
 ### Changed
 - **`NAI_RERANKER=auto` no longer turns the reranker on by itself.** The lineage audit found MS MARCO
   (non-commercial) in the training data of `bge-reranker-v2-m3`, the default model, and of Qwen3-Reranker; the
