@@ -26,9 +26,12 @@ Nithron models get a **family name per role**, plus a **version number**: "Nithr
 3. **IDs.** Hugging Face: `nithron/<family>-<version>[-<variant>]`, all lower case: `nithron/vane-1`,
    `nithron/loupe-1`, `nithron/tern-1`, `nithron/nox-1`, `nithron/tern-1-mini`. Ollama: the same name
    (`nithron/tern-1-mini:q4_K_M`). `nithron_models.parse_model_id` understands both.
-4. **First versions:** Vane 1 (base: `ibm-granite/granite-embedding-97m-multilingual-r2` since round 6, 2026-11-23; was `paraphrase-multilingual-MiniLM-L12-v2`; any Vane change forces a re-index); **Loupe 1 (decided 2026-11-23):
-   a fine-tune of `BAAI/bge-reranker-v2-m3` (Apache-2.0), shipped as int8 ONNX, distilled from
-   `Qwen/Qwen3-Reranker-0.6B` (Apache-2.0) as the teacher**; Tern 1, Nox 1 (bases chosen in Stage 2).
+4. **First versions:** Vane 1 (base: `ibm-granite/granite-embedding-97m-multilingual-r2` since round 6, 2026-11-23; was `paraphrase-multilingual-MiniLM-L12-v2`; any Vane change forces a re-index); **Loupe 1 (re-decided 2026-11-26):
+   a cross-encoder trained from a clean encoder, `ibm-granite/granite-embedding-97m-multilingual-r2`'s base
+   (Apache-2.0, audited for Vane 1; `jhu-clsp/mmBERT-small`, MIT, as the comparison once its lineage is audited), on Vane 1's licensed
+   passages with relevance labels from the approved open-weight teacher (`mistral-small3.1`), shipped as int8
+   ONNX**. (The 2026-11-23 plan, a fine-tune of `BAAI/bge-reranker-v2-m3` distilled from
+   `Qwen/Qwen3-Reranker-0.6B`, was dropped: both list MS MARCO, non-commercial, in their training data.); Tern 1, Nox 1 (bases chosen in Stage 2).
    No base or teacher may need `trust_remote_code`.
 
 ## Versions
@@ -97,9 +100,10 @@ base model, keeps its copyright/license notice, and says what we changed.
 |---|---|---|---|---|
 | Vane | `ibm-granite/granite-embedding-97m-multilingual-r2` (**chosen for Vane 1**, round 6; previously `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`, dropped after the training-data audit) | Apache-2.0 | None; may not imply endorsement | Keep license + NOTICE; state changes |
 | Vane | `intfloat/multilingual-e5-small` (comparison) | MIT | None | Keep copyright + license notice |
-| Loupe | `BAAI/bge-reranker-v2-m3` | Apache-2.0 | None | Keep license; state changes |
+| Loupe | `ibm-granite/granite-embedding-97m-multilingual-r2` (**chosen for Loupe 1**, 2026-11-26: trained as a cross-encoder) | Apache-2.0 | None; may not imply endorsement | Keep license + NOTICE; state changes |
+| Loupe | `jhu-clsp/mmBERT-small` (comparison; lineage audit pending) | MIT | None | Keep copyright + license notice |
+| Loupe | `BAAI/bge-reranker-v2-m3`, `Qwen/Qwen3-Reranker-0.6B` (dropped 2026-11-26: MS MARCO in their training data) | Apache-2.0 | None | – |
 | Loupe | `Alibaba-NLP/gte-multilingual-reranker-base` | Apache-2.0 | None | Keep license; state changes |
-| Loupe | `Qwen/Qwen3-Reranker-0.6B` | Apache-2.0 | None | Keep license; state changes |
 | Loupe | `cross-encoder/mmarco-mMiniLMv2-L12-H384-v1` | Apache-2.0 (model); training data mMARCO is derived from MS MARCO (non-commercial terms) | None | As Apache-2.0; data lineage risk |
 | Tern | `Qwen/Qwen3-1.7B`, `Qwen/Qwen3-4B`, `Qwen/Qwen2.5-1.5B-Instruct` | Apache-2.0 | None | Keep license; state changes |
 | Tern | `HuggingFaceTB/SmolLM3-3B` | Apache-2.0 | None | Keep license; state changes |

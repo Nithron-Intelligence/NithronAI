@@ -89,7 +89,7 @@ NAI_EMBEDDINGS=auto                       # auto | on | off: auto runs keyword-o
 NAI_EMBEDDINGS_PROVIDER=auto              # fastembed (ONNX, CPU) | ollama | sentence-transformers
 NAI_EMBEDDINGS_MODEL=ibm-granite/granite-embedding-97m-multilingual-r2   # until 0.6.0: sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
 NAI_EMBEDDINGS_AUTO_REINDEX=false         # model changed? false: pause semantic search and ask an admin to re-index
-NAI_RERANKER=auto                         # auto | on | off: auto reranks the top 10 only on 8+ cores / 8+ GB RAM
+NAI_RERANKER=auto                         # auto | on | off: auto stays off until a reranker with clean training data exists
 NAI_RERANKER_MODEL=BAAI/bge-reranker-v2-m3-int8   # multilingual; 0.57 GB download, ~1-1.5 GB RAM while running
 NAI_RERANKER_CANDIDATES=10                # how many top results the reranker re-scores
 

@@ -237,9 +237,17 @@ RERANKER_MIN_CORES = 8
 RERANKER_MIN_MEMORY_GB = 8.0
 RERANKER_MIN_AVAILABLE_GB = 2.0  # int8 model (0.57 GB download) needs ~1-1.5 GB while running
 
+# Rerankers whose training data has been checked and holds no non-commercial sets: only these may turn on by
+# themselves (NAI_RERANKER=auto). None is cleared yet: bge-reranker-v2-m3 (the default model) and
+# Qwen3-Reranker list MS MARCO (non-commercial) in their training data, the same reason MiniLM stopped being
+# the default embedding model in 0.7.0 (decision 2026-11-26; docs/lab/MODEL_AND_DATA_LICENSES.md).
+# NAI_RERANKER=on still runs any model: that choice is the admin's.
+LINEAGE_CLEARED_RERANKERS: frozenset[str] = frozenset()
 
-def reranker_auto_decision(hw: HardwareInfo) -> tuple[bool, str]:
-    """Whether NAI_RERANKER=auto turns the reranker on for this machine, with a short reason."""
+
+def reranker_auto_decision(hw: HardwareInfo, model: str | None = None) -> tuple[bool, str]:
+    """Whether NAI_RERANKER=auto turns the reranker on for this machine, with a short reason. With ``model``,
+    a fast machine also needs a reranker from ``LINEAGE_CLEARED_RERANKERS``."""
     cores = hw.effective_cores
     facts = f"{cores} cores, {hw.memory_gb:g} GB RAM"
     if hw.avx2 is False:
@@ -250,6 +258,11 @@ def reranker_auto_decision(hw: HardwareInfo) -> tuple[bool, str]:
         return False, f"{facts}: needs {RERANKER_MIN_MEMORY_GB:g}+ GB RAM"
     if hw.memory_available_gb is not None and hw.memory_available_gb < RERANKER_MIN_AVAILABLE_GB:
         return False, f"{facts}: only {hw.memory_available_gb:g} GB free"
+    if model is not None and model not in LINEAGE_CLEARED_RERANKERS:
+        return False, (
+            f"{facts}, but {model} is not cleared for automatic use (non-commercial data in its training "
+            "lineage); NAI_RERANKER=on turns it on"
+        )
     return True, facts
 
 
@@ -321,7 +334,7 @@ def choose_ollama_model(models: list[dict[str, Any]], hw: HardwareInfo) -> str |
     return None
 
 
-def recommendations(hw: HardwareInfo) -> list[str]:
+def recommendations(hw: HardwareInfo, reranker_model: str | None = None) -> list[str]:
     """Plain-language advice for the admin (model names are examples; check Ollama's library)."""
     tips: list[str] = []
     vram = hw.gpu_memory_gb
@@ -341,7 +354,7 @@ def recommendations(hw: HardwareInfo) -> list[str]:
             "Limited hardware: search and extractive answers work well; use a remote Ollama "
             "(NAI_LLM_BASE_URL) for generated answers."
         )
-    rerank_on, reason = reranker_auto_decision(hw)
+    rerank_on, reason = reranker_auto_decision(hw, reranker_model)
     if rerank_on:
         tips.append(f"Reranking runs automatically here ({reason}); NAI_RERANKER=off turns it off.")
     else:

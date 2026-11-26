@@ -30,7 +30,7 @@ class RerankerService:
         if self._auto is None:
             from ..hardware import detect_hardware, reranker_auto_decision
 
-            on, why = reranker_auto_decision(detect_hardware())
+            on, why = reranker_auto_decision(detect_hardware(), self.settings.reranker_model)
             self._auto = (on, f"auto, {'on' if on else 'off'}: {why}")
         return self._auto
 

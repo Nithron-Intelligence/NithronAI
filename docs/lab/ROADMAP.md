@@ -93,8 +93,10 @@ Deliverables:
   generated, NAS-like synthetic corpus (never from nai-bench), with hard negatives.
 - **Vane 1** (`nithron/vane-1`): a fine-tune of the current embedding model
   (`paraphrase-multilingual-MiniLM-L12-v2`), exported to ONNX for fastembed, with an int8 variant.
-- **Loupe 1** (`nithron/loupe-1`): a fine-tune of the best permissive multilingual reranker from the
-  comparison in `evals/results/rerankers-*.md`, same export path.
+- **Loupe 1** (`nithron/loupe-1`): a cross-encoder trained from Granite R2 97m multilingual (mmBERT-small, once audited, as the
+  comparison) on Vane 1's licensed passages with labels from the approved teacher, same export path. Every
+  third-party multilingual reranker we checked has MS MARCO in its training data or distilled labels
+  (decision 2026-11-26; until Loupe 1, `NAI_RERANKER=auto` stays off).
 - A Hugging Face release: model card, license, eval table, data provenance; the training dataset released
   separately.
 - nAI options `NAI_EMBEDDINGS_MODEL=nithron/vane-1` and `NAI_RERANKER_MODEL=nithron/loupe-1`; default switch

@@ -51,7 +51,7 @@ async def system_info(
             "watch": settings.sources_watch,
             "scan_interval_seconds": settings.sources_scan_interval_seconds,
         },
-        "recommendations": recommendations(hw),
+        "recommendations": recommendations(hw, settings.reranker_model),
         # Which Nithron model nAI would pick here once released (docs/lab/MODEL_NAMING.md)
         "nithron_model": nithron_answering_model(hw),
     }

@@ -185,11 +185,13 @@ class Settings(BaseSettings):
     rrf_k: int = Field(default=60, description="Reciprocal Rank Fusion constant")
     retrieval_candidates: int = Field(default=50, description="Candidates per retriever before fusion")
     # auto: on only when the hardware fits the latency budget (hardware.reranker_auto_decision: 8+ effective
-    # cores, 8+ GB RAM); off on NAS-class CPUs. bge-reranker-v2-m3 int8 lifts nai-bench MRR 0.793 -> 0.878
+    # cores, 8+ GB RAM) and the model's training data is cleared (hardware.LINEAGE_CLEARED_RERANKERS; none yet,
+    # so auto means off since 0.8.0); off on NAS-class CPUs. bge-reranker-v2-m3 int8 lifts nai-bench MRR 0.793 -> 0.878
     # with the top 10 but costs ~2 s per question on 2 cores (evals/results/rerankers-*.md, provisional).
     reranker: str = Field(
         default="auto",
-        description="Cross-encoder reranking: auto (on when the hardware is fast enough) | on | off "
+        description="Cross-encoder reranking: auto (on when the hardware is fast enough and the model's "
+        "training data is cleared; none is yet) | on | off "
         "(true/false/1/0/yes/no also work)",
     )
     reranker_model: str = Field(
