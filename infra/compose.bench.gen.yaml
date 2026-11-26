@@ -3,9 +3,24 @@
 #
 #   docker compose -f infra/compose.bench.yaml -f infra/compose.bench.rocm.yaml -f infra/compose.bench.gen.yaml \
 #       up -d --wait ollama
+#
+# Desktop-safe defaults (2026-11-26): on AMD/ROCm, GPU memory that overflows VRAM is pinned in system RAM, which
+# swap cannot take and the kernel OOM killer cannot attribute to Ollama. So the model, its KV cache and the
+# desktop must fit in VRAM together: reserve VRAM for the desktop, quantize the KV cache, keep parallelism modest.
+# Run scripts/ollama-memguard.sh alongside long runs; it stops this container before RAM runs out.
 services:
   ollama:
     environment:
       - OLLAMA_NUM_PARALLEL=${OLLAMA_NUM_PARALLEL:-4}
       - OLLAMA_CONTEXT_LENGTH=${OLLAMA_CONTEXT_LENGTH:-4096}
       - OLLAMA_KEEP_ALIVE=30m
+      - OLLAMA_MAX_LOADED_MODELS=1
+      - OLLAMA_FLASH_ATTENTION=1
+      - OLLAMA_KV_CACHE_TYPE=${OLLAMA_KV_CACHE_TYPE:-q8_0}
+      # VRAM left for the desktop, browser and games (bytes; default 4 GiB).
+      - OLLAMA_GPU_OVERHEAD=${OLLAMA_GPU_OVERHEAD:-4294967296}
+    # Caps what the container itself can take from RAM (layers on CPU, buffers); RAM + swap.
+    mem_limit: ${OLLAMA_MEM_LIMIT:-10g}
+    memswap_limit: ${OLLAMA_MEMSWAP_LIMIT:-16g}
+    # If the kernel OOM killer runs anyway, it picks Ollama first instead of the desktop.
+    oom_score_adj: 1000
