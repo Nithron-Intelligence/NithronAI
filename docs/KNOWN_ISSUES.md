@@ -39,7 +39,8 @@ Recorded 2026-11-21 in NithronOS's `NAI_INTEGRATION.md` (owned by the NithronOS 
 ## Hand-over: NithronOS template sync (for the session that owns NithronOS)
 
 NithronOS's copy of the nAI template (`usr/share/nithronos/apps/templates/nai/`, added in NithronOS commit
-`47def8c`) lags behind `packaging/nithronos/nai/` here (checked 2026-11-23). Changes needed:
+`47def8c`) lags behind `packaging/nithronos/nai/` here (checked 2026-11-23; items 1–5 sent as one patch to the
+NithronOS session on 2026-11-26, open until NithronOS has them). Changes needed:
 
 1. `compose.yaml`: add `NAI_NAS_PLATFORM=nithronos` (the value the adapter registry uses for NithronOS) and
    change the reranker default from `auto` to an explicit `off` (`NAI_RERANKER=${RERANKER:-off}`): NAS CPUs
