@@ -137,6 +137,26 @@ def test_pick_negatives_respects_range_max() -> None:
     assert picked == ["a"]
 
 
+def test_other_documents_ranks_past_a_crowded_top() -> None:
+    # A long law fills the top of the ranking with its own passages; the rank window must apply to
+    # passages of other documents, or a query ends up with no negatives at all.
+    ranked = [(f"own-{n}", 0.9 - n / 100) for n in range(60)] + [("x", 0.3), ("y", 0.2), ("z", 0.1)]
+    excluded = {f"own-{n}" for n in range(60)}
+    others = mine_negatives.other_documents(ranked, excluded, limit=10)
+    assert others == [("x", 0.3), ("y", 0.2), ("z", 0.1)]
+    assert mine_negatives.pick_negatives(others, 0.9, excluded, count=2, range_min=1) == ["y", "z"]
+
+
+def test_document_of_groups_all_language_versions() -> None:
+    rows = [
+        {"passage_id": "p1", "passage_file": "eu:CELEX_32011L0083_DE.html"},
+        {"passage_id": "p2", "passage_file": "eu:CELEX_32011L0083_SV.html"},
+        {"passage_id": "p3", "passage_file": "de:EnWG.html"},
+    ]
+    keys = [mine_negatives.document_of(row) for row in rows]
+    assert keys[0] == keys[1] != keys[2]
+
+
 def test_passage_file_prefers_the_recorded_source_document() -> None:
     assert (
         mine_negatives.passage_file({"passage_id": "p1", "passage_file": "eu:CELEX_1.html"})
