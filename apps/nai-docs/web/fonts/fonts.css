@@ -1,0 +1,44 @@
+/*
+ * nAI's two faces, shipped with nAI because a NAS may be offline (nothing loads from another server).
+ * Mona Sans (variable) and Monaspace Neon, SIL Open Font License 1.1: OFL-mona-sans.txt, OFL-monaspace-neon.txt.
+ * Files from @fontsource-variable/mona-sans 5.3.0 and @fontsource/monaspace-neon 5.3.0 (latin, latin-ext);
+ * the family names are the ones @nithron/tokens asks for in --font-sans and --font-mono.
+ */
+@font-face {
+  font-family: "Mona Sans Variable";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 200 900;
+  src: url("mona-sans-latin-ext-wght-normal.woff2") format("woff2-variations");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
+    U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+  font-family: "Mona Sans Variable";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 200 900;
+  src: url("mona-sans-latin-wght-normal.woff2") format("woff2-variations");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Monaspace Neon";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url("monaspace-neon-latin-400-normal.woff2") format("woff2");
+}
+
+/* Nithron Pixel: the pixel display face (@nithron/tokens 0.4.0 fonts/, Nithron Community License v1.0, like
+   nAI). Only for the pixel layer: the product's name, a screen's one large number, the words of an empty or
+   loading screen, the number beside a block meter. Whole multiples of 8 px only (see .pixel in styles.css). */
+@font-face {
+  font-family: "Nithron Pixel";
+  src: url("nithron-pixel.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}

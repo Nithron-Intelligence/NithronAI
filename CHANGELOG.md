@@ -11,6 +11,22 @@ All notable changes to nAI. Versions follow [semantic versioning](https://semver
   the variable it falls back to GID 1000, the current PGID, so older nOS behaves as before.
 
 ### Changed
+- **Web interface on the Nithron identity (phase 1).** One ground with hairlines and no hue: colours come only
+  from the Nithron tokens (copied as `web/nithron-tokens.css`), so nAI follows the system's light or dark theme
+  by default (Settings can still pin one). The gradient, shadows, glow, glass, floating background and entrance
+  animations are gone; the hero gives way to the Ask screen's own title; the faces Mona Sans and Monaspace Neon
+  ship with nAI (nothing loads from another server). All icons go through `web/icons.js`, ready for the shared
+  pixel set. A test in nai-core fails on a colour value or hue name written anywhere else under `web/`.
+  Every screen is restructured: navigation by words; ruled tables for documents, folders, uploads and API keys;
+  status as a square mark and a word; answers and chat replies rendered as type (Markdown) at a reading width,
+  with a block cursor while they stream and the question's words marked in each source; a ruled chat transcript
+  with source chips; upload progress as a row of blocks; nAI's own confirmation dialog in place of the
+  browser's; a new API key shown once in a field with "Copy". "Use LLM" is now the switch "Write an answer",
+  and "Top K" is "Passages". Checked at WCAG AA contrast in both themes and at phone width.
+  The pixel layer: every icon is from Nithron's pixel set (16 px, crisp), states use its six state icons, and
+  the Nithron Pixel face sets the name, the document count, the words of empty and loading screens and the
+  numbers beside the block meters (upload progress; memory, data disk and the semantic index under "This
+  machine"). `/system` reports the data disk's total and used bytes for that meter.
 - **`NAI_RERANKER=auto` no longer turns the reranker on by itself.** The lineage audit found MS MARCO
   (non-commercial) in the training data of `bge-reranker-v2-m3`, the default model, and of Qwen3-Reranker; the
   same reason MiniLM stopped being the default embedding model in 0.7.0. `auto` now also needs a model whose

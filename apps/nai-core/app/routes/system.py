@@ -3,6 +3,7 @@ nAI Core System Routes
 Hardware, active features and recommendations (admin)
 """
 
+import shutil
 from typing import Any
 
 from fastapi import APIRouter, Depends
@@ -17,6 +18,15 @@ from ..services.reranker import RerankerService, get_reranker
 from ..utils.extractors import ocr_available
 
 router = APIRouter(prefix="/system", tags=["System"], dependencies=[Depends(require_admin)])
+
+
+def storage_usage(path: str) -> dict[str, int] | None:
+    """Total and used bytes of the disk that holds nAI's data (index, uploads, models); None if unreadable."""
+    try:
+        usage = shutil.disk_usage(path)
+    except OSError:
+        return None
+    return {"total_bytes": usage.total, "used_bytes": usage.used}
 
 
 @router.get("")
@@ -40,6 +50,7 @@ async def system_info(
     return {
         "version": settings.app_version,
         "hardware": hw.to_dict(),
+        "storage": await run_in_threadpool(storage_usage, settings.data_path),
         "features": {
             "embeddings": await run_in_threadpool(embeddings.stats),
             "reranker": reranker.stats(),

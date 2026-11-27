@@ -1,0 +1,125 @@
+{
+  "label": "Sample data: nAI 0.7.0, a demo corpus",
+  "note": "A real run of nAI as built from the commit below, over a demo corpus of fictional documents written for the nAI website (see README.md). Draft, awaiting Thiago's approval. Run with NAI_RERANKER=off: 0.7.0 turns its reranker on by default, and that reranker is not cleared for this use (see README.md).",
+  "nai_version": "0.7.0",
+  "commit": "974e25dedbfade3a58270e8e92fe80c648535983",
+  "image": "nai-core:0.7.0-demo (docker build of tag v0.7.0, apps/nai-core/Dockerfile)",
+  "ran_at": "2026-11-27T21:50:58Z",
+  "mode": {
+    "embeddings": true,
+    "embedding_model": "ibm-granite/granite-embedding-97m-multilingual-r2",
+    "embedding_provider": "fastembed",
+    "reranker": false,
+    "llm": false,
+    "answer": "extractive (nAI's own excerpts; no language model)",
+    "top_k": 3
+  },
+  "corpus": [
+    "Demo corpus/Household/Heating/boiler-service-log.md",
+    "Demo corpus/Household/Insurance/car-insurance-2027.pdf",
+    "Demo corpus/Household/Internet/Glasfaser-Vertrag.txt",
+    "Demo corpus/Photos/receipt-hardware-store.jpg",
+    "Demo corpus/Work/Invoices/invoice-2027-041.pdf"
+  ],
+  "questions": [
+    {
+      "question": "When does the car insurance renew?",
+      "retrieval": "hybrid",
+      "answer_method": "extractive",
+      "seconds": 0.009,
+      "passages": [
+        {
+          "rank": 1,
+          "file": "Demo corpus/Household/Insurance/car-insurance-2027.pdf",
+          "page": 1,
+          "section": null,
+          "score": 0.03278688524590164,
+          "text": "Example Insurance Ltd. Car insurance: renewal notice 2027\nPolicyholder: Alex Example, 1 Example Street, 00000 Demotown\nPolicy number: DEMO-CAR-0000-1234\nVehicle: compact estate car, registration DEMO 123\nYour policy renews on 1 March 2027 for another year. Cover: third-party liability and fully comprehensive. Yearly premium from 1 March 2027: EUR 486.40, paid by direct debit. Excess (deductible): EUR 300 per claim; glass damage EUR 150. No-claims class: SF 12 (unchanged). To cancel, tell us at least one month before the renewal date. Questions: service@insurance.example"
+        },
+        {
+          "rank": 2,
+          "file": "Demo corpus/Household/Heating/boiler-service-log.md",
+          "page": null,
+          "section": "Boiler service log > Next service",
+          "score": 0.016129032258064516,
+          "text": "## Next service\n\nDue in October 2027. Book it in September; Demo Heating Service asks for four weeks' notice. The boiler warranty runs until 30 June 2029, as long as every yearly service is done and logged."
+        },
+        {
+          "rank": 3,
+          "file": "Demo corpus/Household/Internet/Glasfaser-Vertrag.txt",
+          "page": null,
+          "section": null,
+          "score": 0.015873015873015872,
+          "text": "Beispiel Glasfaser GmbH (fiktiv)\nGlasfaser-Vertrag: Vertragsübersicht\n\nKunde: Alex Example, Beispielstraße 1, 00000 Demostadt\nKundennummer: DEMO-GF-000042\n\nTarif: Glasfaser 500 (500 Mbit/s im Download, 100 Mbit/s im Upload)\nMonatlicher Preis: 44,90 EUR, ab dem 13. Monat 49,90 EUR\nEinmaliger Bereitstellungspreis: 0,00 EUR\n\nVertragsbeginn: 1. September 2025\nMindestlaufzeit: 24 Monate, also bis zum 31. August 2027\nKündigungsfrist: Nach der Mindestlaufzeit ist der Vertrag mit einer Frist von einem Monat kündbar. Kündigung in Textform an kuendigung@glasfaser.example\n\nRouter: Leihgerät, bei Vertragsende innerhalb von 14 Tagen zurückzusenden."
+        }
+      ],
+      "answer": "Based on your indexed documents, here are the most relevant excerpts:\n\n**[1] Demo corpus/Household/Insurance/car-insurance-2027.pdf, page 1**\n> Example Insurance Ltd. Car insurance: renewal notice 2027\nPolicyholder: Alex Example, 1 Example Street, 00000 Demotown\nPolicy number: DEMO-CAR-0000-1234\nVehicle: compact estate car, registration DEMO 123\nYour policy renews on 1 March 2027 for another year. Cover: third-party liability and fully comprehensive. Yearly premium from 1 March 2027: EUR 486.40, paid by direct debit. Excess (deductible): EUR 300 per claim; glass damage EUR 150. No-claims class: SF 12 (unchanged).\n\n**[2] Demo corpus/Household/Heating/boiler-service-log.md**\n> ## Next service\n\nDue in October 2027. Book it in September; Demo Heating Service asks for four weeks' notice. The boiler warranty runs until 30 June 2029, as long as every yearly service is done and logged.\n\n**[3] Demo corpus/Household/Internet/Glasfaser-Vertrag.txt**\n> Beispiel Glasfaser GmbH (fiktiv)\nGlasfaser-Vertrag: Vertragsübersicht\n\nKunde: Alex Example, Beispielstraße 1, 00000 Demostadt\nKundennummer: DEMO-GF-000042\n\nTarif: Glasfaser 500 (500 Mbit/s im Download, 100 Mbit/s im Upload)\nMonatlicher Preis: 44,90 EUR, ab dem 13. Monat 49,90 EUR\nEinmaliger Bereitstellungspreis: 0,00 EUR\n\nVertragsbeginn: 1. September 2025\nMindestlaufzeit: 24 Monate, also bis zum 31.\n\n---\n*This is an extractive answer. For generated answers, enable an LLM with `NAI_LLM_ENABLED=true`.*"
+    },
+    {
+      "question": "What is the notice period for the internet contract?",
+      "retrieval": "hybrid",
+      "answer_method": "extractive",
+      "seconds": 0.008,
+      "passages": [
+        {
+          "rank": 1,
+          "file": "Demo corpus/Household/Internet/Glasfaser-Vertrag.txt",
+          "page": null,
+          "section": null,
+          "score": 0.03278688524590164,
+          "text": "Beispiel Glasfaser GmbH (fiktiv)\nGlasfaser-Vertrag: Vertragsübersicht\n\nKunde: Alex Example, Beispielstraße 1, 00000 Demostadt\nKundennummer: DEMO-GF-000042\n\nTarif: Glasfaser 500 (500 Mbit/s im Download, 100 Mbit/s im Upload)\nMonatlicher Preis: 44,90 EUR, ab dem 13. Monat 49,90 EUR\nEinmaliger Bereitstellungspreis: 0,00 EUR\n\nVertragsbeginn: 1. September 2025\nMindestlaufzeit: 24 Monate, also bis zum 31. August 2027\nKündigungsfrist: Nach der Mindestlaufzeit ist der Vertrag mit einer Frist von einem Monat kündbar. Kündigung in Textform an kuendigung@glasfaser.example\n\nRouter: Leihgerät, bei Vertragsende innerhalb von 14 Tagen zurückzusenden."
+        },
+        {
+          "rank": 2,
+          "file": "Demo corpus/Household/Heating/boiler-service-log.md",
+          "page": null,
+          "section": "Boiler service log > Next service",
+          "score": 0.03200204813108039,
+          "text": "## Next service\n\nDue in October 2027. Book it in September; Demo Heating Service asks for four weeks' notice. The boiler warranty runs until 30 June 2029, as long as every yearly service is done and logged."
+        },
+        {
+          "rank": 3,
+          "file": "Demo corpus/Household/Insurance/car-insurance-2027.pdf",
+          "page": 1,
+          "section": null,
+          "score": 0.03200204813108039,
+          "text": "Example Insurance Ltd. Car insurance: renewal notice 2027\nPolicyholder: Alex Example, 1 Example Street, 00000 Demotown\nPolicy number: DEMO-CAR-0000-1234\nVehicle: compact estate car, registration DEMO 123\nYour policy renews on 1 March 2027 for another year. Cover: third-party liability and fully comprehensive. Yearly premium from 1 March 2027: EUR 486.40, paid by direct debit. Excess (deductible): EUR 300 per claim; glass damage EUR 150. No-claims class: SF 12 (unchanged). To cancel, tell us at least one month before the renewal date. Questions: service@insurance.example"
+        }
+      ],
+      "answer": "Based on your indexed documents, here are the most relevant excerpts:\n\n**[1] Demo corpus/Household/Internet/Glasfaser-Vertrag.txt**\n> Beispiel Glasfaser GmbH (fiktiv)\nGlasfaser-Vertrag: Vertragsübersicht\n\nKunde: Alex Example, Beispielstraße 1, 00000 Demostadt\nKundennummer: DEMO-GF-000042\n\nTarif: Glasfaser 500 (500 Mbit/s im Download, 100 Mbit/s im Upload)\nMonatlicher Preis: 44,90 EUR, ab dem 13. Monat 49,90 EUR\nEinmaliger Bereitstellungspreis: 0,00 EUR\n\nVertragsbeginn: 1. September 2025\nMindestlaufzeit: 24 Monate, also bis zum 31.\n\n**[2] Demo corpus/Household/Heating/boiler-service-log.md**\n> ## Next service\n\nDue in October 2027. Book it in September; Demo Heating Service asks for four weeks' notice. The boiler warranty runs until 30 June 2029, as long as every yearly service is done and logged.\n\n**[3] Demo corpus/Household/Insurance/car-insurance-2027.pdf, page 1**\n> Example Insurance Ltd. Car insurance: renewal notice 2027\nPolicyholder: Alex Example, 1 Example Street, 00000 Demotown\nPolicy number: DEMO-CAR-0000-1234\nVehicle: compact estate car, registration DEMO 123\nYour policy renews on 1 March 2027 for another year. Cover: third-party liability and fully comprehensive. Yearly premium from 1 March 2027: EUR 486.40, paid by direct debit. Excess (deductible): EUR 300 per claim; glass damage EUR 150. No-claims class: SF 12 (unchanged).\n\n---\n*This is an extractive answer. For generated answers, enable an LLM with `NAI_LLM_ENABLED=true`.*"
+    },
+    {
+      "question": "How much is invoice 2027-041 and when is it due?",
+      "retrieval": "hybrid",
+      "answer_method": "extractive",
+      "seconds": 0.008,
+      "passages": [
+        {
+          "rank": 1,
+          "file": "Demo corpus/Work/Invoices/invoice-2027-041.pdf",
+          "page": 1,
+          "section": null,
+          "score": 0.03278688524590164,
+          "text": "Demo Studio\nInvoice 2027-041\nInvoice date: 15 January 2027\nDue date: 14 February 2027 (30 days)\nClient: Beispiel Bakery, 2 Sample Road, 00000 Demotown\nItem Hours Rate Amount\nLogo refresh and colour palette 12 EUR 85 EUR 1,020.00\nMenu board design (3 boards) 6 EUR 85 EUR 510.00\nNet EUR 1,530.00\nVAT 19 % EUR 290.70\nTotal due EUR 1,820.70\nPlease pay to IBAN DE00 0000 0000 0000 0000 00, reference 2027-041.\nstudio@demo-studio.example"
+        },
+        {
+          "rank": 2,
+          "file": "Demo corpus/Household/Insurance/car-insurance-2027.pdf",
+          "page": 1,
+          "section": null,
+          "score": 0.03200204813108039,
+          "text": "Example Insurance Ltd. Car insurance: renewal notice 2027\nPolicyholder: Alex Example, 1 Example Street, 00000 Demotown\nPolicy number: DEMO-CAR-0000-1234\nVehicle: compact estate car, registration DEMO 123\nYour policy renews on 1 March 2027 for another year. Cover: third-party liability and fully comprehensive. Yearly premium from 1 March 2027: EUR 486.40, paid by direct debit. Excess (deductible): EUR 300 per claim; glass damage EUR 150. No-claims class: SF 12 (unchanged). To cancel, tell us at least one month before the renewal date. Questions: service@insurance.example"
+        },
+        {
+          "rank": 3,
+          "file": "Demo corpus/Household/Heating/boiler-service-log.md",
+          "page": null,
+          "section": "Boiler service log > Next service",
+          "score": 0.031754032258064516,
+          "text": "## Next service\n\nDue in October 2027. Book it in September; Demo Heating Service asks for four weeks' notice. The boiler warranty runs until 30 June 2029, as long as every yearly service is done and logged."
+        }
+      ],
+      "answer": "Based on your indexed documents, here are the most relevant excerpts:\n\n**[1] Demo corpus/Work/Invoices/invoice-2027-041.pdf, page 1**\n> Demo Studio\nInvoice 2027-041\nInvoice date: 15 January 2027\nDue date: 14 February 2027 (30 days)\nClient: Beispiel Bakery, 2 Sample Road, 00000 Demotown\nItem Hours Rate Amount\nLogo refresh and colour palette 12 EUR 85 EUR 1,020.00\nMenu board design (3 boards) 6 EUR 85 EUR 510.00\nNet EUR 1,530.00\nVAT 19 % EUR 290.70\nTotal due EUR 1,820.70\nPlease pay to IBAN DE00 0000 0000 0000 0000 00, reference 2027-041.\nstudio@demo-studio.example\n\n**[2] Demo corpus/Household/Insurance/car-insurance-2027.pdf, page 1**\n> Example Insurance Ltd. Car insurance: renewal notice 2027\nPolicyholder: Alex Example, 1 Example Street, 00000 Demotown\nPolicy number: DEMO-CAR-0000-1234\nVehicle: compact estate car, registration DEMO 123\nYour policy renews on 1 March 2027 for another year. Cover: third-party liability and fully comprehensive. Yearly premium from 1 March 2027: EUR 486.40, paid by direct debit. Excess (deductible): EUR 300 per claim; glass damage EUR 150. No-claims class: SF 12 (unchanged).\n\n**[3] Demo corpus/Household/Heating/boiler-service-log.md**\n> ## Next service\n\nDue in October 2027. Book it in September; Demo Heating Service asks for four weeks' notice. The boiler warranty runs until 30 June 2029, as long as every yearly service is done and logged.\n\n---\n*This is an extractive answer. For generated answers, enable an LLM with `NAI_LLM_ENABLED=true`.*"
+    }
+  ]
+}

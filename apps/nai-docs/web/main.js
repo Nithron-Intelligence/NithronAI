@@ -1,6 +1,6 @@
 /**
- * nAI Web Interface
- * Modern client-side JavaScript for the nAI document Q&A system
+ * nAI web interface: plain JavaScript, no build step. Icons come from icons.js, Markdown from markdown.js and
+ * confirmations from dialog.js (loaded before this file).
  */
 
 // =============================================================================
@@ -29,7 +29,7 @@ function defaultApiBase() {
 
 const CONFIG = {
   apiBase: storageGet('nai_api_base') || defaultApiBase(),
-  theme: storageGet('nai_theme') || 'dark',
+  theme: storageGet('nai_theme') || 'system',
 };
 
 const AUTH = {
@@ -42,6 +42,8 @@ const AUTH = {
 const STATE = {
   files: [],
   documents: [],
+  sources: [],
+  apiKeys: [],
   chatConversationId: null,
   isLoading: false,
 };
@@ -77,6 +79,7 @@ const elements = {
   ingestBtn: document.getElementById('ingestBtn'),
   clearFilesBtn: document.getElementById('clearFilesBtn'),
   ingestResults: document.getElementById('ingestResults'),
+  uploadProgress: document.getElementById('uploadProgress'),
   
   // Documents
   documentsStats: document.getElementById('documentsStats'),
@@ -144,22 +147,44 @@ const elements = {
 // Utility Functions
 // =============================================================================
 
+// The pixel set's six state icons: ok (pass), warning, failed, running, notice, off.
+const STATE_ICONS = { success: 'ok', warning: 'warning', error: 'failed', info: 'notice', off: 'off', running: 'running' };
+
+/** The state icon for a kind of status, coloured by its own class (only ok, warning and failed carry a hue). */
+function stateIcon(kind) {
+  const name = STATE_ICONS[kind] || 'notice';
+  return `<span class="state state-${name}">${icon(name)}</span>`;
+}
+
+/** A status as a state icon and a word (the word carries the meaning; the icon only repeats it). */
+function statusLabel(kind, word) {
+  return `<span class="status">${stateIcon(kind)}${escapeHtml(word)}</span>`;
+}
+
+/** A field's error: the failed icon and the sentence. */
+function fieldError(element, message) {
+  element.innerHTML = `${stateIcon('error')}<span></span>`;
+  element.querySelector('span:last-child').textContent = message;
+}
+
 function showToast(message, type = 'info') {
   const toast = document.createElement('div');
   toast.className = `toast ${type}`;
+  toast.setAttribute('role', type === 'error' ? 'alert' : 'status');
   toast.innerHTML = `
-    <span></span>
-    <button>
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-      </svg>
-    </button>
+    ${stateIcon(type)}
+    <span class="toast-text"></span>
+    <button class="btn btn-ghost btn-sm" type="button" aria-label="Dismiss">${icon('close')}</button>
   `;
-  // textContent: messages can contain server-provided text (e.g. filenames)
-  toast.querySelector('span').textContent = message;
+  toast.querySelector('.toast-text').textContent = message;
   toast.querySelector('button').addEventListener('click', () => toast.remove());
   elements.toastContainer.appendChild(toast);
-  setTimeout(() => toast.remove(), 5000);
+  if (type !== 'error') setTimeout(() => toast.remove(), 5000); // failures stay until dismissed
+}
+
+/** "1 chunk", "2 chunks". */
+function plural(count, word) {
+  return `${count} ${word}${count === 1 ? '' : 's'}`;
 }
 
 function formatBytes(bytes) {
@@ -170,15 +195,13 @@ function formatBytes(bytes) {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
 }
 
+/** "2026-11-27 22:40" in the reader's own time zone: the same in every locale, never a US-only form. */
 function formatDate(isoString) {
-  if (!isoString) return 'Unknown';
+  if (!isoString) return 'unknown';
   const date = new Date(isoString);
-  return date.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  if (Number.isNaN(date.getTime())) return 'unknown';
+  const two = (n) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${two(date.getMonth() + 1)}-${two(date.getDate())} ${two(date.getHours())}:${two(date.getMinutes())}`;
 }
 
 function authHeaders() {
@@ -216,6 +239,43 @@ async function apiCall(endpoint, options = {}) {
   }
   
   return response.json();
+}
+
+/**
+ * POST a form with XMLHttpRequest, which (unlike fetch) reports upload progress: onProgress(sent, total).
+ */
+function uploadWithProgress(endpoint, formData, onProgress) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `${CONFIG.apiBase}${endpoint}`);
+    Object.entries(authHeaders()).forEach(([name, value]) => xhr.setRequestHeader(name, value));
+    xhr.upload.addEventListener('progress', (e) => { if (e.lengthComputable) onProgress(e.loaded, e.total); });
+    xhr.addEventListener('load', () => {
+      let body = {};
+      try { body = JSON.parse(xhr.responseText); } catch { /* not JSON */ }
+      if (xhr.status === 401 && AUTH.enabled) {
+        setToken(null);
+        openLogin();
+        reject(new Error('Please sign in'));
+      } else if (xhr.status >= 200 && xhr.status < 300) {
+        resolve(body);
+      } else {
+        reject(new Error(errorDetail(body, xhr.status)));
+      }
+    });
+    xhr.addEventListener('error', () => reject(new Error('the server could not be reached')));
+    xhr.send(formData);
+  });
+}
+
+const METER_BLOCKS = 20;
+
+/** A meter as a row of square blocks that fill one by one (never a smooth bar). */
+function meter(fraction, label, role = 'progressbar') {
+  const share = Math.max(0, Math.min(1, fraction));
+  const filled = Math.round(share * METER_BLOCKS);
+  const blocks = Array.from({ length: METER_BLOCKS }, (_, i) => `<span class="block${i < filled ? ' on' : ''}"></span>`).join('');
+  return `<span class="meter" role="${role}" aria-label="${escapeHtml(label)}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(share * 100)}">${blocks}</span>`;
 }
 
 /**
@@ -291,19 +351,37 @@ function citationLocation(cit) {
   return parts.join(' · ');
 }
 
-function renderCitations(citations) {
-  return citations.map((cit, i) => `
-    <div class="citation-item">
-      <div class="citation-rank">${i + 1}</div>
-      <div class="citation-content">
-        <div class="citation-source">
-          <span>${escapeHtml(citationLocation(cit))}</span>
-          <button class="btn btn-ghost btn-sm" data-open-doc="${escapeHtml(cit.doc_id)}">Open</button>
+const MATCH_STOPWORDS = new Set(['the', 'and', 'for', 'was', 'what', 'when', 'where', 'which', 'who', 'how',
+  'does', 'did', 'are', 'is', 'my', 'our', 'der', 'die', 'das', 'und', 'ist', 'wann', 'wie', 'och', 'det', 'att',
+  'les', 'des', 'une', 'est', 'que', 'qui', 'para', 'com', 'uma', 'por', 'como', 'quando']);
+
+/** The excerpt, escaped, with the question's words marked. */
+function markMatches(text, question) {
+  const words = [...new Set((question || '').toLowerCase().match(/[\p{L}\p{N}]{3,}/gu) || [])]
+    .filter((w) => !MATCH_STOPWORDS.has(w));
+  const escaped = escapeHtml(text);
+  if (!words.length) return escaped;
+  const pattern = new RegExp(`(?<![\\p{L}\\p{N}&])(${words.map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})(?![\\p{L}\\p{N}])`, 'giu');
+  return escaped.replace(pattern, '<mark>$1</mark>');
+}
+
+function renderCitations(citations, question = '') {
+  return citations.map((cit, i) => {
+    const excerpt = cit.text.length > 300 ? `${cit.text.slice(0, 300)}…` : cit.text;
+    return `
+    <li class="citation">
+      <span class="citation-rank mono">${i + 1}</span>
+      <div class="citation-body">
+        <div class="citation-head">
+          ${icon('file')}
+          <span class="citation-source mono">${escapeHtml(citationLocation(cit))}</span>
+          <span class="citation-score mono" title="Relevance score">${Number(cit.score).toFixed(2)}</span>
+          <button class="btn btn-secondary btn-sm" type="button" data-open-doc="${escapeHtml(cit.doc_id)}">${icon('external-link')}Open</button>
         </div>
-        <div class="citation-text">${escapeHtml(cit.text.slice(0, 300))}${cit.text.length > 300 ? '...' : ''}</div>
+        <p class="citation-text">${markMatches(excerpt, question)}</p>
       </div>
-    </div>
-  `).join('');
+    </li>`;
+  }).join('');
 }
 
 // One delegated handler for every "Open" button (citations, documents, chat sources)
@@ -318,32 +396,21 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
-function renderMarkdown(text) {
-  // Simple markdown rendering
-  return text
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.+?)\*/g, '<em>$1</em>')
-    .replace(/`(.+?)`/g, '<code>$1</code>')
-    .replace(/\n/g, '<br>');
-}
-
 // =============================================================================
 // Health Check
 // =============================================================================
 
 async function checkHealth() {
-  const statusDot = elements.statusIndicator.querySelector('.status-dot');
-  const statusText = elements.statusIndicator.querySelector('.status-text');
-  
+  const state = elements.statusIndicator.querySelector('.state');
+  const word = elements.statusIndicator.querySelector('.status-text');
+  const show = (kind, text) => { state.outerHTML = stateIcon(kind); word.textContent = text; };
   try {
     const data = await apiCall('/health');
     elements.appVersion.textContent = `v${data.version}`;
-    statusDot.className = 'status-dot online';
-    statusText.textContent = `Online (v${data.version})`;
+    show('success', 'Online');
     return true;
   } catch (e) {
-    statusDot.className = 'status-dot offline';
-    statusText.textContent = 'Offline';
+    show('error', 'Offline');
     return false;
   }
 }
@@ -354,7 +421,10 @@ async function checkHealth() {
 
 function switchTab(tabName) {
   elements.tabs.forEach(tab => {
-    tab.classList.toggle('active', tab.dataset.tab === tabName);
+    const current = tab.dataset.tab === tabName;
+    tab.classList.toggle('active', current);
+    if (current) tab.setAttribute('aria-current', 'page');
+    else tab.removeAttribute('aria-current');
   });
   
   elements.tabPanels.forEach(panel => {
@@ -370,6 +440,15 @@ function switchTab(tabName) {
   }
 }
 
+// The streaming cursor: a block at the end of the text while a reply arrives (still under reduced motion).
+const CURSOR = '<span class="cursor" aria-hidden="true"></span>';
+
+/** Put the cursor at the end of the last block of rendered Markdown. */
+function withCursor(html) {
+  const lastClose = html.lastIndexOf('</');
+  return lastClose === -1 ? html + CURSOR : html.slice(0, lastClose) + CURSOR + html.slice(lastClose);
+}
+
 // =============================================================================
 // Ask Functionality
 // =============================================================================
@@ -383,14 +462,14 @@ async function askQuestion() {
   
   STATE.isLoading = true;
   elements.askBtn.disabled = true;
-  elements.askBtn.innerHTML = '<span>Thinking...</span>';
-  elements.resultMethod.textContent = 'searching…';
-  elements.answerContent.innerHTML = '<div class="answer-text loading">Searching your files…</div>';
+  elements.askBtn.textContent = 'Asking';
+  elements.resultMethod.textContent = 'searching';
+  elements.answerContent.setAttribute('aria-busy', 'true');
+  elements.answerContent.innerHTML = `<p class="pixel pixel-16 muted">Searching your files${CURSOR}</p>`;
   elements.citationsList.innerHTML = '';
   elements.resultsArea.classList.remove('hidden');
 
   let answer = '';
-  const answerEl = () => elements.answerContent.querySelector('.answer-text');
   try {
     await streamCall('/ask/stream', {
       question,
@@ -399,14 +478,12 @@ async function askQuestion() {
     }, (event, data) => {
       if (event === 'citations') {
         elements.citationsList.innerHTML = data.length
-          ? renderCitations(data)
-          : '<div class="empty-state"><p>No matching passages.</p></div>';
-        elements.resultMethod.textContent = 'answering…';
+          ? renderCitations(data, question)
+          : '<li class="empty"><p class="pixel pixel-16">No matching passage.</p><p>Try other words, or check that the file is indexed under Documents.</p></li>';
+        elements.resultMethod.textContent = 'answering';
       } else if (event === 'token') {
         answer += data.text;
-        const el = answerEl();
-        el.classList.remove('loading');
-        el.innerHTML = renderMarkdown(escapeHtml(answer));
+        elements.answerContent.innerHTML = withCursor(renderMarkdown(answer));
       } else if (event === 'error') {
         showToast(data.message, 'warning');
       } else if (event === 'done') {
@@ -414,13 +491,15 @@ async function askQuestion() {
         elements.resultMethod.textContent = `${data.method}${model}`;
       }
     });
+    elements.answerContent.innerHTML = renderMarkdown(answer);
   } catch (e) {
     elements.resultsArea.classList.add('hidden');
-    showToast(`Error: ${e.message}`, 'error');
+    showToast(`The question could not be answered: ${e.message}`, 'error');
   } finally {
+    elements.answerContent.removeAttribute('aria-busy');
     STATE.isLoading = false;
     elements.askBtn.disabled = false;
-    elements.askBtn.innerHTML = '<span>Ask</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>';
+    elements.askBtn.textContent = 'Ask';
   }
 }
 
@@ -434,32 +513,18 @@ function updateFileList() {
     elements.uploadActions.classList.add('hidden');
     return;
   }
-  
-  elements.fileList.innerHTML = STATE.files.map((file, i) => `
-    <div class="file-item">
-      <svg class="file-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-        <polyline points="14 2 14 8 20 8"/>
-      </svg>
-      <span class="file-name">${escapeHtml(file.name)}</span>
-      <span class="file-size">${formatBytes(file.size)}</span>
-      <button class="file-remove" data-index="${i}">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-        </svg>
-      </button>
-    </div>
-  `).join('');
-  
+  elements.fileList.innerHTML = `
+    <table class="table">
+      <thead><tr><th scope="col">File</th><th scope="col" class="num">Size</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
+      <tbody>${STATE.files.map((file, i) => `
+        <tr>
+          <td class="mono path" data-label="File">${escapeHtml(file.name)}</td>
+          <td class="num mono" data-label="Size">${formatBytes(file.size)}</td>
+          <td class="row-actions"><button class="btn btn-secondary btn-sm" type="button" data-remove-file="${i}">${icon('remove')}Remove</button></td>
+        </tr>`).join('')}
+      </tbody>
+    </table>`;
   elements.uploadActions.classList.remove('hidden');
-  
-  // Add remove handlers
-  elements.fileList.querySelectorAll('.file-remove').forEach(btn => {
-    btn.addEventListener('click', () => {
-      STATE.files.splice(parseInt(btn.dataset.index), 1);
-      updateFileList();
-    });
-  });
 }
 
 function handleFiles(files) {
@@ -469,49 +534,55 @@ function handleFiles(files) {
 
 async function ingestFiles() {
   if (STATE.files.length === 0) {
-    showToast('No files selected', 'warning');
+    showToast('Choose files first', 'warning');
     return;
   }
-  
   elements.ingestBtn.disabled = true;
-  elements.ingestBtn.innerHTML = '<span>Uploading...</span>';
-  
+  elements.ingestBtn.textContent = 'Uploading';
+
   const formData = new FormData();
   STATE.files.forEach(file => formData.append('files', file));
-  
+
+  const total = STATE.files.reduce((sum, file) => sum + file.size, 0);
+  const showProgress = (sent, size) => {
+    elements.uploadProgress.innerHTML = `${meter(sent / size, 'Upload')}<span class="pixel pixel-16">${formatBytes(sent)} of ${formatBytes(size)}</span>`;
+  };
+  elements.uploadProgress.classList.remove('hidden');
+  showProgress(0, total || 1);
+
   try {
-    const data = await apiCall('/ingest', {
-      method: 'POST',
-      body: formData,
-    });
-    
-    // Show results
+    const data = await uploadWithProgress('/ingest', formData, showProgress);
+    showProgress(total || 1, total || 1);
+    const ok = data.added.filter((item) => item.status === 'success').length;
     elements.ingestResults.innerHTML = `
-      <div class="card">
-        <h3>Ingest Results</h3>
-        <p>Successfully indexed ${data.total_files} file(s) with ${data.total_chunks} chunks.</p>
-        ${data.added.map(item => `
-          <div class="ingest-result-item ${item.status}">
-            <strong>${escapeHtml(item.filename)}</strong>
-            <span>${item.chunks} chunks</span>
-            <span class="status-badge">${item.status}</span>
-            ${item.message ? `<small>${escapeHtml(item.message)}</small>` : ''}
-          </div>
-        `).join('')}
+      <div class="region-head">
+        <h2 class="region-title" id="ingestResultsTitle">Indexed ${plural(ok, 'file')} of ${data.added.length}</h2>
       </div>
-    `;
+      <div class="table-wrap">
+        <table class="table">
+          <thead><tr><th scope="col">File</th><th scope="col" class="num">Chunks</th><th scope="col">Status</th></tr></thead>
+          <tbody>${data.added.map((item) => `
+            <tr>
+              <td class="mono path" data-label="File">${escapeHtml(item.filename)}</td>
+              <td class="num mono" data-label="Chunks">${item.chunks}</td>
+              <td data-label="Status">${item.status === 'success' ? statusLabel('success', 'Indexed')
+                : statusLabel('error', item.message ? `Failed: ${item.message}` : 'Failed')}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>`;
     elements.ingestResults.classList.remove('hidden');
-    
-    // Clear files
     STATE.files = [];
     updateFileList();
-    
-    showToast(`Indexed ${data.total_files} file(s)`, 'success');
+    const failed = data.added.length - ok;
+    if (!failed) showToast(`Indexed ${plural(ok, 'file')}`, 'success');
+    else if (!ok) showToast(`No file was indexed; ${failed} failed`, 'error');
+    else showToast(`Indexed ${ok} of ${plural(data.added.length, 'file')}; ${failed} failed`, 'warning');
   } catch (e) {
-    showToast(`Upload failed: ${e.message}`, 'error');
+    showToast(`The upload failed: ${e.message}`, 'error');
   } finally {
     elements.ingestBtn.disabled = false;
-    elements.ingestBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Upload & Index';
+    elements.ingestBtn.innerHTML = `${icon('upload')}Upload and index`;
   }
 }
 
@@ -519,82 +590,71 @@ async function ingestFiles() {
 // Documents Functionality
 // =============================================================================
 
+function documentName(doc) {
+  return doc.source_name ? `${doc.source_name}/${doc.path}` : doc.filename;
+}
+
 async function loadDocuments() {
   try {
     const data = await apiCall('/documents');
     STATE.documents = data.documents;
-    
-    // Stats
     const totalChunks = data.documents.reduce((sum, d) => sum + d.chunk_count, 0);
-    elements.documentsStats.innerHTML = `
-      <div class="stat-card">
-        <div class="stat-value">${data.total}</div>
-        <div class="stat-label">Documents</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-value">${totalChunks}</div>
-        <div class="stat-label">Chunks</div>
-      </div>
-    `;
-    
-    // Document list
+    elements.documentsStats.innerHTML = `<p class="stat-line"><span class="pixel pixel-48">${data.total}</span>`
+      + `<span class="stat-word">${data.total === 1 ? 'document' : 'documents'}</span></p>`
+      + `<p class="stat-fine">${plural(totalChunks, 'chunk')}</p>`;
+
     if (data.documents.length === 0) {
       elements.documentsList.innerHTML = `
-        <div class="empty-state">
-          <p>No documents indexed yet. Upload files, or ask an admin to add a NAS folder under Sources.</p>
-        </div>
-      `;
+        <div class="empty">
+          <p class="pixel pixel-24">No documents yet.</p>
+          <button class="btn btn-primary" type="button" data-go-tab="${isAdmin() ? 'sources' : 'ingest'}">${isAdmin() ? 'Add a folder' : 'Upload files'}</button>
+        </div>`;
       return;
     }
-    
-    elements.documentsList.innerHTML = data.documents.map(doc => `
-      <div class="document-item">
-        <div class="document-icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-            <polyline points="14 2 14 8 20 8"/>
-          </svg>
-        </div>
-        <div class="document-info">
-          <div class="document-name">${escapeHtml(doc.source_name ? `${doc.source_name}/${doc.path}` : doc.filename)}</div>
-          <div class="document-meta">
-            <span>${doc.source_name ? 'NAS folder' : 'Upload'}</span>
-            <span>${doc.chunk_count} chunks</span>
-            <span>${formatBytes(doc.file_size || doc.total_chars)}</span>
-            <span>${formatDate(doc.indexed_at)}</span>
-          </div>
-        </div>
-        <div class="document-actions">
-          <button class="btn btn-ghost btn-sm" data-open-doc="${escapeHtml(doc.doc_id)}">Open</button>
-          ${!doc.source_id && isAdmin() ? `
-          <button class="btn btn-ghost btn-sm" data-action="delete" data-id="${escapeHtml(doc.doc_id)}" title="Delete upload">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-            </svg>
-          </button>` : ''}
-        </div>
-      </div>
-    `).join('');
-    
-    // Add delete handlers
-    elements.documentsList.querySelectorAll('[data-action="delete"]').forEach(btn => {
-      btn.addEventListener('click', () => deleteDocument(btn.dataset.id));
-    });
-    
+
+    elements.documentsList.innerHTML = `
+      <div class="table-wrap">
+        <table class="table">
+          <thead><tr>
+            <th scope="col">Name</th><th scope="col">From</th><th scope="col" class="num">Chunks</th>
+            <th scope="col" class="num">Size</th><th scope="col">Indexed</th>
+            <th scope="col"><span class="visually-hidden">Actions</span></th>
+          </tr></thead>
+          <tbody>${data.documents.map(doc => `
+            <tr>
+              <td class="path"><span class="name-cell">${icon('file')}<span class="mono">${escapeHtml(documentName(doc))}</span></span></td>
+              <td data-label="From">${doc.source_name ? 'NAS folder' : 'Upload'}</td>
+              <td class="num mono" data-label="Chunks">${doc.chunk_count}</td>
+              <td class="num mono" data-label="Size">${formatBytes(doc.file_size || doc.total_chars)}</td>
+              <td class="mono nowrap" data-label="Indexed">${formatDate(doc.indexed_at)}</td>
+              <td class="row-actions">
+                <button class="btn btn-secondary btn-sm" type="button" data-open-doc="${escapeHtml(doc.doc_id)}">${icon('external-link')}Open</button>
+                ${!doc.source_id && isAdmin() ? `<button class="btn btn-secondary btn-sm btn-icon" type="button" data-delete-doc="${escapeHtml(doc.doc_id)}" aria-label="Delete ${escapeHtml(documentName(doc))}" title="Delete ${escapeHtml(documentName(doc))}">${icon('delete')}</button>` : ''}
+              </td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>`;
   } catch (e) {
-    showToast(`Failed to load documents: ${e.message}`, 'error');
+    showToast(`The documents could not be loaded: ${e.message}`, 'error');
   }
 }
 
 async function deleteDocument(docId) {
-  if (!confirm('Are you sure you want to delete this document?')) return;
-  
+  const doc = STATE.documents.find((d) => d.doc_id === docId);
+  const name = doc ? documentName(doc) : 'this document';
+  const confirmed = await confirmDialog({
+    title: `Delete ${name}?`,
+    body: 'The uploaded file and its place in the index are removed. Answers will no longer cite it.',
+    confirmLabel: 'Delete document',
+  });
+  if (!confirmed) return;
   try {
     await apiCall(`/documents/${docId}`, { method: 'DELETE' });
-    showToast('Document deleted', 'success');
+    showToast(`Deleted ${name}`, 'success');
     loadDocuments();
   } catch (e) {
-    showToast(`Delete failed: ${e.message}`, 'error');
+    showToast(`The document could not be deleted: ${e.message}`, 'error');
   }
 }
 
@@ -602,30 +662,33 @@ async function deleteDocument(docId) {
 // Chat Functionality
 // =============================================================================
 
+const CHAT_ROLES = { user: 'You', assistant: 'nAI' };
+
+function chatEmpty() {
+  return '<li class="empty"><p class="pixel pixel-24">No messages yet.</p><p>Ask a question below; nAI answers from your files.</p></li>';
+}
+
+/** One turn of the transcript: a mono role label, then the text. Returns the element that holds the text. */
 function addChatMessage(role, content) {
-  const welcome = elements.chatMessages.querySelector('.chat-welcome');
-  if (welcome) welcome.remove();
-  
-  const avatar = role === 'user' ? '👤' : '🤖';
-  const messageEl = document.createElement('div');
-  messageEl.className = `chat-message ${role}`;
-  messageEl.innerHTML = `
-    <div class="chat-avatar">${avatar}</div>
-    <div class="chat-bubble">${renderMarkdown(escapeHtml(content))}</div>
-  `;
-  elements.chatMessages.appendChild(messageEl);
-  elements.chatMessages.scrollTop = elements.chatMessages.scrollHeight;
-  return messageEl.querySelector('.chat-bubble');
+  const empty = elements.chatMessages.querySelector('.empty');
+  if (empty) empty.remove();
+  const turn = document.createElement('li');
+  turn.className = `turn ${role}`;
+  turn.innerHTML = `<span class="turn-role mono">${CHAT_ROLES[role]}</span><div class="turn-text prose"></div>`;
+  turn.querySelector('.turn-text').innerHTML = content ? renderMarkdown(content) : '';
+  elements.chatMessages.appendChild(turn);
+  turn.scrollIntoView({ block: 'nearest' });
+  return turn.querySelector('.turn-text');
 }
 
 function chatSources(citations) {
   if (!citations.length) return '';
   const seen = new Set();
   const chips = citations.filter(c => !seen.has(c.doc_id) && seen.add(c.doc_id)).slice(0, 5).map(c => `
-    <button class="source-chip" data-open-doc="${escapeHtml(c.doc_id)}" title="${escapeHtml(citationLocation(c))}">
-      ${escapeHtml(c.filename || c.doc_path)}${c.page != null ? ` · p.${c.page}` : ''}
+    <button class="chip" type="button" data-open-doc="${escapeHtml(c.doc_id)}" title="${escapeHtml(citationLocation(c))}">
+      ${icon('file')}${escapeHtml(c.filename || c.doc_path)}${c.page != null ? ` · page ${c.page}` : ''}
     </button>`).join('');
-  return `<div class="chat-sources">${chips}</div>`;
+  return `<div class="chips" aria-label="Sources">${chips}</div>`;
 }
 
 async function sendChatMessage() {
@@ -635,7 +698,9 @@ async function sendChatMessage() {
   addChatMessage('user', message);
   elements.chatInput.value = '';
   elements.chatSendBtn.disabled = true;
-  const bubble = addChatMessage('assistant', '…');
+  const bubble = addChatMessage('assistant', '');
+  bubble.innerHTML = `<p class="pixel pixel-16 muted">Reading your files${CURSOR}</p>`;
+  bubble.setAttribute('aria-busy', 'true');
   let reply = '';
   let citations = [];
   
@@ -652,29 +717,25 @@ async function sendChatMessage() {
         citations = data;
       } else if (event === 'token') {
         reply += data.text;
-        bubble.innerHTML = renderMarkdown(escapeHtml(reply));
-        elements.chatMessages.scrollTop = elements.chatMessages.scrollHeight;
+        bubble.innerHTML = withCursor(renderMarkdown(reply));
+        bubble.scrollIntoView({ block: 'nearest' });
       } else if (event === 'error') {
         showToast(data.message, 'warning');
       } else if (event === 'done') {
-        bubble.innerHTML = renderMarkdown(escapeHtml(reply)) + chatSources(citations);
+        bubble.innerHTML = renderMarkdown(reply) + chatSources(citations);
       }
     });
   } catch (e) {
-    bubble.textContent = `Error: ${e.message}`;
+    bubble.innerHTML = `<p>${statusLabel('error', `No reply: ${e.message}`)}</p>`;
   } finally {
+    bubble.removeAttribute('aria-busy');
     elements.chatSendBtn.disabled = false;
   }
 }
 
 function newChat() {
   STATE.chatConversationId = null;
-  elements.chatMessages.innerHTML = `
-    <div class="chat-welcome">
-      <h3>Start a conversation</h3>
-      <p>Ask questions about your documents in a multi-turn conversation.</p>
-    </div>
-  `;
+  elements.chatMessages.innerHTML = chatEmpty();
   elements.chatInput.focus();
 }
 
@@ -687,47 +748,54 @@ function splitList(value) {
 }
 
 function sourceStatus(src) {
-  if (src.scanning) return '<span class="status-badge scanning">scanning…</span>';
-  if (!src.enabled) return '<span class="status-badge">paused</span>';
-  if (src.last_scan_status === 'error') return '<span class="status-badge error">error</span>';
-  if (src.last_scan_status === 'ok') return '<span class="status-badge success">in sync</span>';
-  return `<span class="status-badge">${escapeHtml(src.last_scan_status)}</span>`;
+  if (src.scanning) return statusLabel('running', 'Scanning');
+  if (!src.enabled) return statusLabel('off', 'Paused');
+  if (src.last_scan_status === 'error') return statusLabel('error', 'Failed');
+  if (src.last_scan_status === 'ok') return statusLabel('success', 'In sync');
+  if (src.last_scan_status === 'never') return statusLabel('info', 'Not scanned yet');
+  return statusLabel('info', src.last_scan_status);
 }
 
 async function loadSources() {
   try {
     const sources = await apiCall('/sources');
+    STATE.sources = sources;
     if (!sources.length) {
-      elements.sourcesList.innerHTML = '<div class="empty-state"><p>No folders yet. Add one below.</p></div>';
+      elements.sourcesList.innerHTML = `
+        <div class="empty">
+          <p class="pixel pixel-24">No NAS folders yet.</p>
+          <button class="btn btn-primary" type="button" data-focus="sourceName">Add a folder</button>
+        </div>`;
       return;
     }
-    elements.sourcesList.innerHTML = sources.map(src => `
-      <div class="document-item">
-        <div class="document-icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-          </svg>
-        </div>
-        <div class="document-info">
-          <div class="document-name">${escapeHtml(src.name)} ${sourceStatus(src)}</div>
-          <div class="document-meta">
-            <span>${escapeHtml(src.path || '')}</span>
-            <span>${src.document_count} files</span>
-            <span>${src.allowed_groups.length ? 'groups: ' + escapeHtml(src.allowed_groups.join(', ')) : 'all users'}</span>
-            ${src.last_scan_finished ? `<span>synced ${formatDate(src.last_scan_finished)}</span>` : ''}
-          </div>
-          ${src.last_error ? `<div class="form-error">${escapeHtml(src.last_error)}</div>` : ''}
-        </div>
-        <div class="document-actions">
-          <button class="btn btn-ghost btn-sm" data-source-action="scan" data-id="${src.id}" ${src.scanning ? 'disabled' : ''}>Rescan</button>
-          <button class="btn btn-ghost btn-sm" data-source-action="toggle" data-id="${src.id}" data-enabled="${src.enabled}">${src.enabled ? 'Pause' : 'Resume'}</button>
-          <button class="btn btn-ghost btn-sm" data-source-action="delete" data-id="${src.id}" data-name="${escapeHtml(src.name)}">Remove</button>
-        </div>
-      </div>
-    `).join('');
+    elements.sourcesList.innerHTML = `
+      <div class="table-wrap">
+        <table class="table">
+          <thead><tr>
+            <th scope="col">Folder</th><th scope="col">Path</th><th scope="col" class="num">Files</th>
+            <th scope="col">Visible to</th><th scope="col">Synced</th><th scope="col">Status</th>
+            <th scope="col"><span class="visually-hidden">Actions</span></th>
+          </tr></thead>
+          <tbody>${sources.map(src => `
+            <tr>
+              <td><span class="name-cell">${icon('folder')}<span>${escapeHtml(src.name)}</span></span></td>
+              <td class="mono path" data-label="Path">${escapeHtml(src.path || '')}</td>
+              <td class="num mono" data-label="Files">${src.document_count}</td>
+              <td data-label="Visible to">${src.allowed_groups.length ? escapeHtml(src.allowed_groups.join(', ')) : 'Everyone'}</td>
+              <td class="mono nowrap" data-label="Synced">${src.last_scan_finished ? formatDate(src.last_scan_finished) : '–'}</td>
+              <td data-label="Status">${sourceStatus(src)}${src.last_error ? `<p class="form-error">${stateIcon('error')}<span>${escapeHtml(src.last_error)}</span></p>` : ''}</td>
+              <td class="row-actions">
+                <button class="btn btn-secondary btn-sm" type="button" data-source-action="scan" data-id="${src.id}" ${src.scanning ? 'disabled' : ''}>${icon('sync')}Rescan</button>
+                <button class="btn btn-secondary btn-sm" type="button" data-source-action="toggle" data-id="${src.id}" data-enabled="${src.enabled}">${src.enabled ? `${icon('pause')}Pause` : `${icon('resume')}Resume`}</button>
+                <button class="btn btn-secondary btn-sm" type="button" data-source-action="delete" data-id="${src.id}" data-name="${escapeHtml(src.name)}">Remove</button>
+              </td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>`;
     if (sources.some(s => s.scanning)) setTimeout(loadSources, 3000);
   } catch (e) {
-    showToast(`Failed to load sources: ${e.message}`, 'error');
+    showToast(`The folders could not be loaded: ${e.message}`, 'error');
   }
 }
 
@@ -743,7 +811,12 @@ async function sourceAction(btn) {
         body: JSON.stringify({ enabled: btn.dataset.enabled !== 'true' }),
       });
     } else if (btn.dataset.sourceAction === 'delete') {
-      if (!confirm(`Remove "${btn.dataset.name}" from nAI? Its files stay on the NAS; only the index is removed.`)) return;
+      const confirmed = await confirmDialog({
+        title: `Remove ${btn.dataset.name} from nAI?`,
+        body: 'Its files stay on the NAS; only nAI\'s index of them is removed. You can add the folder again later.',
+        confirmLabel: 'Remove folder',
+      });
+      if (!confirmed) return;
       await apiCall(`/sources/${id}`, { method: 'DELETE' });
       showToast('Source removed', 'success');
     }
@@ -782,29 +855,31 @@ function reindexNotice(emb) {
   const previous = Object.entries(emb.previous_models || {})
     .map(([model, count]) => `${escapeHtml(model)} (${count} vectors)`).join(', ');
   return `
-    <div class="reindex-notice" role="alert">
-      <strong>Semantic search is paused:</strong> the embedding model changed to
-      ${escapeHtml(emb.model || 'a new model')}. The index still holds vectors from ${previous || 'an older model'}.
-      Searches use keywords only until everything is re-embedded with the new model, which can take a while on
-      large folders.
-      <button id="reindexBtn" class="btn btn-primary">Re-index now</button>
+    <div class="notice" role="alert">
+      <p>${statusLabel('warning', 'Reindex needed')}</p>
+      <p>The embedding model changed to <span class="mono">${escapeHtml(emb.model || 'a new model')}</span>, and the index
+        still holds vectors from ${previous || 'an older model'}. Searches use keywords only until everything is
+        embedded again, which can take a while on large folders.</p>
+      <button id="reindexBtn" class="btn btn-primary" type="button">${icon('refresh')}Reindex now</button>
     </div>`;
 }
 
 // NAI_EMBEDDINGS=auto turned semantic search off: the box has too little memory for the embedding model.
+// A notice that something is off, not that something failed: no hue.
 function keywordOnlyNotice(emb) {
   if (!emb || emb.mode !== 'auto-off') return '';
   return `
-    <div class="reindex-notice" role="status">
-      <strong>Keyword-only mode:</strong> this box has too little memory for semantic search
-      (${escapeHtml(emb.reason || '')}). Searches match the words in your files. To turn semantic search on,
-      give nAI at least 2.5 GB of memory (3 GB recommended) or set <code>NAI_EMBEDDINGS=on</code>.
+    <div class="notice" role="status">
+      <p>${statusLabel('off', 'Keyword-only search')}</p>
+      <p>This machine has too little memory for semantic search (${escapeHtml(emb.reason || '')}). Searches match the
+        words in your files. To turn semantic search on, give nAI at least 2.5 GB of memory (3 GB recommended) or
+        set <code>NAI_EMBEDDINGS=on</code>.</p>
     </div>`;
 }
 
 async function confirmReindex() {
   const btn = document.getElementById('reindexBtn');
-  if (btn) { btn.disabled = true; btn.textContent = 'Starting…'; }
+  if (btn) { btn.disabled = true; btn.textContent = 'Starting'; }
   try {
     const r = await apiCall('/system/embeddings/reindex', { method: 'POST' });
     showToast(r.reindexing ? `Re-indexing ${r.pending} passages in the background` : 'Nothing to re-index', 'success');
@@ -812,6 +887,32 @@ async function confirmReindex() {
     showToast(`Could not start the re-index: ${e.message}`, 'error');
   }
   loadSystemInfo();
+}
+
+const GIB = 1024 ** 3;
+
+/** "This machine" as block meters: memory in use, the data disk, and how much of the index is embedded. */
+function systemMeters(sys) {
+  const rows = [];
+  const hw = sys.hardware;
+  if (hw.memory_gb && hw.memory_available_gb != null) {
+    const used = Math.max(0, hw.memory_gb - hw.memory_available_gb);
+    rows.push(['Memory in use', used / hw.memory_gb, `${used.toFixed(1)} of ${hw.memory_gb} GB`]);
+  }
+  if (sys.storage && sys.storage.total_bytes) {
+    const { used_bytes: used, total_bytes: total } = sys.storage;
+    rows.push(['Data disk', used / total, `${(used / GIB).toFixed(0)} of ${(total / GIB).toFixed(0)} GB`]);
+  }
+  const emb = sys.features.embeddings;
+  if (emb.available && emb.pending != null && emb.vectors + emb.pending > 0) {
+    const done = emb.vectors / (emb.vectors + emb.pending);
+    rows.push(['Semantic index', done, `${Math.floor(done * 100)}%`]);
+  }
+  if (!rows.length) return '';
+  return `<dl class="meters">${rows.map(([label, share, value]) => `
+    <dt>${label}</dt>
+    <dd>${meter(share, label, label === 'Semantic index' ? 'progressbar' : 'meter')}<span class="pixel pixel-16">${value}</span></dd>`).join('')}
+  </dl>`;
 }
 
 async function loadSystemInfo() {
@@ -825,7 +926,7 @@ async function loadSystemInfo() {
       : 'none detected';
     const semantic = emb.state === 'ready'
       ? `ready${emb.pending ? ` · ${emb.pending} passages still being processed` : ''}`
-      : emb.state === 'loading' ? 'downloading/loading model…'
+      : emb.state === 'loading' ? 'loading the model'
       : emb.mode === 'auto-off' ? 'off (keyword-only: not enough memory)' : emb.state;
     const rows = [
       ['Hardware', `${hw.cpu_count} CPUs · ${hw.memory_gb} GB RAM · GPU: ${gpu} · tier: ${hw.tier}`],
@@ -834,9 +935,9 @@ async function loadSystemInfo() {
       ['OCR', sys.features.ocr ? 'available' : 'not available'],
       ['Answer model', llm.enabled ? (llm.active_model ? `${llm.provider}/${llm.active_model}` : 'no model available') : 'off (extractive answers)'],
     ];
-    elements.systemInfo.innerHTML = keywordOnlyNotice(emb) + reindexNotice(emb) + rows.map(([k, v]) => `
-      <div class="system-row"><span class="system-key">${k}</span><span>${escapeHtml(v)}</span></div>
-    `).join('') + `<ul class="system-tips">${sys.recommendations.map(r => `<li>${escapeHtml(r)}</li>`).join('')}</ul>`;
+    elements.systemInfo.innerHTML = keywordOnlyNotice(emb) + reindexNotice(emb) + systemMeters(sys)
+      + `<dl class="facts">${rows.map(([k, v]) => `<dt>${k}</dt><dd>${escapeHtml(v)}</dd>`).join('')}</dl>`
+      + (sys.recommendations.length ? `<ul class="tips">${sys.recommendations.map(r => `<li>${escapeHtml(r)}</li>`).join('')}</ul>` : '');
     const reindexBtn = document.getElementById('reindexBtn');
     if (reindexBtn) reindexBtn.addEventListener('click', confirmReindex);
     elements.sourceRootsHint.textContent = `Must be inside: ${sys.sources.allowed_roots.join(', ')}`;
@@ -895,6 +996,7 @@ async function submitLogin(event) {
   const password = elements.loginPassword.value;
   elements.loginSubmitBtn.disabled = true;
   elements.loginError.classList.add('hidden');
+  elements.loginPassword.removeAttribute('aria-invalid');
   
   try {
     if (AUTH.setupMode) {
@@ -914,8 +1016,10 @@ async function submitLogin(event) {
     closeLogin();
     showToast(`Signed in as ${AUTH.user.username}`, 'success');
   } catch (e) {
-    elements.loginError.textContent = e.message;
+    fieldError(elements.loginError, e.message);
     elements.loginError.classList.remove('hidden');
+    elements.loginPassword.setAttribute('aria-invalid', 'true');
+    elements.loginPassword.focus();
   } finally {
     elements.loginSubmitBtn.disabled = false;
   }
@@ -974,20 +1078,22 @@ async function loadApiKeys() {
   if (!signedIn) return;
   try {
     const keys = await apiCall('/auth/keys');
-    elements.apiKeysList.innerHTML = keys.length ? keys.map(k => `
-      <div class="document-item">
-        <div class="document-info">
-          <div class="document-name">${escapeHtml(k.name)}</div>
-          <div class="document-meta">
-            <span><code>${escapeHtml(k.prefix)}…</code></span>
-            <span>created ${formatDate(k.created_at)}</span>
-            <span>${k.last_used_at ? `used ${formatDate(k.last_used_at)}` : 'never used'}</span>
-          </div>
-        </div>
-        <div class="document-actions">
-          <button class="btn btn-ghost btn-sm" type="button" data-revoke-key="${escapeHtml(k.id)}">Revoke</button>
-        </div>
-      </div>`).join('') : '<p class="form-hint">No API keys yet.</p>';
+    STATE.apiKeys = keys;
+    elements.apiKeysList.innerHTML = keys.length ? `
+      <div class="table-wrap">
+        <table class="table">
+          <thead><tr><th scope="col">Key</th><th scope="col">Starts with</th><th scope="col">Last used</th>
+            <th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
+          <tbody>${keys.map(k => `
+            <tr>
+              <td>${escapeHtml(k.name)}</td>
+              <td class="mono" data-label="Starts with">${escapeHtml(k.prefix)}…</td>
+              <td class="mono nowrap" data-label="Last used">${k.last_used_at ? formatDate(k.last_used_at) : 'never'}</td>
+              <td class="row-actions"><button class="btn btn-secondary btn-sm" type="button" data-revoke-key="${escapeHtml(k.id)}">${icon('revoke')}Revoke</button></td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>` : '<p class="form-hint">No API keys yet.</p>';
   } catch (e) {
     elements.apiKeysList.textContent = `Could not load API keys: ${e.message}`;
   }
@@ -1003,16 +1109,42 @@ async function createApiKey() {
     const created = await apiCall('/auth/keys', { method: 'POST', body: JSON.stringify({ name }) });
     elements.apiKeyName.value = '';
     await loadApiKeys();
-    elements.apiKeyNew.innerHTML = `New key (copy it now, it won't be shown again):<br><code class="key-secret"></code>`;
-    elements.apiKeyNew.querySelector('code').textContent = created.key;
+    // Shown once, in a field, never in a toast.
+    elements.apiKeyNew.innerHTML = `
+      <label class="form-label" for="apiKeySecret">New key: ${escapeHtml(created.name || name)}</label>
+      <div class="key-row">
+        <input type="text" id="apiKeySecret" class="form-input mono" readonly />
+        <button class="btn btn-secondary" type="button" id="apiKeyCopyBtn">${icon('copy')}Copy</button>
+      </div>
+      <p class="form-hint">Copy it now. nAI keeps only a fingerprint and won't show this key again.</p>`;
+    const secret = elements.apiKeyNew.querySelector('#apiKeySecret');
+    secret.value = created.key;
+    const copyBtn = elements.apiKeyNew.querySelector('#apiKeyCopyBtn');
+    copyBtn.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(created.key);
+      } catch {
+        secret.select(); // no clipboard access (plain http): select it for Ctrl+C
+        document.execCommand('copy');
+      }
+      copyBtn.innerHTML = `${icon('ok')}Copied`;
+    });
     elements.apiKeyNew.classList.remove('hidden');
+    secret.focus();
+    secret.select();
   } catch (e) {
     showToast(e.message, 'error');
   }
 }
 
 async function revokeApiKey(id) {
-  if (!confirm('Revoke this API key? Apps using it will stop working.')) return;
+  const key = STATE.apiKeys.find((k) => k.id === id);
+  const confirmed = await confirmDialog({
+    title: `Revoke ${key ? key.name : 'this key'}?`,
+    body: 'Apps that use this key stop working at once. A revoked key cannot be restored.',
+    confirmLabel: 'Revoke key',
+  });
+  if (!confirmed) return;
   try {
     await apiCall(`/auth/keys/${encodeURIComponent(id)}`, { method: 'DELETE' });
     loadApiKeys();
@@ -1040,12 +1172,12 @@ function saveSettings() {
   showToast('Settings saved', 'success');
 }
 
+// System (the default) leaves data-theme unset, so the tokens follow the system, also when it changes.
 function applyTheme() {
-  if (CONFIG.theme === 'system') {
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    document.documentElement.dataset.theme = prefersDark ? 'dark' : 'light';
-  } else {
+  if (CONFIG.theme === 'dark' || CONFIG.theme === 'light') {
     document.documentElement.dataset.theme = CONFIG.theme;
+  } else {
+    delete document.documentElement.dataset.theme;
   }
 }
 
@@ -1070,11 +1202,18 @@ elements.questionInput.addEventListener('keydown', (e) => {
 // Ingest
 elements.browseBtn.addEventListener('click', () => elements.fileInput.click());
 elements.uploadZone.addEventListener('click', (e) => {
-  if (e.target === elements.uploadZone || e.target.closest('.upload-icon, .upload-title, .upload-subtitle')) {
-    elements.fileInput.click();
-  }
+  if (e.target === elements.uploadZone || e.target.tagName === 'P') elements.fileInput.click();
 });
-elements.fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
+elements.fileList.addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-remove-file]');
+  if (!btn) return;
+  STATE.files.splice(parseInt(btn.dataset.removeFile), 1);
+  updateFileList();
+});
+elements.fileInput.addEventListener('change', (e) => {
+  handleFiles(e.target.files);
+  e.target.value = ''; // the same file can be chosen again
+});
 elements.ingestBtn.addEventListener('click', ingestFiles);
 elements.clearFilesBtn.addEventListener('click', () => {
   STATE.files = [];
@@ -1097,6 +1236,18 @@ elements.uploadZone.addEventListener('drop', (e) => {
 
 // Documents
 elements.refreshDocsBtn.addEventListener('click', loadDocuments);
+elements.documentsList.addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-delete-doc]');
+  if (btn) deleteDocument(btn.dataset.deleteDoc);
+});
+
+// Empty screens: their one action
+document.addEventListener('click', (e) => {
+  const go = e.target.closest('[data-go-tab]');
+  if (go) switchTab(go.dataset.goTab);
+  const focus = e.target.closest('[data-focus]');
+  if (focus) document.getElementById(focus.dataset.focus).focus();
+});
 
 // Chat
 elements.chatSendBtn.addEventListener('click', sendChatMessage);
@@ -1136,12 +1287,16 @@ elements.apiKeysList.addEventListener('click', (e) => {
   if (btn) revokeApiKey(btn.dataset.revokeKey);
 });
 elements.settingsModal.querySelector('.modal-backdrop').addEventListener('click', closeSettings);
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && !elements.settingsModal.classList.contains('hidden')) closeSettings();
+});
 
 // =============================================================================
 // Initialization
 // =============================================================================
 
 applyTheme();
+elements.chatMessages.innerHTML = chatEmpty();
 checkHealth();
 initAuth();
 setInterval(checkHealth, 30000); // Check health every 30 seconds
