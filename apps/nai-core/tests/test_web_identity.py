@@ -98,3 +98,10 @@ def test_icons_go_through_the_one_map() -> None:
     assert "<svg" not in html and "<svg" not in script, (
         "icons belong in icons.js (one place for the pixel set)"
     )
+
+
+def test_destructive_actions_use_nai_dialog() -> None:
+    script = (WEB / "main.js").read_text("utf-8")
+    assert not re.search(r"(?<![\w.])confirm\(|window\.confirm\(", script), (
+        "use confirmDialog() from dialog.js"
+    )
