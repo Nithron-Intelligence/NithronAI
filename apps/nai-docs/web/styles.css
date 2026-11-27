@@ -734,6 +734,19 @@ kbd,
   line-height: var(--leading-mono);
 }
 
+/* Code blocks only (markdown.js scans comments, strings and numbers); inline code stays ink. */
+.tok-comment {
+  color: var(--syntax-comment);
+}
+
+.tok-string {
+  color: var(--syntax-string);
+}
+
+.tok-number {
+  color: var(--syntax-number);
+}
+
 /* Matched words in a result: a neutral tint at a heavier weight. */
 mark {
   background: var(--match);

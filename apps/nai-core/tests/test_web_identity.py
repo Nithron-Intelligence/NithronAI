@@ -7,7 +7,10 @@ colour function or a hue's name fails, and so does the main colour (the interfac
 
 from __future__ import annotations
 
+import json
 import re
+import shutil
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -105,3 +108,23 @@ def test_destructive_actions_use_nai_dialog() -> None:
     assert not re.search(r"(?<![\w.])confirm\(|window\.confirm\(", script), (
         "use confirmDialog() from dialog.js"
     )
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="needs Node.js to run the web UI's scanner")
+def test_code_scanner_colours_only_what_it_can_read() -> None:
+    script = (WEB / "markdown.js").read_text("utf-8") + (
+        "\nconsole.log(JSON.stringify(["
+        "scanCode('x = 42  # n', 'python'),"
+        "scanCode('echo $# ${#a}', 'bash'),"
+        "scanCode(\"It's 3\", ''),"
+        "scanCode('<b>1</b>', 'html'),"
+        "renderMarkdown('use `x = 1` here'),"
+        "]));"
+    )
+    result = subprocess.run(["node", "-e", script], capture_output=True, text=True, check=True, timeout=30)
+    python, shell, prose, html, inline = json.loads(result.stdout)
+    assert '<span class="tok-number">42</span>' in python and '<span class="tok-comment"># n</span>' in python
+    assert "tok-comment" not in shell  # $# and ${#a} are not comments
+    assert "tok-string" not in prose  # an apostrophe in prose is not a string
+    assert html is None  # a language the scanner cannot read stays plain
+    assert "tok-" not in inline  # inline code stays ink
