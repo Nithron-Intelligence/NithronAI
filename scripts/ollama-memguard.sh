@@ -7,13 +7,13 @@
 #
 #   scripts/ollama-memguard.sh &            # run next to a generation run; exits after stopping Ollama
 #
-# Settings (environment): MIN_AVAILABLE_MIB (default 4096), MAX_GTT_MIB (default 6144), INTERVAL (seconds, 5),
+# Settings (environment): MIN_AVAILABLE_MIB (default 4096), MAX_GTT_MIB (default 3072), INTERVAL (seconds, 2),
 # CONTAINER (nai-bench-ollama-1).
 set -euo pipefail
 
 MIN_AVAILABLE_MIB=${MIN_AVAILABLE_MIB:-4096}
-MAX_GTT_MIB=${MAX_GTT_MIB:-6144}
-INTERVAL=${INTERVAL:-5}
+MAX_GTT_MIB=${MAX_GTT_MIB:-3072}
+INTERVAL=${INTERVAL:-2}
 CONTAINER=${CONTAINER:-nai-bench-ollama-1}
 
 gtt_file=$(ls /sys/class/drm/card*/device/mem_info_gtt_used 2>/dev/null | head -1 || true)
