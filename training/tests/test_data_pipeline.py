@@ -8,6 +8,7 @@ from collections import Counter
 from pathlib import Path
 from typing import Any
 
+import httpx
 import pytest
 
 EMBED = Path(__file__).resolve().parent.parent / "embed"
@@ -16,6 +17,7 @@ sys.path.insert(0, str(EMBED))
 import common  # noqa: E402
 import data_manifest  # noqa: E402
 import filter_pairs  # noqa: E402
+import generate_corpus  # noqa: E402
 import mine_negatives  # noqa: E402
 
 PASSAGE = (
@@ -251,3 +253,27 @@ def test_consistency_filter_drops_pairs_the_base_model_cannot_find() -> None:
     kept = train.consistency_filter(rows, max_positive_rank=49)
     assert [r["query"] for r in kept] == ["q1", "q2", "q4"]
     assert train.consistency_filter(rows, max_positive_rank=None) == rows
+
+
+def _ollama(statuses: list[int]) -> httpx.Client:
+    """A fake Ollama that answers with the given status codes in turn (200 = a document)."""
+    replies = iter(statuses)
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        status = next(replies)
+        if status != 200:
+            return httpx.Response(status, json={"error": "boom"})
+        return httpx.Response(200, json={"message": {"content": " A document. "}})
+
+    return httpx.Client(base_url="http://ollama", transport=httpx.MockTransport(handle))
+
+
+def test_corpus_generation_retries_a_server_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(generate_corpus.time, "sleep", lambda _: None)
+    text = generate_corpus.generate(_ollama([500, 200]), "m", "prompt", seed=1, retries=3)
+    assert text == "A document."
+
+
+def test_corpus_generation_gives_up_with_none_after_retries(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(generate_corpus.time, "sleep", lambda _: None)
+    assert generate_corpus.generate(_ollama([500, 500, 500]), "m", "prompt", seed=1, retries=3) is None

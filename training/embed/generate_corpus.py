@@ -215,19 +215,27 @@ def specs_v2(per_language: int, seed: int, languages: list[str]) -> list[dict[st
     return out
 
 
-def generate(client: httpx.Client, model: str, prompt: str, seed: int) -> str:
-    response = client.post(
-        "/api/chat",
-        json={
-            "model": model,
-            "messages": [{"role": "user", "content": prompt}],
-            "stream": False,
-            "options": {"temperature": 0.8, "seed": seed, "num_ctx": 8192},
-        },
-    )
-    response.raise_for_status()
-    text: str = response.json()["message"]["content"].strip()
-    return text
+def generate(client: httpx.Client, model: str, prompt: str, seed: int, retries: int = 3) -> str | None:
+    """One document with retries; None if Ollama keeps failing (the run goes on; running the same command again makes it)."""
+    for attempt in range(1, retries + 1):
+        try:
+            response = client.post(
+                "/api/chat",
+                json={
+                    "model": model,
+                    "messages": [{"role": "user", "content": prompt}],
+                    "stream": False,
+                    "options": {"temperature": 0.8, "seed": seed, "num_ctx": 8192},
+                },
+            )
+            response.raise_for_status()
+            text: str = response.json()["message"]["content"].strip()
+            return text
+        except (httpx.HTTPError, KeyError, ValueError) as e:
+            print(f"  teacher call failed (attempt {attempt}/{retries}): {e}", file=sys.stderr, flush=True)
+            if attempt < retries:
+                time.sleep(2**attempt)
+    return None
 
 
 def main() -> int:
@@ -242,6 +250,7 @@ def main() -> int:
     parser.add_argument("--prompt-version", choices=("corpus-v1", "corpus-v2"), default=PROMPT_VERSION)
     parser.add_argument("--languages", default=",".join(LANGUAGES), help="corpus-v2 only")
     parser.add_argument("--concurrency", type=int, default=1, help="requests in flight")
+    parser.add_argument("--retries", type=int, default=3, help="attempts per document before skipping it")
     args = parser.parse_args()
 
     license_id = teacher_license(args.model)  # refuses unapproved teachers
@@ -250,6 +259,7 @@ def main() -> int:
     manifest_path = args.out.with_name(args.out.name + ".manifest.json")  # beside the corpus, not indexed
     manifest: dict[str, Any] = json.loads(manifest_path.read_text()) if manifest_path.exists() else {}
     started = time.monotonic()
+    failed = 0
     v2 = args.prompt_version == "corpus-v2"
     all_specs = (
         specs_v2(args.per_language, args.seed, args.languages.split(","))
@@ -263,19 +273,23 @@ def main() -> int:
     ]
     todo = [job for job in todo if job[2] not in manifest]  # resume
 
-    def make(job: tuple[int, dict[str, str], str]) -> tuple[int, dict[str, str], str, str]:
+    def make(job: tuple[int, dict[str, str], str]) -> tuple[int, dict[str, str], str, str | None]:
         n, spec, name = job
         template = PROMPT_V2 if v2 else PROMPT
         prompt = template.format(
             **{k: v for k, v in spec.items() if k != "language"}, language=spec["language_name"]
         )
-        return n, spec, name, generate(client, args.model, prompt, args.seed + n)
+        return n, spec, name, generate(client, args.model, prompt, args.seed + n, args.retries)
 
     with (
         httpx.Client(base_url=args.ollama, timeout=600) as client,
         ThreadPoolExecutor(args.concurrency) as pool,
     ):
         for done, (n, spec, name, text) in enumerate(pool.map(make, todo), start=1):
+            if text is None:
+                failed += 1
+                print(f"{done:>5}/{len(todo)} {name} FAILED after {args.retries} attempts", flush=True)
+                continue
             path = args.out / name
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(text + "\n", encoding="utf-8")
@@ -297,6 +311,8 @@ def main() -> int:
             elapsed = time.monotonic() - started
             print(f"{done:>5}/{len(todo)} {name} {len(text.split())} words ({elapsed:.0f} s)", flush=True)
     print(f"{len(manifest)} documents in {args.out}")
+    if failed:
+        print(f"{failed} documents failed after retries; run the same command again to make them")
     return 0
 
 
