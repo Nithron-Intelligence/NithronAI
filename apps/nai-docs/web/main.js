@@ -29,7 +29,7 @@ function defaultApiBase() {
 
 const CONFIG = {
   apiBase: storageGet('nai_api_base') || defaultApiBase(),
-  theme: storageGet('nai_theme') || 'dark',
+  theme: storageGet('nai_theme') || 'system',
 };
 
 const AUTH = {
@@ -150,9 +150,7 @@ function showToast(message, type = 'info') {
   toast.innerHTML = `
     <span></span>
     <button>
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-      </svg>
+      ${icon('close')}
     </button>
   `;
   // textContent: messages can contain server-provided text (e.g. filenames)
@@ -420,7 +418,7 @@ async function askQuestion() {
   } finally {
     STATE.isLoading = false;
     elements.askBtn.disabled = false;
-    elements.askBtn.innerHTML = '<span>Ask</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>';
+    elements.askBtn.innerHTML = '<span>Ask</span>' + icon('arrow-right');
   }
 }
 
@@ -437,16 +435,11 @@ function updateFileList() {
   
   elements.fileList.innerHTML = STATE.files.map((file, i) => `
     <div class="file-item">
-      <svg class="file-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-        <polyline points="14 2 14 8 20 8"/>
-      </svg>
+      <span class="file-icon">${icon('file')}</span>
       <span class="file-name">${escapeHtml(file.name)}</span>
       <span class="file-size">${formatBytes(file.size)}</span>
       <button class="file-remove" data-index="${i}">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-        </svg>
+        ${icon('close')}
       </button>
     </div>
   `).join('');
@@ -511,7 +504,7 @@ async function ingestFiles() {
     showToast(`Upload failed: ${e.message}`, 'error');
   } finally {
     elements.ingestBtn.disabled = false;
-    elements.ingestBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Upload & Index';
+    elements.ingestBtn.innerHTML = icon('upload-arrow') + 'Upload & Index';
   }
 }
 
@@ -550,10 +543,7 @@ async function loadDocuments() {
     elements.documentsList.innerHTML = data.documents.map(doc => `
       <div class="document-item">
         <div class="document-icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-            <polyline points="14 2 14 8 20 8"/>
-          </svg>
+          ${icon('file')}
         </div>
         <div class="document-info">
           <div class="document-name">${escapeHtml(doc.source_name ? `${doc.source_name}/${doc.path}` : doc.filename)}</div>
@@ -568,9 +558,7 @@ async function loadDocuments() {
           <button class="btn btn-ghost btn-sm" data-open-doc="${escapeHtml(doc.doc_id)}">Open</button>
           ${!doc.source_id && isAdmin() ? `
           <button class="btn btn-ghost btn-sm" data-action="delete" data-id="${escapeHtml(doc.doc_id)}" title="Delete upload">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-            </svg>
+            ${icon('trash')}
           </button>` : ''}
         </div>
       </div>
@@ -704,9 +692,7 @@ async function loadSources() {
     elements.sourcesList.innerHTML = sources.map(src => `
       <div class="document-item">
         <div class="document-icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-          </svg>
+          ${icon('folder')}
         </div>
         <div class="document-info">
           <div class="document-name">${escapeHtml(src.name)} ${sourceStatus(src)}</div>
@@ -1040,12 +1026,12 @@ function saveSettings() {
   showToast('Settings saved', 'success');
 }
 
+// System (the default) leaves data-theme unset, so the tokens follow the system, also when it changes.
 function applyTheme() {
-  if (CONFIG.theme === 'system') {
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    document.documentElement.dataset.theme = prefersDark ? 'dark' : 'light';
-  } else {
+  if (CONFIG.theme === 'dark' || CONFIG.theme === 'light') {
     document.documentElement.dataset.theme = CONFIG.theme;
+  } else {
+    delete document.documentElement.dataset.theme;
   }
 }
 

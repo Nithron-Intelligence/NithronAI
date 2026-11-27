@@ -11,6 +11,12 @@ All notable changes to nAI. Versions follow [semantic versioning](https://semver
   the variable it falls back to GID 1000, the current PGID, so older nOS behaves as before.
 
 ### Changed
+- **Web interface on the Nithron identity (phase 1).** One ground with hairlines and no hue: colours come only
+  from the Nithron tokens (copied as `web/nithron-tokens.css`), so nAI follows the system's light or dark theme
+  by default (Settings can still pin one). The gradient, shadows, glow, glass, floating background and entrance
+  animations are gone; the hero gives way to the Ask screen's own title; the faces Mona Sans and Monaspace Neon
+  ship with nAI (nothing loads from another server). All icons go through `web/icons.js`, ready for the shared
+  pixel set. A test in nai-core fails on a colour value or hue name written anywhere else under `web/`.
 - **`NAI_RERANKER=auto` no longer turns the reranker on by itself.** The lineage audit found MS MARCO
   (non-commercial) in the training data of `bge-reranker-v2-m3`, the default model, and of Qwen3-Reranker; the
   same reason MiniLM stopped being the default embedding model in 0.7.0. `auto` now also needs a model whose

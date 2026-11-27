@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16">
+  <!-- nAI's neutral favicon until the shared pixel mark exists: an ink square that follows the system theme. -->
+  <style>rect { fill: black; } @media (prefers-color-scheme: dark) { rect { fill: white; } }</style>
+  <rect x="2" y="2" width="12" height="12"/>
+</svg>
