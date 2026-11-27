@@ -265,14 +265,16 @@ kbd,
   vertical-align: middle;
 }
 
+/* Off blocks are 1 px outlines, so the whole length shows before it fills. */
 .meter .block {
   width: 8px;
   height: 8px;
-  background: var(--hairline);
+  border: var(--line-hair) solid var(--edge);
 }
 
 .meter .block.on {
   background: var(--ink);
+  border-color: var(--ink);
 }
 
 .progress {

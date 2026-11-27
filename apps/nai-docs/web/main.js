@@ -562,7 +562,10 @@ async function ingestFiles() {
     elements.ingestResults.classList.remove('hidden');
     STATE.files = [];
     updateFileList();
-    showToast(`Indexed ${plural(ok, 'file')}`, ok === data.added.length ? 'success' : 'warning');
+    const failed = data.added.length - ok;
+    if (!failed) showToast(`Indexed ${plural(ok, 'file')}`, 'success');
+    else if (!ok) showToast(`No file was indexed; ${failed} failed`, 'error');
+    else showToast(`Indexed ${ok} of ${plural(data.added.length, 'file')}; ${failed} failed`, 'warning');
   } catch (e) {
     showToast(`The upload failed: ${e.message}`, 'error');
   } finally {
