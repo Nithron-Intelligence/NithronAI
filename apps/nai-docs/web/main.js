@@ -195,15 +195,13 @@ function formatBytes(bytes) {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
 }
 
+/** "2026-11-27 22:40" in the reader's own time zone: the same in every locale, never a US-only form. */
 function formatDate(isoString) {
-  if (!isoString) return 'Unknown';
+  if (!isoString) return 'unknown';
   const date = new Date(isoString);
-  return date.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  if (Number.isNaN(date.getTime())) return 'unknown';
+  const two = (n) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${two(date.getMonth() + 1)}-${two(date.getDate())} ${two(date.getHours())}:${two(date.getMinutes())}`;
 }
 
 function authHeaders() {
@@ -601,8 +599,9 @@ async function loadDocuments() {
     const data = await apiCall('/documents');
     STATE.documents = data.documents;
     const totalChunks = data.documents.reduce((sum, d) => sum + d.chunk_count, 0);
-    elements.documentsStats.innerHTML = `<span class="pixel pixel-48">${data.total}</span>`
-      + `<span class="muted">${data.total === 1 ? 'document' : 'documents'} · ${plural(totalChunks, 'chunk')}</span>`;
+    elements.documentsStats.innerHTML = `<p class="stat-line"><span class="pixel pixel-48">${data.total}</span>`
+      + `<span class="stat-word">${data.total === 1 ? 'document' : 'documents'}</span></p>`
+      + `<p class="stat-fine">${plural(totalChunks, 'chunk')}</p>`;
 
     if (data.documents.length === 0) {
       elements.documentsList.innerHTML = `
@@ -630,7 +629,7 @@ async function loadDocuments() {
               <td class="mono nowrap">${formatDate(doc.indexed_at)}</td>
               <td class="row-actions">
                 <button class="btn btn-secondary btn-sm" type="button" data-open-doc="${escapeHtml(doc.doc_id)}">${icon('external-link')}Open</button>
-                ${!doc.source_id && isAdmin() ? `<button class="btn btn-secondary btn-sm" type="button" data-delete-doc="${escapeHtml(doc.doc_id)}">${icon('delete')}Delete document</button>` : ''}
+                ${!doc.source_id && isAdmin() ? `<button class="btn btn-secondary btn-sm btn-icon" type="button" data-delete-doc="${escapeHtml(doc.doc_id)}" aria-label="Delete ${escapeHtml(documentName(doc))}" title="Delete ${escapeHtml(documentName(doc))}">${icon('delete')}</button>` : ''}
               </td>
             </tr>`).join('')}
           </tbody>

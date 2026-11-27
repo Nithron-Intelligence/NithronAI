@@ -446,6 +446,12 @@ kbd,
   font-size: var(--text-fine);
 }
 
+/* An icon-only button (a row's delete): 32 px square, named for screen readers by aria-label and a title. */
+.btn-icon {
+  width: var(--control-height-compact);
+  padding: 0;
+}
+
 .btn-primary {
   background: var(--ink);
   color: var(--page);
@@ -1063,11 +1069,21 @@ mark {
   margin-top: var(--space-3);
 }
 
-/* A screen's one large number (Documents), in the pixel face. */
-.stat {
+/* A screen's one large number (Documents): the number in the pixel face and its word in the sans face on one
+   baseline, the detail as a fine line under them. */
+.stat-line {
   display: flex;
-  align-items: baseline;
+  align-items: last baseline;
   gap: var(--space-3);
+}
+
+.stat-word {
+  color: var(--text-secondary);
+}
+
+.stat-fine {
+  font-size: var(--text-fine);
+  color: var(--text-secondary);
 }
 
 .name-cell {
