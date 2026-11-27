@@ -1,26 +1,35 @@
 // nAI's icons, all in one place: a name goes in, an icon comes out.
 //
-// Today these are line icons (24 grid, 2 px stroke). The shared Nithron pixel set (16 x 16, ink) replaces the
-// whole map in this one file when it arrives; nothing else changes. Sizes are 16 px (rows, buttons, navigation)
-// or 32 px (a screen title), never in between: a pixel icon cannot be scaled by a fraction.
+// The shapes are the shared Nithron pixel set, @nithron/icons 0.1.0 (Nithron Community License v1.0), copied
+// from its svg/<name>.svg files: a 16 x 16 grid, ink (currentColor), crisp edges. Only the icons nAI uses are
+// here; an update copies them again, never edits them. Shown at 16 px (rows, buttons, navigation, states) or
+// 32 px, nothing in between: a pixel icon cannot be scaled by a fraction.
 //
 //   <span class="icon" data-icon="search"></span>      filled in when the page loads
 //   icon('close')                                       markup for templates in main.js
 
 const ICON_SHAPES = {
-  'search': '<circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>',
-  'upload': '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>',
-  'file': '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>',
-  'chat': '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
-  'folder': '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>',
-  'settings': '<circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/>',
-  'arrow-right': '<line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>',
-  'upload-arrow': '<polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>',
-  'refresh': '<polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>',
-  'plus': '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',
-  'send': '<line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>',
-  'trash': '<polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
-  'close': '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
+  'search': '<path d="M4 1H8V2H10V4H11V8H10V10H12V11H13V12H14V13H15V15H13V14H12V13H11V12H10V11H9V10H8V11H4V10H2V8H1V4H2V2H4ZM4 3V4H3V8H4V9H8V8H9V4H8V3Z"/>',
+  'file': '<path d="M2 1H9V7H14V15H2ZM10 2H11V3H12V4H13V5H14V6H10Z"/>',
+  'folder': '<path d="M1 2H7V3H9V4H15V14H1Z"/>',
+  'upload': '<path d="M7 1H9V2H10V3H11V4H12V5H13V6H10V5H9V11H7V5H6V6H3V5H4V4H5V3H6V2H7ZM1 10H3V13H13V10H15V15H1Z"/>',
+  'chat': '<path d="M2 2H14V3H15V9H14V10H7V11H6V12H5V13H3V10H2V9H1V3H2ZM4 5V7H6V5ZM7 5V7H9V5ZM10 5V7H12V5Z"/>',
+  'settings': '<path d="M6 1H10V3H11V4H12V3H14V5H13V6H15V10H13V11H14V13H12V12H11V13H10V15H6V13H5V12H4V13H2V11H3V10H1V6H3V5H2V3H4V4H5V3H6ZM6 6V10H10V6Z"/>',
+  'close': '<path d="M2 2H5V3H6V4H7V5H9V4H10V3H11V2H14V3H13V4H12V5H11V6H10V10H11V11H12V12H13V13H14V14H11V13H10V12H9V11H7V12H6V13H5V14H2V13H3V12H4V11H5V10H6V6H5V5H4V4H3V3H2Z"/>',
+  'delete': '<path d="M6 1H10V2H15V4H13V14H3V4H1V2H6ZM5 5V12H7V5ZM9 5V12H11V5Z"/>',
+  'refresh': '<path d="M12 1H14V6H8V4H5V5H4V11H5V12H11V11H12V7H14V11H13V12H12V13H10V14H6V13H4V12H3V11H2V5H3V4H4V3H6V2H10V3H11V4H12Z"/>',
+  'send': '<path d="M13 1H15V3H14V5H13V7H12V10H11V12H10V14H8V12H7V9H8V8H9V7H10V6H11V5H12V4H13V3H12V4H11V5H10V6H9V7H8V8H7V9H5V8H2V6H4V5H6V4H9V3H11V2H13Z"/>',
+  'external-link': '<path d="M8 1H15V8H13V4H12V5H11V6H10V7H9V8H8V9H5V8H6V7H7V6H8V5H9V4H10V3H8ZM1 4H7V6H3V13H10V9H12V15H1Z"/>',
+  'copy': '<path d="M1 1H11V4H9V3H3V9H4V11H1ZM5 5H15V15H5Z"/>',
+  'add': '<path d="M7 2H9V7H14V9H9V14H7V9H2V7H7Z"/>',
+  'remove': '<path d="M3 3H5V4H6V5H7V6H9V5H10V4H11V3H13V4H12V5H11V6H10V7H9V9H10V10H11V11H12V12H13V13H11V12H10V11H9V10H7V11H6V12H5V13H3V12H4V11H5V10H6V9H7V7H6V6H5V5H4V4H3Z"/>',
+  'sync': '<path d="M11 2H13V3H14V4H15V6H14V7H13V8H11V6H1V4H11ZM3 8H5V10H15V12H5V14H3V13H2V12H1V10H2V9H3Z"/>',
+  'ok': '<path d="M4 4H12V12H4Z"/>',
+  'warning': '<path d="M4 4H12V12H4ZM6 6V10H10V6Z"/>',
+  'failed': '<path d="M4 4H6V5H7V6H9V5H10V4H12V6H11V7H10V9H11V10H12V12H10V11H9V10H7V11H6V12H4V10H5V9H6V7H5V6H4Z"/>',
+  'running': '<path d="M6 6H10V10H6Z"/>',
+  'notice': '<path d="M7 3H9V5H7ZM5 6H9V11H11V13H5V11H7V8H5Z"/>',
+  'off': '<path d="M4 7H12V9H4Z"/>',
 };
 
 const ICON_SIZES = [16, 32];
@@ -29,8 +38,8 @@ function icon(name, size = 16) {
   const shape = ICON_SHAPES[name];
   if (!shape) throw new Error(`unknown icon: ${name}`);
   if (!ICON_SIZES.includes(size)) throw new Error(`icon size must be 16 or 32, not ${size}`);
-  return `<svg class="icon" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor"`
-    + ` stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${shape}</svg>`;
+  return `<svg class="icon icon-${name}" width="${size}" height="${size}" viewBox="0 0 16 16" fill="currentColor"`
+    + ` shape-rendering="crispEdges" aria-hidden="true" focusable="false">${shape}</svg>`;
 }
 
 function fillIcons(root = document) {

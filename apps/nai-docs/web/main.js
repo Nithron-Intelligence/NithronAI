@@ -147,11 +147,24 @@ const elements = {
 // Utility Functions
 // =============================================================================
 
-const STATUS_MARKS = { success: 'mark-pass', warning: 'mark-warn', error: 'mark-fail', info: 'mark-idle' };
+// The pixel set's six state icons: ok (pass), warning, failed, running, notice, off.
+const STATE_ICONS = { success: 'ok', warning: 'warning', error: 'failed', info: 'notice', off: 'off', running: 'running' };
 
-/** A status as a mark and a word (the word carries the meaning; the mark only repeats it). */
+/** The state icon for a kind of status, coloured by its own class (only ok, warning and failed carry a hue). */
+function stateIcon(kind) {
+  const name = STATE_ICONS[kind] || 'notice';
+  return `<span class="state state-${name}">${icon(name)}</span>`;
+}
+
+/** A status as a state icon and a word (the word carries the meaning; the icon only repeats it). */
 function statusLabel(kind, word) {
-  return `<span class="status"><span class="mark ${STATUS_MARKS[kind] || 'mark-idle'}" aria-hidden="true"></span>${escapeHtml(word)}</span>`;
+  return `<span class="status">${stateIcon(kind)}${escapeHtml(word)}</span>`;
+}
+
+/** A field's error: the failed icon and the sentence. */
+function fieldError(element, message) {
+  element.innerHTML = `${stateIcon('error')}<span></span>`;
+  element.querySelector('span:last-child').textContent = message;
 }
 
 function showToast(message, type = 'info') {
@@ -159,7 +172,7 @@ function showToast(message, type = 'info') {
   toast.className = `toast ${type}`;
   toast.setAttribute('role', type === 'error' ? 'alert' : 'status');
   toast.innerHTML = `
-    <span class="mark ${STATUS_MARKS[type] || 'mark-idle'}" aria-hidden="true"></span>
+    ${stateIcon(type)}
     <span class="toast-text"></span>
     <button class="btn btn-ghost btn-sm" type="button" aria-label="Dismiss">${icon('close')}</button>
   `;
@@ -260,10 +273,11 @@ function uploadWithProgress(endpoint, formData, onProgress) {
 const METER_BLOCKS = 20;
 
 /** A meter as a row of square blocks that fill one by one (never a smooth bar). */
-function meter(fraction, label) {
-  const filled = Math.round(Math.max(0, Math.min(1, fraction)) * METER_BLOCKS);
+function meter(fraction, label, role = 'progressbar') {
+  const share = Math.max(0, Math.min(1, fraction));
+  const filled = Math.round(share * METER_BLOCKS);
   const blocks = Array.from({ length: METER_BLOCKS }, (_, i) => `<span class="block${i < filled ? ' on' : ''}"></span>`).join('');
-  return `<span class="meter" role="progressbar" aria-label="${escapeHtml(label)}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(fraction * 100)}">${blocks}</span>`;
+  return `<span class="meter" role="${role}" aria-label="${escapeHtml(label)}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(share * 100)}">${blocks}</span>`;
 }
 
 /**
@@ -361,9 +375,10 @@ function renderCitations(citations, question = '') {
       <span class="citation-rank mono">${i + 1}</span>
       <div class="citation-body">
         <div class="citation-head">
+          ${icon('file')}
           <span class="citation-source mono">${escapeHtml(citationLocation(cit))}</span>
           <span class="citation-score mono" title="Relevance score">${Number(cit.score).toFixed(2)}</span>
-          <button class="btn btn-secondary btn-sm" type="button" data-open-doc="${escapeHtml(cit.doc_id)}">Open</button>
+          <button class="btn btn-secondary btn-sm" type="button" data-open-doc="${escapeHtml(cit.doc_id)}">${icon('external-link')}Open</button>
         </div>
         <p class="citation-text">${markMatches(excerpt, question)}</p>
       </div>
@@ -388,17 +403,16 @@ function escapeHtml(text) {
 // =============================================================================
 
 async function checkHealth() {
-  const mark = elements.statusIndicator.querySelector('.mark');
+  const state = elements.statusIndicator.querySelector('.state');
   const word = elements.statusIndicator.querySelector('.status-text');
+  const show = (kind, text) => { state.outerHTML = stateIcon(kind); word.textContent = text; };
   try {
     const data = await apiCall('/health');
     elements.appVersion.textContent = `v${data.version}`;
-    mark.className = 'mark mark-pass';
-    word.textContent = 'Online';
+    show('success', 'Online');
     return true;
   } catch (e) {
-    mark.className = 'mark mark-fail';
-    word.textContent = 'Offline';
+    show('error', 'Offline');
     return false;
   }
 }
@@ -453,7 +467,7 @@ async function askQuestion() {
   elements.askBtn.textContent = 'Asking';
   elements.resultMethod.textContent = 'searching';
   elements.answerContent.setAttribute('aria-busy', 'true');
-  elements.answerContent.innerHTML = `<p class="muted">Searching your files${CURSOR}</p>`;
+  elements.answerContent.innerHTML = `<p class="pixel pixel-16 muted">Searching your files${CURSOR}</p>`;
   elements.citationsList.innerHTML = '';
   elements.resultsArea.classList.remove('hidden');
 
@@ -467,7 +481,7 @@ async function askQuestion() {
       if (event === 'citations') {
         elements.citationsList.innerHTML = data.length
           ? renderCitations(data, question)
-          : '<li class="empty">No passage in your files matches this question.</li>';
+          : '<li class="empty"><p class="pixel pixel-16">No matching passage.</p><p>Try other words, or check that the file is indexed under Documents.</p></li>';
         elements.resultMethod.textContent = 'answering';
       } else if (event === 'token') {
         answer += data.text;
@@ -508,7 +522,7 @@ function updateFileList() {
         <tr>
           <td class="mono">${escapeHtml(file.name)}</td>
           <td class="num mono">${formatBytes(file.size)}</td>
-          <td class="row-actions"><button class="btn btn-secondary btn-sm" type="button" data-remove-file="${i}">Remove</button></td>
+          <td class="row-actions"><button class="btn btn-secondary btn-sm" type="button" data-remove-file="${i}">${icon('remove')}Remove</button></td>
         </tr>`).join('')}
       </tbody>
     </table>`;
@@ -533,7 +547,7 @@ async function ingestFiles() {
 
   const total = STATE.files.reduce((sum, file) => sum + file.size, 0);
   const showProgress = (sent, size) => {
-    elements.uploadProgress.innerHTML = `${meter(sent / size, 'Upload')}<span class="mono">${formatBytes(sent)} of ${formatBytes(size)}</span>`;
+    elements.uploadProgress.innerHTML = `${meter(sent / size, 'Upload')}<span class="pixel pixel-16">${formatBytes(sent)} of ${formatBytes(size)}</span>`;
   };
   elements.uploadProgress.classList.remove('hidden');
   showProgress(0, total || 1);
@@ -570,7 +584,7 @@ async function ingestFiles() {
     showToast(`The upload failed: ${e.message}`, 'error');
   } finally {
     elements.ingestBtn.disabled = false;
-    elements.ingestBtn.textContent = 'Upload and index';
+    elements.ingestBtn.innerHTML = `${icon('upload')}Upload and index`;
   }
 }
 
@@ -587,12 +601,13 @@ async function loadDocuments() {
     const data = await apiCall('/documents');
     STATE.documents = data.documents;
     const totalChunks = data.documents.reduce((sum, d) => sum + d.chunk_count, 0);
-    elements.documentsStats.textContent = `${plural(data.total, 'document')} · ${plural(totalChunks, 'chunk')}`;
+    elements.documentsStats.innerHTML = `<span class="pixel pixel-48">${data.total}</span>`
+      + `<span class="muted">${data.total === 1 ? 'document' : 'documents'} · ${plural(totalChunks, 'chunk')}</span>`;
 
     if (data.documents.length === 0) {
       elements.documentsList.innerHTML = `
         <div class="empty">
-          <p>No documents are indexed yet.</p>
+          <p class="pixel pixel-24">No documents yet.</p>
           <button class="btn btn-primary" type="button" data-go-tab="${isAdmin() ? 'sources' : 'ingest'}">${isAdmin() ? 'Add a folder' : 'Upload files'}</button>
         </div>`;
       return;
@@ -608,14 +623,14 @@ async function loadDocuments() {
           </tr></thead>
           <tbody>${data.documents.map(doc => `
             <tr>
-              <td class="mono">${escapeHtml(documentName(doc))}</td>
+              <td><span class="name-cell">${icon('file')}<span class="mono">${escapeHtml(documentName(doc))}</span></span></td>
               <td>${doc.source_name ? 'NAS folder' : 'Upload'}</td>
               <td class="num mono">${doc.chunk_count}</td>
               <td class="num mono">${formatBytes(doc.file_size || doc.total_chars)}</td>
               <td class="mono nowrap">${formatDate(doc.indexed_at)}</td>
               <td class="row-actions">
-                <button class="btn btn-secondary btn-sm" type="button" data-open-doc="${escapeHtml(doc.doc_id)}">Open</button>
-                ${!doc.source_id && isAdmin() ? `<button class="btn btn-secondary btn-sm" type="button" data-delete-doc="${escapeHtml(doc.doc_id)}">Delete document</button>` : ''}
+                <button class="btn btn-secondary btn-sm" type="button" data-open-doc="${escapeHtml(doc.doc_id)}">${icon('external-link')}Open</button>
+                ${!doc.source_id && isAdmin() ? `<button class="btn btn-secondary btn-sm" type="button" data-delete-doc="${escapeHtml(doc.doc_id)}">${icon('delete')}Delete document</button>` : ''}
               </td>
             </tr>`).join('')}
           </tbody>
@@ -651,7 +666,7 @@ async function deleteDocument(docId) {
 const CHAT_ROLES = { user: 'You', assistant: 'nAI' };
 
 function chatEmpty() {
-  return '<li class="empty">No messages yet. Ask a question below; nAI answers from your files.</li>';
+  return '<li class="empty"><p class="pixel pixel-24">No messages yet.</p><p>Ask a question below; nAI answers from your files.</p></li>';
 }
 
 /** One turn of the transcript: a mono role label, then the text. Returns the element that holds the text. */
@@ -672,7 +687,7 @@ function chatSources(citations) {
   const seen = new Set();
   const chips = citations.filter(c => !seen.has(c.doc_id) && seen.add(c.doc_id)).slice(0, 5).map(c => `
     <button class="chip" type="button" data-open-doc="${escapeHtml(c.doc_id)}" title="${escapeHtml(citationLocation(c))}">
-      ${escapeHtml(c.filename || c.doc_path)}${c.page != null ? ` · page ${c.page}` : ''}
+      ${icon('file')}${escapeHtml(c.filename || c.doc_path)}${c.page != null ? ` · page ${c.page}` : ''}
     </button>`).join('');
   return `<div class="chips" aria-label="Sources">${chips}</div>`;
 }
@@ -685,7 +700,7 @@ async function sendChatMessage() {
   elements.chatInput.value = '';
   elements.chatSendBtn.disabled = true;
   const bubble = addChatMessage('assistant', '');
-  bubble.innerHTML = `<p class="muted">Reading your files${CURSOR}</p>`;
+  bubble.innerHTML = `<p class="pixel pixel-16 muted">Reading your files${CURSOR}</p>`;
   bubble.setAttribute('aria-busy', 'true');
   let reply = '';
   let citations = [];
@@ -734,8 +749,8 @@ function splitList(value) {
 }
 
 function sourceStatus(src) {
-  if (src.scanning) return '<span class="status"><span class="mark mark-lamp" aria-hidden="true"></span>Scanning</span>';
-  if (!src.enabled) return statusLabel('info', 'Paused');
+  if (src.scanning) return statusLabel('running', 'Scanning');
+  if (!src.enabled) return statusLabel('off', 'Paused');
   if (src.last_scan_status === 'error') return statusLabel('error', 'Failed');
   if (src.last_scan_status === 'ok') return statusLabel('success', 'In sync');
   if (src.last_scan_status === 'never') return statusLabel('info', 'Not scanned yet');
@@ -749,7 +764,7 @@ async function loadSources() {
     if (!sources.length) {
       elements.sourcesList.innerHTML = `
         <div class="empty">
-          <p>No NAS folders yet.</p>
+          <p class="pixel pixel-24">No NAS folders yet.</p>
           <button class="btn btn-primary" type="button" data-focus="sourceName">Add a folder</button>
         </div>`;
       return;
@@ -764,14 +779,14 @@ async function loadSources() {
           </tr></thead>
           <tbody>${sources.map(src => `
             <tr>
-              <td>${escapeHtml(src.name)}</td>
+              <td><span class="name-cell">${icon('folder')}<span>${escapeHtml(src.name)}</span></span></td>
               <td class="mono">${escapeHtml(src.path || '')}</td>
               <td class="num mono">${src.document_count}</td>
               <td>${src.allowed_groups.length ? escapeHtml(src.allowed_groups.join(', ')) : 'Everyone'}</td>
               <td class="mono nowrap">${src.last_scan_finished ? formatDate(src.last_scan_finished) : '–'}</td>
-              <td>${sourceStatus(src)}${src.last_error ? `<p class="form-error">${escapeHtml(src.last_error)}</p>` : ''}</td>
+              <td>${sourceStatus(src)}${src.last_error ? `<p class="form-error">${stateIcon('error')}<span>${escapeHtml(src.last_error)}</span></p>` : ''}</td>
               <td class="row-actions">
-                <button class="btn btn-secondary btn-sm" type="button" data-source-action="scan" data-id="${src.id}" ${src.scanning ? 'disabled' : ''}>Rescan</button>
+                <button class="btn btn-secondary btn-sm" type="button" data-source-action="scan" data-id="${src.id}" ${src.scanning ? 'disabled' : ''}>${icon('sync')}Rescan</button>
                 <button class="btn btn-secondary btn-sm" type="button" data-source-action="toggle" data-id="${src.id}" data-enabled="${src.enabled}">${src.enabled ? 'Pause' : 'Resume'}</button>
                 <button class="btn btn-secondary btn-sm" type="button" data-source-action="delete" data-id="${src.id}" data-name="${escapeHtml(src.name)}">Remove</button>
               </td>
@@ -856,7 +871,7 @@ function keywordOnlyNotice(emb) {
   if (!emb || emb.mode !== 'auto-off') return '';
   return `
     <div class="notice" role="status">
-      <p>${statusLabel('info', 'Keyword-only search')}</p>
+      <p>${statusLabel('off', 'Keyword-only search')}</p>
       <p>This machine has too little memory for semantic search (${escapeHtml(emb.reason || '')}). Searches match the
         words in your files. To turn semantic search on, give nAI at least 2.5 GB of memory (3 GB recommended) or
         set <code>NAI_EMBEDDINGS=on</code>.</p>
@@ -873,6 +888,32 @@ async function confirmReindex() {
     showToast(`Could not start the re-index: ${e.message}`, 'error');
   }
   loadSystemInfo();
+}
+
+const GIB = 1024 ** 3;
+
+/** "This machine" as block meters: memory in use, the data disk, and how much of the index is embedded. */
+function systemMeters(sys) {
+  const rows = [];
+  const hw = sys.hardware;
+  if (hw.memory_gb && hw.memory_available_gb != null) {
+    const used = Math.max(0, hw.memory_gb - hw.memory_available_gb);
+    rows.push(['Memory in use', used / hw.memory_gb, `${used.toFixed(1)} of ${hw.memory_gb} GB`]);
+  }
+  if (sys.storage && sys.storage.total_bytes) {
+    const { used_bytes: used, total_bytes: total } = sys.storage;
+    rows.push(['Data disk', used / total, `${(used / GIB).toFixed(0)} of ${(total / GIB).toFixed(0)} GB`]);
+  }
+  const emb = sys.features.embeddings;
+  if (emb.available && emb.pending != null && emb.vectors + emb.pending > 0) {
+    const done = emb.vectors / (emb.vectors + emb.pending);
+    rows.push(['Semantic index', done, `${Math.floor(done * 100)}%`]);
+  }
+  if (!rows.length) return '';
+  return `<dl class="meters">${rows.map(([label, share, value]) => `
+    <dt>${label}</dt>
+    <dd>${meter(share, label, label === 'Semantic index' ? 'progressbar' : 'meter')}<span class="pixel pixel-16">${value}</span></dd>`).join('')}
+  </dl>`;
 }
 
 async function loadSystemInfo() {
@@ -895,7 +936,7 @@ async function loadSystemInfo() {
       ['OCR', sys.features.ocr ? 'available' : 'not available'],
       ['Answer model', llm.enabled ? (llm.active_model ? `${llm.provider}/${llm.active_model}` : 'no model available') : 'off (extractive answers)'],
     ];
-    elements.systemInfo.innerHTML = keywordOnlyNotice(emb) + reindexNotice(emb)
+    elements.systemInfo.innerHTML = keywordOnlyNotice(emb) + reindexNotice(emb) + systemMeters(sys)
       + `<dl class="facts">${rows.map(([k, v]) => `<dt>${k}</dt><dd>${escapeHtml(v)}</dd>`).join('')}</dl>`
       + (sys.recommendations.length ? `<ul class="tips">${sys.recommendations.map(r => `<li>${escapeHtml(r)}</li>`).join('')}</ul>` : '');
     const reindexBtn = document.getElementById('reindexBtn');
@@ -976,7 +1017,7 @@ async function submitLogin(event) {
     closeLogin();
     showToast(`Signed in as ${AUTH.user.username}`, 'success');
   } catch (e) {
-    elements.loginError.textContent = e.message;
+    fieldError(elements.loginError, e.message);
     elements.loginError.classList.remove('hidden');
     elements.loginPassword.setAttribute('aria-invalid', 'true');
     elements.loginPassword.focus();
@@ -1074,19 +1115,20 @@ async function createApiKey() {
       <label class="form-label" for="apiKeySecret">New key: ${escapeHtml(created.name || name)}</label>
       <div class="key-row">
         <input type="text" id="apiKeySecret" class="form-input mono" readonly />
-        <button class="btn btn-secondary" type="button" id="apiKeyCopyBtn">Copy</button>
+        <button class="btn btn-secondary" type="button" id="apiKeyCopyBtn">${icon('copy')}Copy</button>
       </div>
       <p class="form-hint">Copy it now. nAI keeps only a fingerprint and won't show this key again.</p>`;
     const secret = elements.apiKeyNew.querySelector('#apiKeySecret');
     secret.value = created.key;
-    elements.apiKeyNew.querySelector('#apiKeyCopyBtn').addEventListener('click', async (e) => {
+    const copyBtn = elements.apiKeyNew.querySelector('#apiKeyCopyBtn');
+    copyBtn.addEventListener('click', async () => {
       try {
         await navigator.clipboard.writeText(created.key);
       } catch {
         secret.select(); // no clipboard access (plain http): select it for Ctrl+C
         document.execCommand('copy');
       }
-      e.target.textContent = 'Copied';
+      copyBtn.innerHTML = `${icon('ok')}Copied`;
     });
     elements.apiKeyNew.classList.remove('hidden');
     secret.focus();

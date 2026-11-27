@@ -23,5 +23,7 @@ Folder licenses: the root LICENSE (Nithron Community License) covers this reposi
 - apps/nai-docs/web/fonts/: the typefaces Mona Sans (© 2022 The Mona Sans Project Authors) and Monaspace Neon
   (© 2023 GitHub), under the SIL Open Font License 1.1 (OFL-mona-sans.txt and OFL-monaspace-neon.txt next to
   them); files from the @fontsource-variable/mona-sans and @fontsource/monaspace-neon 5.3.0 packages.
-- apps/nai-docs/web/nithron-tokens.css: a copy of @nithron/tokens (Nithron's design tokens), under the
-  Nithron Community License v1.0 like this repository.
+- apps/nai-docs/web/nithron-tokens.css, apps/nai-docs/web/fonts/nithron-pixel.woff2 and the icon shapes in
+  apps/nai-docs/web/icons.js: copies of @nithron/tokens (Nithron's design tokens and its pixel face, Nithron
+  Pixel) and @nithron/icons (Nithron's pixel icon set), under the Nithron Community License v1.0 like this
+  repository.

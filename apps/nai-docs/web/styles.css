@@ -9,7 +9,8 @@
  * The interface has no hue: the main colour is ink. Status keeps nAI's names (ok, warning, failed) on the tokens'
  * pass, earlier and failed. Both themes come from the tokens: the system's by default, or one pinned with
  * data-theme from Settings.
- * Pixel elements (status marks, meters, lamps, the cursor) sit on whole pixels: a 2 px grid, no rounding.
+ * The pixel layer: icons and state icons from @nithron/icons (icons.js) at 16 or 32 px, the Nithron Pixel face
+ * (.pixel) at whole multiples of 8 px, meters as rows of square blocks; all on whole pixels, nothing smoothed.
  */
 :root {
   --text-secondary: var(--ink-2);
@@ -27,9 +28,8 @@
   --warning: var(--status-earlier-text);
   --error: var(--status-failed-text);
 
-  /* Pixel grid for marks and meters. */
+  /* Pixel grid for meters and the cursor. */
   --pixel: 2px;
-  --mark-size: 10px; /* 5 x 5 pixels */
 
   --content-width: 1200px;
 }
@@ -139,10 +139,12 @@ kbd,
   background: var(--page);
 }
 
+/* A fixed height, so the pixel name (30 px line) sits on whole pixels: (64 - 30) / 2 = 17. */
 .header-content {
   max-width: var(--content-width);
+  height: var(--space-8);
   margin: 0 auto;
-  padding: var(--space-3) var(--space-5);
+  padding: 0 var(--space-5);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -151,22 +153,41 @@ kbd,
 
 .brand {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: var(--space-3);
 }
 
-/* The wordmark is type until the pixel display face arrives (.pixel-display falls back to this face). */
+/* The product's name in the pixel face at 24 px (.pixel .pixel-24). */
 .wordmark {
-  font-size: var(--text-title);
-  font-weight: var(--weight-title);
-  letter-spacing: var(--tracking-title);
-  line-height: var(--leading-title);
+  color: var(--ink);
 }
 
-/* Slot for the shared pixel display face (wordmark, one large number, empty and loading words). Until the
-   font file is issued it falls back to the mono face. */
-.pixel-display {
+/* The pixel display face, Nithron Pixel (@nithron/tokens README, "The pixel display face"): only for the
+   product's name, a screen's one large number, the words of an empty or loading screen and the number beside a
+   meter. Sharp only at whole multiples of 8 px, left-aligned, never synthesised, never letter-spaced. */
+.pixel {
+  position: relative; /* pixel.js nudges it onto whole device pixels */
   font-family: var(--font-pixel, var(--font-mono));
+  font-size: 16px;
+  line-height: 1.25;
+  font-weight: 400;
+  font-style: normal;
+  font-synthesis: none;
+  letter-spacing: 0;
+  font-kerning: none;
+  font-variant-ligatures: none;
+}
+
+.pixel-16 {
+  font-size: 16px;
+}
+
+.pixel-24 {
+  font-size: 24px;
+}
+
+.pixel-48 {
+  font-size: 48px;
 }
 
 .version {
@@ -190,7 +211,7 @@ kbd,
 }
 
 /* =============================================
-   Status: a mark and a word. Marks are pixel shapes on a 2 px grid.
+   Status: a state icon and a word.
    ============================================= */
 
 .nowrap {
@@ -206,50 +227,28 @@ kbd,
   line-height: var(--leading-fine);
 }
 
-.mark {
-  display: inline-block;
+/* States: the pixel set's six state icons at 16 px. Only ok, warning and failed carry a hue. */
+.state {
+  display: inline-flex;
   flex-shrink: 0;
-  width: var(--mark-size);
-  height: var(--mark-size);
-  position: relative;
+  color: var(--text-secondary);
 }
 
-/* In order: a filled square. */
-.mark-pass {
-  background: var(--success);
+.state-ok {
+  color: var(--success);
 }
 
-/* A warning: an open square. */
-.mark-warn {
-  border: var(--pixel) solid var(--warning);
+.state-warning {
+  color: var(--warning);
 }
 
-/* Neutral (paused, off, not yet): an open square in grey. */
-.mark-idle {
-  border: var(--pixel) solid var(--text-secondary);
-}
-
-/* Failed: a cross of whole pixels (one pixel, repeated along both diagonals). */
-.mark-fail {
+.state-failed {
   color: var(--error);
 }
 
-.mark-fail::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: var(--pixel);
-  height: var(--pixel);
-  background: currentColor;
-  box-shadow:
-    2px 2px 0 currentColor, 4px 4px 0 currentColor, 6px 6px 0 currentColor, 8px 8px 0 currentColor,
-    8px 0 0 currentColor, 6px 2px 0 currentColor, 2px 6px 0 currentColor, 0 8px 0 currentColor;
-}
-
-/* Running: a square lamp that blinks (still under reduced motion). */
-.mark-lamp {
-  background: var(--ink);
+/* Running: the square lamp blinks in steps (still under reduced motion). */
+.state-running {
+  color: var(--ink);
   animation: lamp var(--loop-lamp) steps(1, end) infinite;
 }
 
@@ -317,6 +316,9 @@ kbd,
 }
 
 .tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
   padding: var(--space-4) 0 var(--space-3);
   font-size: var(--text-small);
   color: var(--text-secondary);
@@ -515,26 +517,18 @@ kbd,
   color: var(--text-secondary);
 }
 
-/* A field's error: the failure cross (whole pixels, as .mark-fail) and its sentence. */
+/* A field's error: the failed icon and its sentence. */
 .form-error {
-  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
   margin-top: var(--space-2);
-  padding-left: calc(var(--mark-size) + var(--space-2));
   font-size: var(--text-fine);
   color: var(--error);
 }
 
-.form-error::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: calc((1lh - var(--mark-size)) / 2);
-  width: var(--pixel);
-  height: var(--pixel);
-  background: currentColor;
-  box-shadow:
-    2px 2px 0 currentColor, 4px 4px 0 currentColor, 6px 6px 0 currentColor, 8px 8px 0 currentColor,
-    8px 0 0 currentColor, 6px 2px 0 currentColor, 2px 6px 0 currentColor, 0 8px 0 currentColor;
+.form-error .state {
+  margin-top: 2px;
 }
 
 ::placeholder {
@@ -796,7 +790,7 @@ mark {
 .citation-head {
   display: flex;
   align-items: center;
-  gap: var(--space-4);
+  gap: var(--space-3);
   margin-bottom: var(--space-2);
 }
 
@@ -873,6 +867,9 @@ mark {
 }
 
 .chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
   padding: var(--space-1) var(--space-2);
   font-family: var(--font-mono);
   font-size: var(--text-label);
@@ -1066,13 +1063,55 @@ mark {
   margin-top: var(--space-3);
 }
 
+/* A screen's one large number (Documents), in the pixel face. */
+.stat {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
+.name-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.name-cell .icon {
+  color: var(--text-secondary);
+}
+
+/* "This machine" as block meters with their numbers in the pixel face. */
+.meters {
+  display: grid;
+  grid-template-columns: minmax(8rem, 12rem) 1fr;
+  align-items: center;
+  gap: var(--space-3) var(--space-4);
+  margin-bottom: var(--space-5);
+  font-size: var(--text-fine);
+}
+
+.meters dt {
+  color: var(--text-secondary);
+}
+
+.meters dd {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.empty .pixel {
+  color: var(--ink);
+}
+
 /* =============================================
    Narrow screens
    ============================================= */
 
 @media (max-width: 640px) {
   .header-content {
-    padding: var(--space-3) var(--space-4);
+    padding: 0 var(--space-4);
   }
 
   .version,
@@ -1104,7 +1143,8 @@ mark {
     flex-wrap: wrap;
   }
 
-  .facts {
+  .facts,
+  .meters {
     grid-template-columns: 1fr;
   }
 

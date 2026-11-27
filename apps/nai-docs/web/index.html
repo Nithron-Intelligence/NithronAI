@@ -6,6 +6,7 @@
   <title>nAI — Nithron AI</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="nithron-tokens.css">
+  <link rel="preload" href="fonts/nithron-pixel.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="fonts/fonts.css">
   <link rel="stylesheet" href="styles.css">
 </head>
@@ -14,12 +15,12 @@
   <header class="header">
     <div class="header-content">
       <div class="brand">
-        <span class="wordmark">nAI</span>
+        <span class="wordmark pixel pixel-24">nAI</span>
         <span class="version" id="appVersion"></span>
       </div>
       <div class="header-actions">
         <span class="status" id="statusIndicator" role="status">
-          <span class="mark mark-lamp" aria-hidden="true"></span>
+          <span class="state state-running" data-icon="running"></span>
           <span class="status-text">Connecting</span>
         </span>
         <div class="user-chip hidden" id="userChip">
@@ -36,11 +37,11 @@
 
   <main class="main">
     <nav class="nav" aria-label="nAI">
-      <button class="tab active" data-tab="ask" type="button" aria-current="page">Ask</button>
-      <button class="tab" data-tab="ingest" type="button">Upload</button>
-      <button class="tab" data-tab="documents" type="button">Documents</button>
-      <button class="tab" data-tab="chat" type="button">Chat</button>
-      <button class="tab hidden" data-tab="sources" id="sourcesTab" type="button">Sources</button>
+      <button class="tab active" data-tab="ask" type="button" aria-current="page"><span class="icon" data-icon="search"></span>Ask</button>
+      <button class="tab" data-tab="ingest" type="button"><span class="icon" data-icon="upload"></span>Upload</button>
+      <button class="tab" data-tab="documents" type="button"><span class="icon" data-icon="file"></span>Documents</button>
+      <button class="tab" data-tab="chat" type="button"><span class="icon" data-icon="chat"></span>Chat</button>
+      <button class="tab hidden" data-tab="sources" id="sourcesTab" type="button"><span class="icon" data-icon="folder"></span>Sources</button>
     </nav>
 
     <!-- Ask -->
@@ -110,7 +111,7 @@
       <p class="progress hidden" id="uploadProgress" aria-live="polite"></p>
 
       <div class="actions hidden" id="uploadActions">
-        <button class="btn btn-primary" id="ingestBtn" type="button">Upload and index</button>
+        <button class="btn btn-primary" id="ingestBtn" type="button"><span class="icon" data-icon="upload"></span>Upload and index</button>
         <button class="btn btn-ghost" id="clearFilesBtn" type="button">Clear</button>
       </div>
 
@@ -122,9 +123,9 @@
       <header class="screen-head screen-head-row">
         <div>
           <h1 class="screen-title" id="documentsTitle">Documents</h1>
-          <p class="screen-lead" id="documentsStats"></p>
+          <div class="stat" id="documentsStats"></div>
         </div>
-        <button class="btn btn-secondary" id="refreshDocsBtn" type="button">Refresh</button>
+        <button class="btn btn-secondary" id="refreshDocsBtn" type="button"><span class="icon" data-icon="refresh"></span>Refresh</button>
       </header>
       <div id="documentsList"></div>
     </section>
@@ -136,7 +137,7 @@
           <h1 class="screen-title" id="chatTitle">Chat</h1>
           <p class="screen-lead">A conversation about your files. Each reply names the files it used.</p>
         </div>
-        <button class="btn btn-secondary" id="chatNewBtn" type="button">New chat</button>
+        <button class="btn btn-secondary" id="chatNewBtn" type="button"><span class="icon" data-icon="add"></span>New chat</button>
       </header>
 
       <ol class="transcript" id="chatMessages" aria-live="polite"></ol>
@@ -144,7 +145,7 @@
       <div class="chat-compose">
         <label class="visually-hidden" for="chatInput">Message</label>
         <textarea id="chatInput" class="field-input chat-input" placeholder="Ask a question about your files" rows="1"></textarea>
-        <button class="btn btn-primary" id="chatSendBtn" type="button">Send</button>
+        <button class="btn btn-primary" id="chatSendBtn" type="button"><span class="icon" data-icon="send"></span>Send</button>
       </div>
     </section>
 
@@ -155,7 +156,7 @@
           <h1 class="screen-title" id="sourcesTitle">NAS folders</h1>
           <p class="screen-lead">nAI indexes these folders in place: files are never copied or changed, and the index follows as files are added, edited or deleted.</p>
         </div>
-        <button class="btn btn-secondary" id="refreshSourcesBtn" type="button">Refresh</button>
+        <button class="btn btn-secondary" id="refreshSourcesBtn" type="button"><span class="icon" data-icon="refresh"></span>Refresh</button>
       </header>
       <div id="sourcesList"></div>
 
@@ -279,6 +280,7 @@
   <div class="toast-container" id="toastContainer"></div>
 
   <script src="icons.js"></script>
+  <script src="pixel.js"></script>
   <script src="markdown.js"></script>
   <script src="dialog.js"></script>
   <script src="main.js"></script>

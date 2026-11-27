@@ -31,3 +31,14 @@
   font-weight: 400;
   src: url("monaspace-neon-latin-400-normal.woff2") format("woff2");
 }
+
+/* Nithron Pixel: the pixel display face (@nithron/tokens 0.4.0 fonts/, Nithron Community License v1.0, like
+   nAI). Only for the pixel layer: the product's name, a screen's one large number, the words of an empty or
+   loading screen, the number beside a block meter. Whole multiples of 8 px only (see .pixel in styles.css). */
+@font-face {
+  font-family: "Nithron Pixel";
+  src: url("nithron-pixel.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}

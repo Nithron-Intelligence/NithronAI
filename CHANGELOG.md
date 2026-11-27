@@ -23,6 +23,10 @@ All notable changes to nAI. Versions follow [semantic versioning](https://semver
   with source chips; upload progress as a row of blocks; nAI's own confirmation dialog in place of the
   browser's; a new API key shown once in a field with "Copy". "Use LLM" is now the switch "Write an answer",
   and "Top K" is "Passages". Checked at WCAG AA contrast in both themes and at phone width.
+  The pixel layer: every icon is from Nithron's pixel set (16 px, crisp), states use its six state icons, and
+  the Nithron Pixel face sets the name, the document count, the words of empty and loading screens and the
+  numbers beside the block meters (upload progress; memory, data disk and the semantic index under "This
+  machine"). `/system` reports the data disk's total and used bytes for that meter.
 - **`NAI_RERANKER=auto` no longer turns the reranker on by itself.** The lineage audit found MS MARCO
   (non-commercial) in the training data of `bge-reranker-v2-m3`, the default model, and of Qwen3-Reranker; the
   same reason MiniLM stopped being the default embedding model in 0.7.0. `auto` now also needs a model whose
