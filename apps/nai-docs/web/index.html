@@ -11,263 +11,207 @@
 </head>
 <body>
 
-  <!-- Header -->
   <header class="header">
     <div class="header-content">
-      <div class="logo">
-        <span class="logo-text">nAI</span>
-        <span class="logo-version" id="appVersion"></span>
+      <div class="brand">
+        <span class="wordmark">nAI</span>
+        <span class="version" id="appVersion"></span>
       </div>
       <div class="header-actions">
-        <div class="status-indicator" id="statusIndicator">
-          <div class="status-dot"></div>
-          <span class="status-text">Connecting...</span>
-        </div>
+        <span class="status" id="statusIndicator" role="status">
+          <span class="mark mark-lamp" aria-hidden="true"></span>
+          <span class="status-text">Connecting</span>
+        </span>
         <div class="user-chip hidden" id="userChip">
           <span class="user-name" id="userName"></span>
-          <button class="btn btn-ghost btn-sm" id="logoutBtn">Log out</button>
+          <button class="btn btn-ghost btn-sm" id="logoutBtn" type="button">Log out</button>
         </div>
-        <button class="btn btn-ghost" id="settingsBtn">
+        <button class="btn btn-ghost" id="settingsBtn" type="button">
           <span class="icon" data-icon="settings"></span>
+          Settings
         </button>
       </div>
     </div>
   </header>
 
-  <!-- Main Content -->
   <main class="main">
-    <!-- Tab Navigation -->
-    <div class="tabs">
-      <button class="tab active" data-tab="ask">
-        <span class="icon" data-icon="search"></span>
-        Ask
-      </button>
-      <button class="tab" data-tab="ingest">
-        <span class="icon" data-icon="upload"></span>
-        Upload
-      </button>
-      <button class="tab" data-tab="documents">
-        <span class="icon" data-icon="file"></span>
-        Documents
-      </button>
-      <button class="tab" data-tab="chat">
-        <span class="icon" data-icon="chat"></span>
-        Chat
-      </button>
-      <button class="tab hidden" data-tab="sources" id="sourcesTab">
-        <span class="icon" data-icon="folder"></span>
-        Sources
-      </button>
-    </div>
+    <nav class="nav" aria-label="nAI">
+      <button class="tab active" data-tab="ask" type="button" aria-current="page">Ask</button>
+      <button class="tab" data-tab="ingest" type="button">Upload</button>
+      <button class="tab" data-tab="documents" type="button">Documents</button>
+      <button class="tab" data-tab="chat" type="button">Chat</button>
+      <button class="tab hidden" data-tab="sources" id="sourcesTab" type="button">Sources</button>
+    </nav>
 
-    <!-- Tab Panels -->
-    <div class="tab-panels">
-      <!-- Ask Panel -->
-      <div class="tab-panel active" data-panel="ask">
-        <header class="screen-head">
-          <h1 class="screen-title">Ask about the files on your NAS</h1>
-          <p class="screen-lead">Every answer points to the exact file and page. Nothing leaves your network unless you choose a cloud model.</p>
-        </header>
-        <div class="card">
-          <div class="search-container">
-            <div class="search-input-wrapper">
-              <span class="icon" data-icon="search"></span>
-              <input 
-                type="text" 
-                id="questionInput" 
-                class="search-input" 
-                placeholder="e.g. When is the car insurance due?"
-                autocomplete="off"
-              />
-              <button class="btn btn-primary" id="askBtn">
-                <span>Ask</span>
-                <span class="icon" data-icon="arrow-right"></span>
-              </button>
-            </div>
-            <div class="search-options">
-              <label class="checkbox-label">
-                <input type="checkbox" id="useLlm" checked />
-                <span class="checkmark"></span>
-                Use LLM (if available)
-              </label>
-              <div class="select-wrapper">
-                <label>Top K:</label>
-                <select id="topK">
-                  <option value="3">3</option>
-                  <option value="5" selected>5</option>
-                  <option value="10">10</option>
-                </select>
-              </div>
-            </div>
-          </div>
+    <!-- Ask -->
+    <section class="tab-panel active" data-panel="ask" aria-labelledby="askTitle">
+      <header class="screen-head">
+        <h1 class="screen-title" id="askTitle">Ask about the files on your NAS</h1>
+        <p class="screen-lead">Every answer points to the exact file and page. Nothing leaves your network unless you choose a cloud model.</p>
+      </header>
+
+      <div class="ask">
+        <div class="field">
+          <span class="icon" data-icon="search"></span>
+          <label class="visually-hidden" for="questionInput">Question</label>
+          <input type="text" id="questionInput" class="field-input" placeholder="e.g. When is the car insurance due?" autocomplete="off" />
+          <button class="btn btn-primary" id="askBtn" type="button">Ask</button>
         </div>
-
-        <!-- Results Area -->
-        <div id="resultsArea" class="results-area hidden">
-          <div class="result-card">
-            <div class="result-header">
-              <h3 class="result-title">Answer</h3>
-              <span class="result-method" id="resultMethod">extractive</span>
-            </div>
-            <div class="result-content" id="answerContent">
-              <!-- Answer will be rendered here -->
-            </div>
-          </div>
-
-          <div class="citations-card">
-            <h3 class="citations-title">
-              <span class="icon" data-icon="file"></span>
-              Citations
-            </h3>
-            <div class="citations-list" id="citationsList">
-              <!-- Citations will be rendered here -->
-            </div>
-          </div>
+        <div class="ask-options">
+          <label class="switch">
+            <input type="checkbox" role="switch" id="useLlm" checked />
+            <span class="switch-track" aria-hidden="true"></span>
+            Write an answer
+          </label>
+          <label class="compact-select">
+            Passages
+            <select id="topK" class="form-select form-select-compact">
+              <option value="3">3</option>
+              <option value="5" selected>5</option>
+              <option value="10">10</option>
+            </select>
+          </label>
         </div>
       </div>
 
-      <!-- Ingest Panel -->
-      <div class="tab-panel" data-panel="ingest">
-        <div class="card">
-          <div class="upload-zone" id="uploadZone">
-            <h3 class="upload-title">Drop files here or click to upload</h3>
-            <p class="upload-subtitle">PDF, Word (DOCX), Markdown, HTML, text, CSV/JSON, code; scans and photos with OCR (max 50MB).
-              To index whole NAS folders, add them under Sources instead.</p>
-            <input type="file" id="fileInput" multiple class="hidden" />
-            <button class="btn btn-secondary" id="browseBtn">Browse Files</button>
+      <div id="resultsArea" class="results hidden">
+        <section class="region" aria-labelledby="answerTitle">
+          <div class="region-head">
+            <h2 class="region-title" id="answerTitle">Answer</h2>
+            <span class="label-mono" id="resultMethod"></span>
           </div>
+          <div class="answer prose" id="answerContent" aria-live="polite"></div>
+        </section>
 
-          <div class="file-list" id="fileList">
-            <!-- Selected files will be shown here -->
+        <section class="region" aria-labelledby="citationsTitle">
+          <div class="region-head">
+            <h2 class="region-title" id="citationsTitle">Sources</h2>
           </div>
+          <ol class="citations" id="citationsList"></ol>
+        </section>
+      </div>
+    </section>
 
-          <div class="upload-actions hidden" id="uploadActions">
-            <button class="btn btn-primary" id="ingestBtn">
-              <span class="icon" data-icon="upload-arrow"></span>
-              Upload & Index
-            </button>
-            <button class="btn btn-ghost" id="clearFilesBtn">Clear</button>
-          </div>
-        </div>
+    <!-- Upload -->
+    <section class="tab-panel" data-panel="ingest" aria-labelledby="uploadTitle">
+      <header class="screen-head">
+        <h1 class="screen-title" id="uploadTitle">Upload files</h1>
+        <p class="screen-lead">PDF, Word, Markdown, HTML, text, CSV and JSON, code, and scans or photos read with OCR, up to 50 MB each. To index a whole NAS folder in place, add it under Sources instead.</p>
+      </header>
 
-        <div class="ingest-results hidden" id="ingestResults">
-          <!-- Ingest results will be shown here -->
-        </div>
+      <div class="dropzone" id="uploadZone">
+        <p>Drop files here, or</p>
+        <input type="file" id="fileInput" multiple class="hidden" />
+        <button class="btn btn-secondary" id="browseBtn" type="button">Choose files</button>
       </div>
 
-      <!-- Documents Panel -->
-      <div class="tab-panel" data-panel="documents">
-        <div class="card">
-          <div class="documents-header">
-            <h3 class="documents-title">Indexed Documents</h3>
-            <button class="btn btn-ghost" id="refreshDocsBtn">
-              <span class="icon" data-icon="refresh"></span>
-              Refresh
-            </button>
-          </div>
+      <div class="table-wrap" id="fileList"></div>
 
-          <div class="documents-stats" id="documentsStats">
-            <!-- Stats will be rendered here -->
-          </div>
+      <p class="progress hidden" id="uploadProgress" aria-live="polite"></p>
 
-          <div class="documents-list" id="documentsList">
-            <!-- Documents will be rendered here -->
-          </div>
-        </div>
+      <div class="actions hidden" id="uploadActions">
+        <button class="btn btn-primary" id="ingestBtn" type="button">Upload and index</button>
+        <button class="btn btn-ghost" id="clearFilesBtn" type="button">Clear</button>
       </div>
 
-      <!-- Chat Panel -->
-      <div class="tab-panel" data-panel="chat">
-        <div class="chat-container">
-          <div class="chat-messages" id="chatMessages">
-            <div class="chat-welcome">
-              <h3>Start a conversation</h3>
-              <p>Ask questions about your documents in a multi-turn conversation.</p>
-            </div>
-          </div>
-          
-          <div class="chat-input-container">
-            <button class="btn btn-ghost chat-new" id="chatNewBtn" title="Start a new conversation">
-              <span class="icon" data-icon="plus"></span>
-            </button>
-            <textarea 
-              id="chatInput" 
-              class="chat-input" 
-              placeholder="Type your message..."
-              rows="1"
-            ></textarea>
-            <button class="btn btn-primary chat-send" id="chatSendBtn">
-              <span class="icon" data-icon="send"></span>
-            </button>
-          </div>
+      <section class="region hidden" id="ingestResults" aria-labelledby="ingestResultsTitle"></section>
+    </section>
+
+    <!-- Documents -->
+    <section class="tab-panel" data-panel="documents" aria-labelledby="documentsTitle">
+      <header class="screen-head screen-head-row">
+        <div>
+          <h1 class="screen-title" id="documentsTitle">Documents</h1>
+          <p class="screen-lead" id="documentsStats"></p>
         </div>
+        <button class="btn btn-secondary" id="refreshDocsBtn" type="button">Refresh</button>
+      </header>
+      <div id="documentsList"></div>
+    </section>
+
+    <!-- Chat -->
+    <section class="tab-panel" data-panel="chat" aria-labelledby="chatTitle">
+      <header class="screen-head screen-head-row">
+        <div>
+          <h1 class="screen-title" id="chatTitle">Chat</h1>
+          <p class="screen-lead">A conversation about your files. Each reply names the files it used.</p>
+        </div>
+        <button class="btn btn-secondary" id="chatNewBtn" type="button">New chat</button>
+      </header>
+
+      <ol class="transcript" id="chatMessages" aria-live="polite"></ol>
+
+      <div class="chat-compose">
+        <label class="visually-hidden" for="chatInput">Message</label>
+        <textarea id="chatInput" class="field-input chat-input" placeholder="Ask a question about your files" rows="1"></textarea>
+        <button class="btn btn-primary" id="chatSendBtn" type="button">Send</button>
       </div>
+    </section>
 
-      <!-- Sources Panel (admins) -->
-      <div class="tab-panel" data-panel="sources">
-        <div class="card">
-          <div class="documents-header">
-            <h3 class="documents-title">NAS folders</h3>
-            <button class="btn btn-ghost" id="refreshSourcesBtn">Refresh</button>
+    <!-- Sources (admins) -->
+    <section class="tab-panel" data-panel="sources" aria-labelledby="sourcesTitle">
+      <header class="screen-head screen-head-row">
+        <div>
+          <h1 class="screen-title" id="sourcesTitle">NAS folders</h1>
+          <p class="screen-lead">nAI indexes these folders in place: files are never copied or changed, and the index follows as files are added, edited or deleted.</p>
+        </div>
+        <button class="btn btn-secondary" id="refreshSourcesBtn" type="button">Refresh</button>
+      </header>
+      <div id="sourcesList"></div>
+
+      <section class="region" aria-labelledby="addFolderTitle">
+        <div class="region-head"><h2 class="region-title" id="addFolderTitle">Add a folder</h2></div>
+        <form id="sourceForm" class="form">
+          <div class="form-group">
+            <label class="form-label" for="sourceName">Name</label>
+            <input type="text" id="sourceName" class="form-input" placeholder="Documents" required maxlength="80" />
           </div>
-          <p class="form-hint">nAI indexes these folders in place (files are never copied or changed) and keeps
-            the index in sync as files are added, edited or deleted.</p>
-          <div class="documents-list" id="sourcesList"></div>
-        </div>
+          <div class="form-group">
+            <label class="form-label" for="sourcePath">Folder path on the server</label>
+            <input type="text" id="sourcePath" class="form-input" placeholder="/shares/Documents" required />
+            <p class="form-hint" id="sourceRootsHint"></p>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="sourceGroups">Visible to groups (optional)</label>
+            <input type="text" id="sourceGroups" class="form-input" placeholder="family, finance" />
+            <p class="form-hint">Separate groups with commas. Empty: every user can search this folder. Admins always can.</p>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="sourceExclude">Skip files matching (optional)</label>
+            <input type="text" id="sourceExclude" class="form-input" placeholder="*.tmp, Archive/*" />
+          </div>
+          <div class="actions">
+            <button type="submit" class="btn btn-primary" id="sourceAddBtn">Add and scan</button>
+          </div>
+        </form>
+      </section>
 
-        <div class="card">
-          <h3 class="documents-title">Add a folder</h3>
-          <form id="sourceForm" class="source-form">
-            <div class="form-group">
-              <label class="form-label" for="sourceName">Name</label>
-              <input type="text" id="sourceName" class="form-input" placeholder="Documents" required maxlength="80" />
-            </div>
-            <div class="form-group">
-              <label class="form-label" for="sourcePath">Folder path on the server</label>
-              <input type="text" id="sourcePath" class="form-input" placeholder="/shares/Documents" required />
-              <p class="form-hint" id="sourceRootsHint"></p>
-            </div>
-            <div class="form-group">
-              <label class="form-label" for="sourceGroups">Visible to groups (optional)</label>
-              <input type="text" id="sourceGroups" class="form-input" placeholder="family, finance" />
-              <p class="form-hint">Comma-separated. Empty: every user can search this folder. Admins always can.</p>
-            </div>
-            <div class="form-group">
-              <label class="form-label" for="sourceExclude">Skip files matching (optional)</label>
-              <input type="text" id="sourceExclude" class="form-input" placeholder="*.tmp, Archive/*" />
-            </div>
-            <div class="modal-footer">
-              <button type="submit" class="btn btn-primary" id="sourceAddBtn">Add and scan</button>
-            </div>
-          </form>
-        </div>
-
-        <div class="card" id="systemCard">
-          <h3 class="documents-title">This machine</h3>
-          <div id="systemInfo" class="system-info"></div>
-        </div>
-      </div>
-    </div>
+      <section class="region" id="systemCard" aria-labelledby="machineTitle">
+        <div class="region-head"><h2 class="region-title" id="machineTitle">This machine</h2></div>
+        <div id="systemInfo"></div>
+      </section>
+    </section>
   </main>
 
-  <!-- Settings Modal -->
+  <!-- Settings -->
   <div class="modal hidden" id="settingsModal">
     <div class="modal-backdrop"></div>
-    <div class="modal-content">
+    <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
       <div class="modal-header">
-        <h3>Settings</h3>
-        <button class="modal-close" id="closeSettingsBtn">
+        <h2 class="modal-title" id="settingsTitle">Settings</h2>
+        <button class="btn btn-ghost btn-sm" id="closeSettingsBtn" type="button">
           <span class="icon" data-icon="close"></span>
+          Close
         </button>
       </div>
       <div class="modal-body">
         <div class="form-group">
-          <label class="form-label">API Base URL</label>
+          <label class="form-label" for="apiBaseInput">Server address</label>
           <input type="text" id="apiBaseInput" class="form-input" placeholder="(this server)" />
-          <p class="form-hint">Leave empty when the UI is served by nAI itself. Otherwise e.g. http://nas.local:8000</p>
+          <p class="form-hint">Leave empty when nAI serves this page itself. Otherwise, for example, http://nas.local:8000</p>
         </div>
         <div class="form-group">
-          <label class="form-label">Theme</label>
+          <label class="form-label" for="themeSelect">Theme</label>
           <select id="themeSelect" class="form-select">
             <option value="system">System</option>
             <option value="light">Light</option>
@@ -275,38 +219,45 @@
           </select>
         </div>
         <div class="form-group" id="connectSection">
-          <label class="form-label">Connect other apps</label>
+          <h3 class="form-label">Connect other apps</h3>
           <p class="form-hint">Use your files from other AI apps. They sign in with an API key and see exactly what you can see.</p>
-          <div class="connect-row"><span class="system-key">OpenAI-compatible</span><code id="openaiUrl"></code></div>
-          <div class="connect-row"><span class="system-key">MCP server</span><code id="mcpUrl"></code></div>
+          <dl class="facts">
+            <dt>OpenAI-compatible</dt><dd id="openaiUrl"></dd>
+            <dt>MCP server</dt><dd id="mcpUrl"></dd>
+          </dl>
           <div id="apiKeysArea">
-            <div class="documents-list" id="apiKeysList"></div>
+            <div id="apiKeysList"></div>
             <div class="key-create">
+              <label class="visually-hidden" for="apiKeyName">Key name</label>
               <input type="text" id="apiKeyName" class="form-input" placeholder="Key name, e.g. Open WebUI" maxlength="80" />
               <button class="btn btn-secondary" id="apiKeyCreateBtn" type="button">Create key</button>
             </div>
-            <p class="form-hint hidden" id="apiKeyNew"></p>
+            <div class="key-new hidden" id="apiKeyNew"></div>
           </div>
+        </div>
+        <div class="form-group">
+          <h3 class="form-label">About</h3>
+          <p class="form-hint">nAI is made by Nithron. <a href="https://nithron.com" target="_blank" rel="noopener noreferrer">nithron.com</a></p>
         </div>
       </div>
       <div class="modal-footer">
-        <button class="btn btn-ghost" id="cancelSettingsBtn">Cancel</button>
-        <button class="btn btn-primary" id="saveSettingsBtn">Save</button>
+        <button class="btn btn-secondary" id="cancelSettingsBtn" type="button">Cancel</button>
+        <button class="btn btn-primary" id="saveSettingsBtn" type="button">Save</button>
       </div>
     </div>
   </div>
 
-  <!-- Login Modal (shown when the server has authentication enabled) -->
+  <!-- Sign in (shown when the server has authentication enabled) -->
   <div class="modal hidden" id="loginModal">
     <div class="modal-backdrop"></div>
-    <div class="modal-content">
+    <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
       <div class="modal-header">
-        <h3 id="loginTitle">Sign in</h3>
+        <h2 class="modal-title" id="loginTitle">Sign in</h2>
       </div>
       <form class="modal-body" id="loginForm">
         <p class="form-hint" id="loginHint">Sign in to your nAI account.</p>
         <div class="form-group">
-          <label class="form-label" for="loginUsername">Username</label>
+          <label class="form-label" for="loginUsername">User name</label>
           <input type="text" id="loginUsername" class="form-input" autocomplete="username" required />
         </div>
         <div class="form-group hidden" id="loginEmailGroup">
@@ -315,9 +266,9 @@
         </div>
         <div class="form-group">
           <label class="form-label" for="loginPassword">Password</label>
-          <input type="password" id="loginPassword" class="form-input" autocomplete="current-password" required minlength="8" />
+          <input type="password" id="loginPassword" class="form-input" autocomplete="current-password" required minlength="8" aria-describedby="loginError" />
+          <p class="form-error hidden" id="loginError"></p>
         </div>
-        <p class="form-error hidden" id="loginError"></p>
         <div class="modal-footer">
           <button type="submit" class="btn btn-primary" id="loginSubmitBtn">Sign in</button>
         </div>
@@ -325,10 +276,11 @@
     </div>
   </div>
 
-  <!-- Toast Container -->
   <div class="toast-container" id="toastContainer"></div>
 
   <script src="icons.js"></script>
+  <script src="markdown.js"></script>
+  <script src="dialog.js"></script>
   <script src="main.js"></script>
 </body>
 </html>

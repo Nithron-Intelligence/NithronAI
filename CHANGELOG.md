@@ -17,6 +17,12 @@ All notable changes to nAI. Versions follow [semantic versioning](https://semver
   animations are gone; the hero gives way to the Ask screen's own title; the faces Mona Sans and Monaspace Neon
   ship with nAI (nothing loads from another server). All icons go through `web/icons.js`, ready for the shared
   pixel set. A test in nai-core fails on a colour value or hue name written anywhere else under `web/`.
+  Every screen is restructured: navigation by words; ruled tables for documents, folders, uploads and API keys;
+  status as a square mark and a word; answers and chat replies rendered as type (Markdown) at a reading width,
+  with a block cursor while they stream and the question's words marked in each source; a ruled chat transcript
+  with source chips; upload progress as a row of blocks; nAI's own confirmation dialog in place of the
+  browser's; a new API key shown once in a field with "Copy". "Use LLM" is now the switch "Write an answer",
+  and "Top K" is "Passages". Checked at WCAG AA contrast in both themes and at phone width.
 - **`NAI_RERANKER=auto` no longer turns the reranker on by itself.** The lineage audit found MS MARCO
   (non-commercial) in the training data of `bge-reranker-v2-m3`, the default model, and of Qwen3-Reranker; the
   same reason MiniLM stopped being the default embedding model in 0.7.0. `auto` now also needs a model whose
