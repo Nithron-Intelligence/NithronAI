@@ -169,3 +169,28 @@ only 9,809 of 29,180 pairs if rows without negatives were left out.
 Because the filter drops ~27.5 %, 60,000 pairs *after* it need ~82,800 clean pairs: batch 1 gives 29,180, so
 ~53,600 more, ~12,400 passages (~2,480 synthetic documents ≈ 9.3 h, plus their queries ≈ 5.2 h; three
 8-hour runs at most). The filter's share on synthetic passages may differ; measure it on batch 2.
+
+### Batches 2 and 3 (synthetic passages, 2026-11-26 → 27)
+
+Both use `generate_corpus.py --prompt-version corpus-v2` and `mistral-small3.1` (Apache-2.0) on the local GPU,
+then `make_passages.py` with a 5 % holdout by file, then `generate_pairs.py --prompt-version pairs-v2`.
+
+| | Batch 2 (seed 21) | Batch 3 (seed 31) |
+|---|---|---|
+| Documents | 2,000 | 600 |
+| Passages (after holdout) | 9,172 | 2,732 |
+| Raw pairs | 48,932 | 14,415 |
+| After `filter_pairs.py` | 41,498 | 12,177 |
+| After `check_overlap.py` | 41,459 | 12,168 |
+| Mined negatives (rows with 0 / 3) | 28,221 / 12,996 | 5,575 / 6,499 |
+| Positive is Granite's top passage | 23.5 % | 31.2 % |
+| Median positive rank | 8 | 3 |
+| Kept by `--max-positive-rank 49` | 30,170 (72.8 %) | 10,511 (86.4 %) |
+
+Most filter drops are queries copied from their passage (6,365 and 1,992). The consistency filter keeps about
+the same share of synthetic pairs as of real ones (batch 1: 72.5 %); batch 3's higher share and lower median
+rank most likely come from its smaller corpus: negatives are mined within a batch, so fewer passages compete.
+
+**Total for the first full run: 61,847 pairs after the consistency filter** (batch 1 21,166, batch 2 30,170,
+batch 3 10,511): the 60,000 target is met. Checksums: `training/manifests/vane1-data-b2.json` and
+`vane1-data-b3.json` (the latter covers all three batches' files).
