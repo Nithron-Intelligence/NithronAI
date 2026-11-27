@@ -786,7 +786,7 @@ async function loadSources() {
               <td>${sourceStatus(src)}${src.last_error ? `<p class="form-error">${stateIcon('error')}<span>${escapeHtml(src.last_error)}</span></p>` : ''}</td>
               <td class="row-actions">
                 <button class="btn btn-secondary btn-sm" type="button" data-source-action="scan" data-id="${src.id}" ${src.scanning ? 'disabled' : ''}>${icon('sync')}Rescan</button>
-                <button class="btn btn-secondary btn-sm" type="button" data-source-action="toggle" data-id="${src.id}" data-enabled="${src.enabled}">${src.enabled ? 'Pause' : 'Resume'}</button>
+                <button class="btn btn-secondary btn-sm" type="button" data-source-action="toggle" data-id="${src.id}" data-enabled="${src.enabled}">${src.enabled ? `${icon('pause')}Pause` : `${icon('resume')}Resume`}</button>
                 <button class="btn btn-secondary btn-sm" type="button" data-source-action="delete" data-id="${src.id}" data-name="${escapeHtml(src.name)}">Remove</button>
               </td>
             </tr>`).join('')}
@@ -860,7 +860,7 @@ function reindexNotice(emb) {
       <p>The embedding model changed to <span class="mono">${escapeHtml(emb.model || 'a new model')}</span>, and the index
         still holds vectors from ${previous || 'an older model'}. Searches use keywords only until everything is
         embedded again, which can take a while on large folders.</p>
-      <button id="reindexBtn" class="btn btn-primary" type="button">Reindex now</button>
+      <button id="reindexBtn" class="btn btn-primary" type="button">${icon('refresh')}Reindex now</button>
     </div>`;
 }
 
@@ -1089,7 +1089,7 @@ async function loadApiKeys() {
               <td>${escapeHtml(k.name)}</td>
               <td class="mono">${escapeHtml(k.prefix)}…</td>
               <td class="mono nowrap">${k.last_used_at ? formatDate(k.last_used_at) : 'never'}</td>
-              <td class="row-actions"><button class="btn btn-secondary btn-sm" type="button" data-revoke-key="${escapeHtml(k.id)}">Revoke</button></td>
+              <td class="row-actions"><button class="btn btn-secondary btn-sm" type="button" data-revoke-key="${escapeHtml(k.id)}">${icon('revoke')}Revoke</button></td>
             </tr>`).join('')}
           </tbody>
         </table>

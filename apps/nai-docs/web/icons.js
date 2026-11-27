@@ -1,6 +1,6 @@
 // nAI's icons, all in one place: a name goes in, an icon comes out.
 //
-// The shapes are the shared Nithron pixel set, @nithron/icons 0.1.0 (Nithron Community License v1.0), copied
+// The shapes are the shared Nithron pixel set, @nithron/icons 0.2.0 (Nithron Community License v1.0), copied
 // from its svg/<name>.svg files: a 16 x 16 grid, ink (currentColor), crisp edges. Only the icons nAI uses are
 // here; an update copies them again, never edits them. Shown at 16 px (rows, buttons, navigation, states) or
 // 32 px, nothing in between: a pixel icon cannot be scaled by a fraction.
@@ -30,6 +30,9 @@ const ICON_SHAPES = {
   'running': '<path d="M6 6H10V10H6Z"/>',
   'notice': '<path d="M7 3H9V5H7ZM5 6H9V11H11V13H5V11H7V8H5Z"/>',
   'off': '<path d="M4 7H12V9H4Z"/>',
+  'pause': '<path d="M3 2H7V14H3ZM9 2H13V14H9Z"/>',
+  'resume': '<path d="M2 2H4V3H6V4H8V5H10V6H12V7H14V9H12V10H10V11H8V12H6V13H4V14H2Z"/>',
+  'revoke': '<path d="M1 1H7V3H15V7H13V5H12V7H10V5H7V7H1ZM3 3V5H5V3ZM5 9H7V10H9V9H11V10H10V11H9V13H10V14H11V15H9V14H7V15H5V14H6V13H7V11H6V10H5Z"/>',
 };
 
 const ICON_SIZES = [16, 32];
