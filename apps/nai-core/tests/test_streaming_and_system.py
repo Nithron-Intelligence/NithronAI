@@ -238,3 +238,10 @@ def test_litellm_model_string(make_client, provider, model, expected):
 
     make_client(NAI_LLM_ENABLED="true", NAI_LLM_PROVIDER=provider, NAI_LLM_MODEL=model)
     assert get_llm_service().model_name == expected
+
+
+def test_system_reports_the_space_on_the_data_disk(make_client):
+    """The web UI shows disk use in "This machine" as a block meter: total and used bytes of nAI's data disk."""
+    storage = make_client().get("/system").json()["storage"]
+    assert storage["total_bytes"] > 0 and 0 <= storage["used_bytes"] <= storage["total_bytes"]
+    assert set(storage) == {"total_bytes", "used_bytes"}  # no path: /system must not reveal where data lives
