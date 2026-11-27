@@ -1,0 +1,16 @@
+Beispiel Glasfaser GmbH (fiktiv)
+Glasfaser-Vertrag: Vertragsübersicht
+
+Kunde: Alex Example, Beispielstraße 1, 00000 Demostadt
+Kundennummer: DEMO-GF-000042
+
+Tarif: Glasfaser 500 (500 Mbit/s im Download, 100 Mbit/s im Upload)
+Monatlicher Preis: 44,90 EUR, ab dem 13. Monat 49,90 EUR
+Einmaliger Bereitstellungspreis: 0,00 EUR
+
+Vertragsbeginn: 1. September 2025
+Mindestlaufzeit: 24 Monate, also bis zum 31. August 2027
+Kündigungsfrist: Nach der Mindestlaufzeit ist der Vertrag mit einer Frist von einem Monat kündbar.
+Kündigung in Textform an kuendigung@glasfaser.example
+
+Router: Leihgerät, bei Vertragsende innerhalb von 14 Tagen zurückzusenden.
