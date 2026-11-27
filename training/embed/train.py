@@ -254,23 +254,40 @@ def export_onnx(model_dir: str, out_dir: Path, quantize: bool) -> Path:
     return out_dir
 
 
+def fastembed_pooling(model: Any) -> str:
+    """fastembed's name (MEAN or CLS) for the pooling of a sentence-transformers model's Pooling module.
+
+    Granite R2 pools the CLS token, the MiniLM base takes the mean; checking an export with the wrong one fails
+    even when the export is right."""
+    for module in model:
+        mode = getattr(module, "pooling_mode", None)  # sentence-transformers 5.x
+        if mode is None and hasattr(module, "get_pooling_mode_str"):  # older versions
+            mode = module.get_pooling_mode_str()
+        if isinstance(mode, str):
+            if mode in ("cls", "mean"):
+                return mode.upper()
+            raise ValueError(f"fastembed has no pooling for {mode!r}")
+    raise ValueError("the model has no Pooling module")
+
+
 def verify_fastembed(
     model_dir: Path,
     reference_model: str,
     min_cosine: float = 0.99,
-    pooling: str = "MEAN",
+    pooling: str | None = None,
     model_file: str = "onnx/model.onnx",
 ) -> float:
     """Load the export with fastembed (what nAI runs) and compare with sentence-transformers.
 
-    ``pooling`` must match the model (MEAN for the MiniLM base, CLS for Granite R2); ``model_file`` picks the fp32
-    or the int8 file. Returns the lowest cosine similarity over the check sentences."""
+    ``pooling`` (MEAN or CLS) defaults to the reference model's own; ``model_file`` picks the fp32 or the int8
+    file. Returns the lowest cosine similarity over the check sentences."""
     import numpy as np
     from fastembed import TextEmbedding
     from fastembed.common.model_description import ModelSource, PoolingType
     from sentence_transformers import SentenceTransformer
 
     reference = SentenceTransformer(reference_model, device="cpu")
+    pooling = pooling or fastembed_pooling(reference)
     expected = reference.encode(CHECK_SENTENCES, normalize_embeddings=True)
     name = f"nithron-local/export-check-{pooling.lower()}-{Path(model_file).stem}"
     try:

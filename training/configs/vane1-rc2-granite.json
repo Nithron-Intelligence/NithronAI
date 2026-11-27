@@ -1,0 +1,29 @@
+{
+  "name": "vane-1-rc2",
+  "purpose": "First full Vane 1 run: Granite R2 97m on the round-9/10 data (61,847 pairs after the consistency filter, 32x the pilot). Learns whether this much data moves Granite on v1 dev, where 1,875 pairs (rc1) did not. A release candidate only if it beats plain Granite on v1 dev; no publication and no default change without the human.",
+  "base_model": "ibm-granite/granite-embedding-97m-multilingual-r2",
+  "teacher": "mistral-small3.1 (Apache-2.0, Ollama Q4_K_M)",
+  "data": {
+    "pairs": "training/data/vane1/pairs-mined-all.jsonl = cat pairs-mined-b1.jsonl pairs-mined-b2.jsonl pairs-mined-b3.jsonl (82,807 rows; passage ids disjoint across batches). Checksums: training/manifests/vane1-data-b3.json (b1 and b2 also in vane1-data-b1/b2.json)",
+    "batches": "b1: 6,743 real public passages (EU/DE/SE/US); b2: 2,000 and b3: 600 synthetic documents (corpus-v2); queries pairs-v2; filter_pairs.py, check_overlap.py (0 rows sharing text with nai-bench left), negatives mined with this base model (mine_negatives.py, margin 0.95)",
+    "consistency_filter": "--max-positive-rank 49 keeps 61,847 (b1 21,166, b2 30,170, b3 10,511); see docs/lab/vane1-data-plan.md",
+    "rule": "public domain, CC0, CC-BY, EU reuse texts and teacher-generated text only; no CC-BY-SA; nothing from nai-bench; no Claude output"
+  },
+  "train_args": {
+    "epochs": 1,
+    "batch_size": 64,
+    "learning_rate": 2e-05,
+    "max_seq_length": 256,
+    "file_negatives": true,
+    "hard_negatives": 1,
+    "max_positive_rank": 49,
+    "eval_fraction": 0.05,
+    "eval_steps": 100,
+    "eval_distractors": 2000,
+    "seed": 13
+  },
+  "command": "docker compose -f training/docker/compose.rocm.yaml run --rm trainer sh -c 'mkdir -p training/runs/vane1-rc2 && timeout 3h python3 training/embed/train.py --pairs training/data/vane1/pairs-mined-all.jsonl --output-dir training/runs/vane1-rc2 --base-model ibm-granite/granite-embedding-97m-multilingual-r2 --release vane-1-rc2 --epochs 1 --batch-size 64 --learning-rate 2e-5 --max-seq-length 256 --file-negatives --hard-negatives 1 --max-positive-rank 49 --eval-steps 100 --seed 13 > training/runs/vane1-rc2/train.log 2>&1'",
+  "limits": "unattended, capped at 3 hours (timeout 3h), log in training/runs/vane1-rc2/train.log",
+  "evaluation": "evals/embeddings/dense_eval.py on the v1 dev split only (never test): rc2 vs plain granite97 and rc1, embedding-only and hybrid via RRF with nAI's BM25 order; per category, language and cross-language",
+  "release_label": "vane-1-rc2"
+}

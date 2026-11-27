@@ -277,3 +277,21 @@ def test_corpus_generation_retries_a_server_error(monkeypatch: pytest.MonkeyPatc
 def test_corpus_generation_gives_up_with_none_after_retries(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(generate_corpus.time, "sleep", lambda _: None)
     assert generate_corpus.generate(_ollama([500, 500, 500]), "m", "prompt", seed=1, retries=3) is None
+
+
+class _Module:
+    def __init__(self, **attributes: object) -> None:
+        self.__dict__.update(attributes)
+
+
+def test_export_check_uses_the_model_s_own_pooling() -> None:
+    import train
+
+    granite = [_Module(), _Module(pooling_mode="cls"), _Module()]
+    minilm = [_Module(), _Module(get_pooling_mode_str=lambda: "mean")]  # older sentence-transformers
+    assert train.fastembed_pooling(granite) == "CLS"
+    assert train.fastembed_pooling(minilm) == "MEAN"
+    with pytest.raises(ValueError, match="no pooling"):
+        train.fastembed_pooling([_Module(pooling_mode="lasttoken")])
+    with pytest.raises(ValueError, match="no Pooling module"):
+        train.fastembed_pooling([_Module()])
