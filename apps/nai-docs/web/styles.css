@@ -515,10 +515,26 @@ kbd,
   color: var(--text-secondary);
 }
 
+/* A field's error: the failure cross (whole pixels, as .mark-fail) and its sentence. */
 .form-error {
+  position: relative;
   margin-top: var(--space-2);
+  padding-left: calc(var(--mark-size) + var(--space-2));
   font-size: var(--text-fine);
   color: var(--error);
+}
+
+.form-error::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: calc((1lh - var(--mark-size)) / 2);
+  width: var(--pixel);
+  height: var(--pixel);
+  background: currentColor;
+  box-shadow:
+    2px 2px 0 currentColor, 4px 4px 0 currentColor, 6px 6px 0 currentColor, 8px 8px 0 currentColor,
+    8px 0 0 currentColor, 6px 2px 0 currentColor, 2px 6px 0 currentColor, 0 8px 0 currentColor;
 }
 
 ::placeholder {
@@ -989,6 +1005,10 @@ mark {
   gap: var(--space-3);
   padding: var(--space-4) var(--space-5);
   border-top: var(--line-hair) solid var(--hairline);
+}
+
+.modal-body > .form-hint:first-child {
+  margin: 0 0 var(--space-5);
 }
 
 .modal-body .modal-footer {
