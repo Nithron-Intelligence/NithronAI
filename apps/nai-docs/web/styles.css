@@ -675,13 +675,17 @@ kbd,
   background: var(--hover);
 }
 
-.row-actions {
-  text-align: right;
-  white-space: nowrap;
+/* Long paths break anywhere, and a row's actions wrap under each other: a table never scrolls sideways. */
+.table .path {
+  overflow-wrap: anywhere;
 }
 
-.row-actions .btn + .btn {
-  margin-left: var(--space-2);
+.row-actions {
+  text-align: right;
+}
+
+.row-actions .btn {
+  margin: 2px 0 2px var(--space-2);
 }
 
 /* =============================================
@@ -1140,8 +1144,11 @@ mark {
     padding: 0 var(--space-4) var(--space-7);
   }
 
+  /* The tabs wrap rather than scroll sideways. */
   .nav {
-    gap: var(--space-5);
+    flex-wrap: wrap;
+    gap: 0 var(--space-5);
+    overflow-x: visible;
   }
 
   .screen-head-row {
@@ -1176,6 +1183,45 @@ mark {
   .key-create,
   .key-row {
     flex-direction: column;
+  }
+
+  /* Tables become one block per row: the first cell as its title, the others labelled. */
+  .table thead {
+    display: none;
+  }
+
+  .table,
+  .table tbody,
+  .table tr,
+  .table td {
+    display: block;
+    width: 100%;
+  }
+
+  .table tr {
+    padding: var(--space-3) 0;
+    border-bottom: var(--line-hair) solid var(--hairline);
+  }
+
+  .table td {
+    padding: var(--space-1) 0;
+    border: none;
+    text-align: left;
+  }
+
+  .table td[data-label]::before {
+    content: attr(data-label) ": ";
+    font-family: var(--font-sans);
+    color: var(--text-secondary);
+  }
+
+  .table .num,
+  .row-actions {
+    text-align: left;
+  }
+
+  .row-actions .btn {
+    margin: var(--space-2) var(--space-2) 0 0;
   }
 }
 

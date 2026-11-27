@@ -518,8 +518,8 @@ function updateFileList() {
       <thead><tr><th scope="col">File</th><th scope="col" class="num">Size</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
       <tbody>${STATE.files.map((file, i) => `
         <tr>
-          <td class="mono">${escapeHtml(file.name)}</td>
-          <td class="num mono">${formatBytes(file.size)}</td>
+          <td class="mono path" data-label="File">${escapeHtml(file.name)}</td>
+          <td class="num mono" data-label="Size">${formatBytes(file.size)}</td>
           <td class="row-actions"><button class="btn btn-secondary btn-sm" type="button" data-remove-file="${i}">${icon('remove')}Remove</button></td>
         </tr>`).join('')}
       </tbody>
@@ -563,9 +563,9 @@ async function ingestFiles() {
           <thead><tr><th scope="col">File</th><th scope="col" class="num">Chunks</th><th scope="col">Status</th></tr></thead>
           <tbody>${data.added.map((item) => `
             <tr>
-              <td class="mono">${escapeHtml(item.filename)}</td>
-              <td class="num mono">${item.chunks}</td>
-              <td>${item.status === 'success' ? statusLabel('success', 'Indexed')
+              <td class="mono path" data-label="File">${escapeHtml(item.filename)}</td>
+              <td class="num mono" data-label="Chunks">${item.chunks}</td>
+              <td data-label="Status">${item.status === 'success' ? statusLabel('success', 'Indexed')
                 : statusLabel('error', item.message ? `Failed: ${item.message}` : 'Failed')}</td>
             </tr>`).join('')}
           </tbody>
@@ -622,11 +622,11 @@ async function loadDocuments() {
           </tr></thead>
           <tbody>${data.documents.map(doc => `
             <tr>
-              <td><span class="name-cell">${icon('file')}<span class="mono">${escapeHtml(documentName(doc))}</span></span></td>
-              <td>${doc.source_name ? 'NAS folder' : 'Upload'}</td>
-              <td class="num mono">${doc.chunk_count}</td>
-              <td class="num mono">${formatBytes(doc.file_size || doc.total_chars)}</td>
-              <td class="mono nowrap">${formatDate(doc.indexed_at)}</td>
+              <td class="path"><span class="name-cell">${icon('file')}<span class="mono">${escapeHtml(documentName(doc))}</span></span></td>
+              <td data-label="From">${doc.source_name ? 'NAS folder' : 'Upload'}</td>
+              <td class="num mono" data-label="Chunks">${doc.chunk_count}</td>
+              <td class="num mono" data-label="Size">${formatBytes(doc.file_size || doc.total_chars)}</td>
+              <td class="mono nowrap" data-label="Indexed">${formatDate(doc.indexed_at)}</td>
               <td class="row-actions">
                 <button class="btn btn-secondary btn-sm" type="button" data-open-doc="${escapeHtml(doc.doc_id)}">${icon('external-link')}Open</button>
                 ${!doc.source_id && isAdmin() ? `<button class="btn btn-secondary btn-sm btn-icon" type="button" data-delete-doc="${escapeHtml(doc.doc_id)}" aria-label="Delete ${escapeHtml(documentName(doc))}" title="Delete ${escapeHtml(documentName(doc))}">${icon('delete')}</button>` : ''}
@@ -779,11 +779,11 @@ async function loadSources() {
           <tbody>${sources.map(src => `
             <tr>
               <td><span class="name-cell">${icon('folder')}<span>${escapeHtml(src.name)}</span></span></td>
-              <td class="mono">${escapeHtml(src.path || '')}</td>
-              <td class="num mono">${src.document_count}</td>
-              <td>${src.allowed_groups.length ? escapeHtml(src.allowed_groups.join(', ')) : 'Everyone'}</td>
-              <td class="mono nowrap">${src.last_scan_finished ? formatDate(src.last_scan_finished) : '–'}</td>
-              <td>${sourceStatus(src)}${src.last_error ? `<p class="form-error">${stateIcon('error')}<span>${escapeHtml(src.last_error)}</span></p>` : ''}</td>
+              <td class="mono path" data-label="Path">${escapeHtml(src.path || '')}</td>
+              <td class="num mono" data-label="Files">${src.document_count}</td>
+              <td data-label="Visible to">${src.allowed_groups.length ? escapeHtml(src.allowed_groups.join(', ')) : 'Everyone'}</td>
+              <td class="mono nowrap" data-label="Synced">${src.last_scan_finished ? formatDate(src.last_scan_finished) : '–'}</td>
+              <td data-label="Status">${sourceStatus(src)}${src.last_error ? `<p class="form-error">${stateIcon('error')}<span>${escapeHtml(src.last_error)}</span></p>` : ''}</td>
               <td class="row-actions">
                 <button class="btn btn-secondary btn-sm" type="button" data-source-action="scan" data-id="${src.id}" ${src.scanning ? 'disabled' : ''}>${icon('sync')}Rescan</button>
                 <button class="btn btn-secondary btn-sm" type="button" data-source-action="toggle" data-id="${src.id}" data-enabled="${src.enabled}">${src.enabled ? `${icon('pause')}Pause` : `${icon('resume')}Resume`}</button>
@@ -1087,8 +1087,8 @@ async function loadApiKeys() {
           <tbody>${keys.map(k => `
             <tr>
               <td>${escapeHtml(k.name)}</td>
-              <td class="mono">${escapeHtml(k.prefix)}…</td>
-              <td class="mono nowrap">${k.last_used_at ? formatDate(k.last_used_at) : 'never'}</td>
+              <td class="mono" data-label="Starts with">${escapeHtml(k.prefix)}…</td>
+              <td class="mono nowrap" data-label="Last used">${k.last_used_at ? formatDate(k.last_used_at) : 'never'}</td>
               <td class="row-actions"><button class="btn btn-secondary btn-sm" type="button" data-revoke-key="${escapeHtml(k.id)}">${icon('revoke')}Revoke</button></td>
             </tr>`).join('')}
           </tbody>
