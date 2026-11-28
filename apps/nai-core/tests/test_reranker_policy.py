@@ -112,3 +112,34 @@ def test_system_reports_effective_state_and_reason(make_client, monkeypatch: pyt
     assert reranker["mode"] == "auto" and reranker["active"] is False
     assert reranker["reason"].startswith("auto, off: 2 cores")
     assert reranker["top_k"] == 10
+
+
+def test_auto_stays_off_for_a_reranker_with_non_commercial_training_data() -> None:
+    # bge-reranker-v2-m3 lists MS MARCO in its training data (lineage audit, decision 2026-11-26): auto
+    # leaves it off even on fast hardware; NAI_RERANKER=on still uses it.
+    on, reason = reranker_auto_decision(DESKTOP, "BAAI/bge-reranker-v2-m3-int8")
+    assert on is False
+    assert "not cleared" in reason and "NAI_RERANKER=on" in reason
+    # weak hardware keeps its own, more useful reason
+    assert reranker_auto_decision(SIMULATED_NAS, "BAAI/bge-reranker-v2-m3-int8")[1].startswith("2 cores")
+
+
+def test_auto_turns_on_a_cleared_reranker_on_fast_hardware(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(hardware, "LINEAGE_CLEARED_RERANKERS", frozenset({"clean/reranker"}))
+    assert reranker_auto_decision(DESKTOP, "clean/reranker")[0] is True
+    assert reranker_auto_decision(N100_NAS, "clean/reranker")[0] is False
+
+
+def test_system_reports_auto_off_for_the_default_reranker_on_fast_hardware(
+    make_client, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def fake_detect() -> HardwareInfo:
+        return DESKTOP
+
+    fake_detect.cache_clear = lambda: None  # type: ignore[attr-defined]
+    monkeypatch.setattr(hardware, "detect_hardware", fake_detect)
+    client = make_client(NAI_RERANKER="auto")
+    body = client.get("/system").json()
+    reranker = body["features"]["reranker"]
+    assert reranker["active"] is False and "not cleared" in reranker["reason"]
+    assert any("NAI_RERANKER=on" in tip for tip in body["recommendations"])

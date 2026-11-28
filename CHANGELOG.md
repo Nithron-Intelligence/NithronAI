@@ -5,6 +5,19 @@ All notable changes to nAI. Versions follow [semantic versioning](https://semver
 
 ## [Unreleased]
 
+## [0.7.1] – 2026-11-28
+
+A patch release of 0.7.0 with one change; nothing else from `main` is in it.
+
+### Changed
+
+- **`NAI_RERANKER=auto` no longer turns the reranker on by itself.** The lineage audit found MS MARCO
+  (non-commercial) in the training data of `bge-reranker-v2-m3`, the default model, and of Qwen3-Reranker; the
+  same reason MiniLM stopped being the default embedding model in 0.7.0. `auto` now also needs a model whose
+  training data is cleared (none yet), so it means off on every machine; `NAI_RERANKER=on` still runs any model,
+  and `/system` says why. In 0.7.0 only fast machines (8+ cores, 8+ GB RAM) ran it by default; NAS templates
+  already ship `off`.
+
 ## [0.7.0] – 2026-11-23
 
 A new default embedding model without non-commercial data in its lineage (IBM Granite Embedding R2), and a
@@ -146,7 +159,8 @@ Phase 0: foundation.
 - Relicensed from AGPL-3.0-only to the NithronOS Community License (versions up to `66fa142` remain
   AGPL-3.0-only; see `NOTICE`).
 
-[Unreleased]: https://github.com/Nithron/NithronAI/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/Nithron-Intelligence/nAI/compare/v0.7.1...HEAD
+[0.7.1]: https://github.com/Nithron-Intelligence/nAI/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/Nithron/NithronAI/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/Nithron/NithronAI/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/Nithron/NithronAI/compare/v0.4.0...v0.5.0

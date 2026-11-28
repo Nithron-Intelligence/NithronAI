@@ -96,7 +96,7 @@ NAI_EMBEDDINGS_ENABLED=true
 NAI_EMBEDDINGS=auto                 # auto | on | off (auto: keyword-only below 2.5 GB of memory)
 NAI_EMBEDDINGS_MODEL=sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
 NAI_EMBEDDINGS_AUTO_REINDEX=false   # true: re-embed automatically when the model changes
-NAI_RERANKER=auto                   # auto | on | off (auto: only on 8+ effective cores and 8+ GB RAM)
+NAI_RERANKER=auto                   # auto | on | off (auto: off until a cleared reranker exists; then 8+ cores, 8+ GB RAM)
 NAI_RERANKER_MODEL=BAAI/bge-reranker-v2-m3-int8
 NAI_RERANKER_CANDIDATES=10          # top-k the reranker re-scores
 

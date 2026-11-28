@@ -3,7 +3,7 @@
 [![License: NCL v1.0](https://img.shields.io/badge/License-Nithron_Community_License-blue.svg)](./LICENSE)
 [![Backend](https://img.shields.io/badge/Backend-FastAPI-informational.svg)](apps/nai-core)
 [![Status](https://img.shields.io/badge/status-beta-green.svg)](#)
-[![Release](https://img.shields.io/badge/nAI-v0.7.0-blue)](https://github.com/Nithron/NithronAI/releases)
+[![Release](https://img.shields.io/badge/nAI-v0.7.1-blue)](https://github.com/Nithron/NithronAI/releases)
 [![Built by Nithron](https://img.shields.io/badge/built_by-Nithron-0b8fe0.svg)](https://nithron.com/projects/)
 
 **nAI** lets you search and ask questions about the files on your NAS, privately, on your own
@@ -89,7 +89,7 @@ NAI_EMBEDDINGS=auto                       # auto | on | off: auto runs keyword-o
 NAI_EMBEDDINGS_PROVIDER=auto              # fastembed (ONNX, CPU) | ollama | sentence-transformers
 NAI_EMBEDDINGS_MODEL=ibm-granite/granite-embedding-97m-multilingual-r2   # until 0.6.0: sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
 NAI_EMBEDDINGS_AUTO_REINDEX=false         # model changed? false: pause semantic search and ask an admin to re-index
-NAI_RERANKER=auto                         # auto | on | off: auto reranks the top 10 only on 8+ cores / 8+ GB RAM
+NAI_RERANKER=auto                         # auto | on | off: auto stays off until a reranker with clean training data exists
 NAI_RERANKER_MODEL=BAAI/bge-reranker-v2-m3-int8   # multilingual; 0.57 GB download, ~1-1.5 GB RAM while running
 NAI_RERANKER_CANDIDATES=10                # how many top results the reranker re-scores
 
@@ -286,7 +286,7 @@ The goal: nAI as **the AI that knows your NAS**, on any NAS OS, with NithronOS a
 becoming a small lab that builds private, local models for NAS-class hardware, starting with the models nAI
 uses: see the **[lab roadmap](docs/lab/ROADMAP.md)** and [ADR-0002](docs/ADRs/0002-nithron-ai-lab-direction.md).
 
-Releases: **v0.7.0** (2026-11-23) is the latest release; see [CHANGELOG.md](CHANGELOG.md).
+Releases: **v0.7.1** (2026-11-28) is the latest release; see [CHANGELOG.md](CHANGELOG.md).
 
 - [x] **Phase 0 — Foundation** (v0.3): auth on every endpoint, SQLite storage, persistent chat,
       SSRF-safe URL ingestion, green CI
