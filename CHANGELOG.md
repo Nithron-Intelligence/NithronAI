@@ -27,16 +27,24 @@ All notable changes to nAI. Versions follow [semantic versioning](https://semver
   the Nithron Pixel face sets the name, the document count, the words of empty and loading screens and the
   numbers beside the block meters (upload progress; memory, data disk and the semantic index under "This
   machine"). `/system` reports the data disk's total and used bytes for that meter.
+- **Project and repository renamed to nAI:** the GitHub repository moved to `Nithron-Intelligence` (2026-11-24) and is
+  now `Nithron-Intelligence/nAI` (2026-11-26; old URLs redirect). The license texts (EULA, commercial terms,
+  trademark policy, NOTICE) name the product nAI. Releases from 0.7.1 publish to
+  `ghcr.io/nithron-intelligence/nai/nai-core`; 0.4.0–0.7.0 stay at `ghcr.io/nithron/nithronai/nai-core`.
+
+## [0.7.1] – 2026-11-28
+
+A patch release of 0.7.0 with one change, from the branch `release/0.7.x`; nothing else listed under
+Unreleased is in it.
+
+### Changed
+
 - **`NAI_RERANKER=auto` no longer turns the reranker on by itself.** The lineage audit found MS MARCO
   (non-commercial) in the training data of `bge-reranker-v2-m3`, the default model, and of Qwen3-Reranker; the
   same reason MiniLM stopped being the default embedding model in 0.7.0. `auto` now also needs a model whose
   training data is cleared (none yet), so it means off on every machine; `NAI_RERANKER=on` still runs any model,
-  and `/system` says why. On v1 dev (PROVISIONAL) reranking added MRR 0.834 → 0.896, within the ±0.09 noise
-  band. Only fast machines (8+ cores, 8+ GB RAM) ran it by default; NAS templates already ship `off`.
-- **Project and repository renamed to nAI:** the GitHub repository moved to `Nithron-Intelligence` (2026-11-24) and is
-  now `Nithron-Intelligence/nAI` (2026-11-26; old URLs redirect). The license texts (EULA, commercial terms,
-  trademark policy, NOTICE) name the product nAI. Releases from 0.8.0 publish to
-  `ghcr.io/nithron-intelligence/nai/nai-core`; 0.4.0–0.7.0 stay at `ghcr.io/nithron/nithronai/nai-core`.
+  and `/system` says why. In 0.7.0 only fast machines (8+ cores, 8+ GB RAM) ran it by default; NAS templates
+  already ship `off`.
 
 ## [0.7.0] – 2026-11-23
 
@@ -179,7 +187,8 @@ Phase 0: foundation.
 - Relicensed from AGPL-3.0-only to the NithronOS Community License (versions up to `66fa142` remain
   AGPL-3.0-only; see `NOTICE`).
 
-[Unreleased]: https://github.com/Nithron-Intelligence/nAI/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/Nithron-Intelligence/nAI/compare/v0.7.1...HEAD
+[0.7.1]: https://github.com/Nithron-Intelligence/nAI/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/Nithron-Intelligence/nAI/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/Nithron-Intelligence/nAI/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/Nithron-Intelligence/nAI/compare/v0.4.0...v0.5.0

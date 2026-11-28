@@ -60,7 +60,7 @@ NithronOS session on 2026-11-26, open until NithronOS has them). Changes needed:
 5. `compose.yaml` header comment: update `Source:` URL to `https://github.com/Nithron-Intelligence/nAI`
    (repo transferred 2026-11-24). Keep `image: ghcr.io/nithron/nithronai/nai-core:...` for 0.7.0 and earlier
    unless those tags are mirrored to `ghcr.io/nithron-intelligence/nai/nai-core`; switch to the new
-   registry path once the next release (0.8.0+) publishes there.
+   registry path once its package is public (0.7.1, the first release published there).
 6. Nothing else differs in `compose.yaml` or `schema.json` (the template README is NithronOS's own catalog
    text and isn't synced).
 
